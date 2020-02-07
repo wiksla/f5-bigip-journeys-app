@@ -1,6 +1,6 @@
 import itertools
 
-from parser.fsm import parse
+from obtainer.fsm import parse
 
 
 def obtain_guests_data(bigip_conf):

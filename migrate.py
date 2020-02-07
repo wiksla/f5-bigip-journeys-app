@@ -2,7 +2,7 @@ import click
 import json
 
 from utils.ucs_handler import obtain_data_from_host
-from parser.obtain_data import obtain_guests_data
+from obtainer.obtain_data import obtain_guests_data
 from utils.ucs_handler import file_is_proper_ucs
 
 
@@ -50,10 +50,8 @@ def guest_info(host, name):
 
 @cli.command()
 @click.argument("guest")
-def migrate(guest):
+def make_migrate(guest):
     """  Making guest config loadable on VELOS (tenant). """
     click.echo("Convert ucs to be loadable on VELOS tenant: {}".format(guest))
 
 
-if __name__ == "__main__":
-    cli()
