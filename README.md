@@ -25,3 +25,6 @@ migrate --help
 
 
 Dockerized (in future).
+
+1. docker build -t artifactory.pdsea.f5net.com/cxt-calypso-docker/migration:latest .
+2. docker run -it artifactory.pdsea.f5net.com/cxt-calypso-docker/migration:latest
