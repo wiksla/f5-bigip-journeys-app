@@ -3,6 +3,7 @@ import json
 
 from utils.ucs_handler import obtain_data_from_host
 from parser.obtain_data import obtain_guests_data
+from utils.ucs_handler import file_is_proper_ucs
 
 
 @click.group()
@@ -18,6 +19,9 @@ def cli():
 @click.argument("host")
 def list_all_guests(host):
     """ List all guest available in  host configuration. """
+    if not file_is_proper_ucs(ucs_fn=host):
+        return
+
     guests_data = obtain_data_from_host(ucs_fn=host, obtain=obtain_guests_data)
 
     click.echo("Host config contains guests: ")
@@ -30,6 +34,9 @@ def list_all_guests(host):
 @click.argument("host")
 def guest_info(host, name):
     """  Obtain all tenant requirement based on VCMP(host)."""
+
+    if not file_is_proper_ucs(ucs_fn=host):
+        return
 
     guests_data = obtain_data_from_host(ucs_fn=host, obtain=obtain_guests_data)
     if name == "all_":

@@ -26,18 +26,13 @@ def extract_host_file(ucs_fn, extract_dir_destination):
 # def extract_all_files(filename, extract_dir_destination):
 #     cmd = ['tar', '-xf', filename,  extract_dir_destination]
 #     subprocess.call(cmd)
-#
-#
-# def _get_config_filenames(filename):
-#     """ List all files in /config. """
-#     try:
-#         config_filenames = subprocess.check_output(['tar', '-tf', filename, 'config'], stderr=subprocess.STDOUT)
-#     except subprocess.CalledProcessError:
-#         print("File {} does not exist.".format(filename))
-#         return None
-#     else:
-#         return config_filenames.split()
 
 
-# for x in _get_config_filenames(filename='/home/mj/Desktop/resource/ucs_vcmp_host.ucsA'):
-#     print(x)
+def file_is_proper_ucs(ucs_fn):
+    try:
+        config_filenames = subprocess.check_output(['tar', '-tf', ucs_fn, 'config'], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        print("File {} does not exist !".format(ucs_fn))
+        pass
+    else:
+        return HOST_FILE.encode("utf-8") in config_filenames.split()

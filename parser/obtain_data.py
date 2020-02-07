@@ -16,6 +16,7 @@ def parse_guest_data(quest_data):
     out = []
     cache = [out]
     element = ""
+    quest_data += '\n'
     for char in quest_data:
         if char in (" ", "\t", "\r", "\n"):
             element = _add_element(cache, element)
