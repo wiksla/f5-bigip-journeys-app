@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from unittest import TestCase
+
 import parser.SCFStateMachine as SCFStateMachine
-from parser.SCFObject import SCFObject, SCFProperties, BracedSSVList, \
-    BracedNLSVList, NLSVList, SSVList, DblQuotedString, EmptyValue, Flag
+from parser.SCFObject import BracedSSVList
+from parser.SCFObject import BracedNLSVList
+from parser.SCFObject import EmptyValue
+from parser.SCFObject import Flag
+from parser.SCFObject import NLSVList
+from parser.SCFObject import SCFObject
+from parser.SCFObject import SCFProperties
+from parser.SCFObject import SSVList
 
 
 class TestVirtualServer(TestCase):

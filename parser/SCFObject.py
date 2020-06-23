@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from collections import OrderedDict, UserString, UserList
-from functools import total_ordering
-
+from collections import OrderedDict
+from collections import UserString
+from collections import UserList
 from fnmatch import fnmatch
+from functools import total_ordering
 
 
 class SCFValue:

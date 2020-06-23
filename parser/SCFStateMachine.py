@@ -5,11 +5,18 @@ It will iterate through the file char-at-a-time.
 State is held internally to the instance.
 '''
 
-from parser.AbstractStateMachine import StateMachineInputError, StateMachineTransitionError
-from parser.SCFObject import SCFProperties, BracedSSVList, SSVList, BracedNLSVList, NLSVList, \
-    PlainString, EmptyValue, Flag
-from parser.SCFObject import SCFObject
 from parser.AbstractStateMachine import AbstractStateMachine
+from parser.AbstractStateMachine import StateMachineInputError
+from parser.SCFObject import BracedSSVList
+from parser.SCFObject import BracedNLSVList
+from parser.SCFObject import EmptyValue
+from parser.SCFObject import Flag
+from parser.SCFObject import NLSVList
+from parser.SCFObject import PlainString
+from parser.SCFObject import SCFObject
+from parser.SCFObject import SCFProperties
+from parser.SCFObject import SSVList
+
 
 # Constants for the SCFStateMachine
 
