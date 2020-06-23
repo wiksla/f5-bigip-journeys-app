@@ -4,7 +4,7 @@ FROM python:3.8
 WORKDIR /migration
 
 COPY utils /migration/utils
-COPY obtainer /migration/obtainer
+COPY parser /migration/obtainer
 COPY modifier /migration/modifier
 
 COPY migrate.py /migration/
