@@ -273,7 +273,7 @@ class NLSVList(SCFValue, UserList):
     def _as_base_type(self):
         return [v._as_base_type() if isinstance(v, SCFValue) else v for v in self.data]
 
-    def as_tmsh(self, mode='replace-all-with', order=None):
+    def as_tmsh(self, mode='replace-all-with', tab=0, order=None):
         r = ''
         for m in self.data if not order else order(self.data):
             if isinstance(m, SCFProperties):
