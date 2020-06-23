@@ -143,7 +143,7 @@ class SCFStateMachine(AbstractStateMachine):
                 print('Last object has no objname attribute')
         if self.depth > 0:
             raise StateMachineInputError('Depth is non-zero %d %r' % (self.depth, self.dest),
-                                         self.pos)
+                                         self.pos, len(self.lines))
         self.output.append(SCFObject())
         self.dest.append(self.output[-1])
         if self.debug:
@@ -204,7 +204,7 @@ class SCFStateMachine(AbstractStateMachine):
                 self.accumulate(c)
                 self.transition('objname', clear_accum=False)
             else:
-                raise StateMachineInputError("quoted type ('%s',%s)" % (self.dest[-1].objmodule, self.dest[-1].objtype), pos)
+                raise StateMachineInputError("quoted type ('%s',%s)" % (self.dest[-1].objmodule, self.dest[-1].objtype), pos, len(self.lines))
         elif c in NAME_START:
             if self.accum == '':
                 self.accumulate(c)
@@ -297,12 +297,12 @@ class SCFStateMachine(AbstractStateMachine):
             # this property set is done
             self.transition('propsfinish')
         elif self.quoted and c in QUOTE:
-            raise StateMachineInputError('Property name was just an empty double quote', pos)
+            raise StateMachineInputError('Property name was just an empty double quote', pos, len(self.lines))
         elif self.accum == '' and c in QUOTE:
             self.quoted = True
             self.accumulate(c)
         elif not self.quoted and c in QUOTE:
-            raise StateMachineInputError('Property name has a quote in the middle', pos)
+            raise StateMachineInputError('Property name has a quote in the middle', pos, len(self.lines))
         else:
             # first property
             self.accumulate(c)
@@ -345,7 +345,7 @@ class SCFStateMachine(AbstractStateMachine):
                 self.dest.pop()
                 self.transition('propsstart')
         else:
-            raise StateMachineInputError('invalid char \'%s\' at propsfinish' % c, pos)
+            raise StateMachineInputError('invalid char \'%s\' at propsfinish' % c, pos, len(self.lines))
 
     def state_propname_enter(self, old_state, new_state):
         if self.accum.startswith(QUOTE):
@@ -375,7 +375,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.quoted = True
             self.accumulate(c)
         elif c in CLOSE_BRACE:
-            raise StateMachineInputError('Close brace in propname', pos)
+            raise StateMachineInputError('Close brace in propname', pos, len(self.lines))
         elif not self.quoted and c in SPACE:
             self.dest.append(self.accum)
             self.transition('valtypeguess')
@@ -393,7 +393,7 @@ class SCFStateMachine(AbstractStateMachine):
             # we have an SSV, NLSV or Empty Object
             self.transition('typelist')
         elif c in EOL:
-            raise StateMachineInputError('EOL when attempting to guess type', pos)
+            raise StateMachineInputError('EOL when attempting to guess type', pos, len(self.lines))
         elif c in QUOTE:
             self.quoted = True
             self.accumulate(c)
@@ -426,7 +426,7 @@ class SCFStateMachine(AbstractStateMachine):
             #             }
             self.transition('typebracednlsv_or_props')
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' when guessing list type' % c, pos)
+            raise StateMachineInputError('Unexpected char \'%s\' when guessing list type' % c, pos, len(self.lines))
 
     def state_typebracednlsv_or_props(self, c, pos):
         """Guess the type for this object"""
@@ -505,9 +505,9 @@ class SCFStateMachine(AbstractStateMachine):
 
     def state_valplain_leave(self, old_state, new_state):
         if self.escape:
-            raise StateMachineInputError('Left valplain still escaping', self.pos)
+            raise StateMachineInputError('Left valplain still escaping', self.pos, len(self.lines))
         if self.quoted:
-            raise StateMachineInputError('Left valplain inside quotes', self.pos)
+            raise StateMachineInputError('Left valplain inside quotes', self.pos, len(self.lines))
         try:
             self.dest[-2][self.dest[-1]] = PlainString(self.accum)
         except IndexError as e:
@@ -530,7 +530,7 @@ class SCFStateMachine(AbstractStateMachine):
                     self.dest[-1]) in UNQUOTESTR:
                 raise StateMachineInputError('Space in plain value (\'%s\', %s, \'%s\'),' %
                                              (self.output[-1].objmodule, self.output[-1].objtype,
-                                              self.dest[-1]), pos)
+                                              self.dest[-1]), pos, len(self.lines))
             else:
                 self.accumulate(c)
         elif c in EOL:
@@ -566,9 +566,9 @@ class SCFStateMachine(AbstractStateMachine):
 
     def state_valssv_leave(self, old_state, new_state):
         if self.escape:
-            raise StateMachineInputError('Left valssv still escaping', self.pos)
+            raise StateMachineInputError('Left valssv still escaping', self.pos, len(self.lines))
         if self.quoted:
-            raise StateMachineInputError('Left valssv inside quotes', self.pos)
+            raise StateMachineInputError('Left valssv inside quotes', self.pos, len(self.lines))
         if self.accum != '':
             self.dest[-1].append(self.accum)
             self.accum = ''
@@ -650,7 +650,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.quoted = True
             self.accumulate(c)
         elif c in EOL:
-            raise StateMachineInputError('EOL inside SSV', pos)
+            raise StateMachineInputError('EOL inside SSV', pos, len(self.lines))
         else:
             self.accumulate(c)
 
@@ -769,7 +769,7 @@ class SCFStateMachine(AbstractStateMachine):
             # ----^
             self.transition('valbracednlsvnext')
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' in nlsvstart' % c, pos)
+            raise StateMachineInputError('Unexpected char \'%s\' in nlsvstart' % c, pos, len(self.lines))
 
     def state_valbracednlsvnext(self, c, pos):
         if c in SPACE + EOL:
@@ -792,7 +792,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.dest.append(self.dest[-1][-1])
             self.transition('propsstart')
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' in nlsvnext' % c, pos)
+            raise StateMachineInputError('Unexpected char \'%s\' in nlsvnext' % c, pos, len(self.lines))
 
     def state_nestedblob_enter(self, old_state, new_state):
         self.nestdepths.append(0)
@@ -807,11 +807,11 @@ class SCFStateMachine(AbstractStateMachine):
         self.dest.pop()
         self.nestdepths.pop()
         if self.escape:
-            raise StateMachineInputError('Left nestedblob still escaping', self.pos)
+            raise StateMachineInputError('Left nestedblob still escaping', self.pos, len(self.lines))
         if self.quoted:
-            raise StateMachineInputError('Left nestedblob inside quotes', self.pos)
+            raise StateMachineInputError('Left nestedblob inside quotes', self.pos, len(self.lines))
         if self.comment:
-            raise StateMachineInputError('Left nestedblob still escaping', self.pos)
+            raise StateMachineInputError('Left nestedblob still escaping', self.pos, len(self.lines))
 
     def state_nestedblob(self, c, pos):
         if self.debug:

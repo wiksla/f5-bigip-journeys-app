@@ -13,9 +13,10 @@ class StateMachineInputError(AbstractStateMachineError):
         message -- explanation of the error
     """
 
-    def __init__(self, message, pos):
+    def __init__(self, message, pos, line_number):
         self.message = message
         self.pos = pos
+        self.line_number = line_number
 
 
 class StateMachineTransitionError(AbstractStateMachineError):
