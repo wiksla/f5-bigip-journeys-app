@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import pytest
 from unittest import TestCase
-from collections import UserList
-import f5parser.SCFStateMachine as SCFStateMachine
-from f5parser.SCFObject import SCFObject, SCFProperties, BracedSSVList, \
+import parser.SCFStateMachine as SCFStateMachine
+from parser.SCFObject import SCFObject, SCFProperties, BracedSSVList, \
     BracedNLSVList, NLSVList, SSVList, DblQuotedString, EmptyValue, Flag
-
-__author__ = 'jimd'
 
 
 class TestVirtualServer(TestCase):

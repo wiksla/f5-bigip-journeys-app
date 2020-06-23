@@ -5,17 +5,11 @@ It will iterate through the file char-at-a-time.
 State is held internally to the instance.
 '''
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from f5parser.AbstractStateMachine import StateMachineInputError, StateMachineTransitionError
-from f5parser.SCFObject import SCFProperties, BracedSSVList, SSVList, BracedNLSVList, NLSVList, \
+from parser.AbstractStateMachine import StateMachineInputError, StateMachineTransitionError
+from parser.SCFObject import SCFProperties, BracedSSVList, SSVList, BracedNLSVList, NLSVList, \
     PlainString, EmptyValue, Flag
-from f5parser.SCFObject import SCFObject
-from f5parser.AbstractStateMachine import AbstractStateMachine
-
-__author__ = 'jimd'
+from parser.SCFObject import SCFObject
+from parser.AbstractStateMachine import AbstractStateMachine
 
 # Constants for the SCFStateMachine
 

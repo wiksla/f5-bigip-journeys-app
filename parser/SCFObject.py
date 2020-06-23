@@ -3,9 +3,6 @@
 from collections import OrderedDict, UserString, UserList
 from functools import total_ordering
 
-__author__ = 'jimd'
-__version__ = '0.5.0'
-
 from fnmatch import fnmatch
 
 
@@ -415,7 +412,6 @@ class SCFObject:
                 X to autoincrement (TODO)
     '''
 
-    __version__ = __version__
 
     def __init__(self, *args, **kwargs):
         '''Initialise the SCFObject() with empty values'''
