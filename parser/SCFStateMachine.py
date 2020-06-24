@@ -56,6 +56,7 @@ UNQUOTESTR = [('sys', ['crypto', 'cert'], 'common-name'),
               ('sys', ['crypto', 'cert'], 'country'),
               ('sys', ['crypto', 'cert'], 'state'),
               ('sys', ['crypto', 'cert'], 'subject-alternative-name'),
+              ('ltm', ['monitor', 'snmp-dca'], 'user-defined'),  # https://cdn.f5.com/product/bugtracker/ID520970.html
               ]
 QUOTEDNAME = [('wam', ['policy']),
               ('gtm', ['topology']),
