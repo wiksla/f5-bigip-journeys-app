@@ -7,6 +7,48 @@ from crossplane.analyzer import enter_block_ctx
 from crossplane.errors import NgxParserDirectiveError
 
 
+NONAME = {
+    'auth': [
+        ['password-policy'],
+        ['remote-role'],
+        ['remote-user'],
+        ['source'],
+    ],
+    'cli': [
+        ['admin-partitions'],
+        ['global-settings'],
+        ['preference'],
+    ],
+    'ltm': [
+        ['default-node-monitor'],
+        ['dns', 'analytics', 'global-settings'],
+        ['dns', 'cache', 'global-settings'],
+    ],
+    'net': [
+        ['cos global-settings'],
+        ['lldp-globals'],
+        ['packet-filter-trusted'],
+        ['stp-globals'],
+    ],
+    'sys': [
+        ['datastor'],
+        ['dns'],
+        ['global-settings'],
+        ['httpd'],
+        ['log-rotate'],
+        ['ntp'],
+        ['outbound-smtp'],
+        ['scriptd'],
+        ['snmp'],
+        ['software', 'update'],
+        ['sshd'],
+        ['state-mirroring'],
+    ],
+    'wom': [
+        ['endpoint-discovery'],
+    ]
+}
+
 def parse(filename, onerror=None, catch_errors=True, ignore=(),
           comments=False, strict=False, check_ctx=True, check_args=True):
     """
@@ -140,6 +182,7 @@ def parse(filename, onerror=None, catch_errors=True, ignore=(),
                 inner = enter_block_ctx(stmt, ctx)  # get context for block
                 stmt['block'] = _parse(parsing, tokens, ctx=inner)
 
+            _assign_type_and_name(stmt=stmt, ctx=ctx)
             parsed.append(stmt)
 
             # add all comments found inside args after stmt is added
@@ -157,6 +200,20 @@ def parse(filename, onerror=None, catch_errors=True, ignore=(),
                 break
 
         return parsed
+
+    def _assign_type_and_name(stmt, ctx):
+        """Assigns a type and name for statement"""
+        if ctx == ():
+            directive = stmt['directive']
+            args = stmt['args']
+            if directive in NONAME and args in NONAME[directive]:
+                type_ = ' '.join(args)
+                name = None
+            else:
+                type_ = ' '.join(args[:-1])
+                name = args[-1]
+            stmt['type'] = type_
+            stmt['name'] = name
 
     # the includes list grows as "include" directives are found in _parse
     for fname, ctx in includes:
