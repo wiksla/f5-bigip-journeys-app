@@ -2,7 +2,7 @@ import click
 
 from scf_tool.SCFStateMachine import SCFStateMachine
 
-from parser import parse as parse_file
+from parser import parse_file
 from utils.ucs_ops import tar_file
 from utils.ucs_ops import untar_file
 from utils.ucs_reader import UcsReader
