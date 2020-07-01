@@ -206,7 +206,7 @@ def parse(filename, onerror=None, catch_errors=True, ignore=(),
         if ctx == ():
             directive = stmt['directive']
             args = stmt['args']
-            if directive in NONAME and args in NONAME[directive]:
+            if (directive in NONAME and args in NONAME[directive]) or len(args) == 1:
                 type_ = ' '.join(args)
                 name = None
             else:
