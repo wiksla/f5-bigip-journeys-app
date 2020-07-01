@@ -31,10 +31,12 @@ def make_migration(ucs_filename):
     ucs_reader = UcsReader(extracted_ucs_dir=output_dir)
     click.echo(f"Your hardware is: {ucs_reader.get_ucs_platform()}")
     click.echo(f"Software Version: \n{ucs_reader.get_version_file()}")
-    tar_file(archive_file="new_example.ucs", input_dir=output_dir)
-    click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
 
-    click.echo(lex(filename="bigip_nginx.conf"))
+    click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
+    click.echo(ucs_reader.get_bigdb_variable(key="Cluster.MgmtIpaddr", option="type"))
+
+    new_ucs = tar_file(archive_file="new_example.ucs", input_dir=output_dir)
+    click.echo(f"New ucs location {new_ucs}")
 
 
 @cli.command()
