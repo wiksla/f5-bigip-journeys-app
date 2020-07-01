@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
 
-import crossplane
+import parser
 from . import here
 
 
 def test_simple_config():
     dirname = os.path.join(here, 'configs', 'simple')
     config = os.path.join(dirname, 'nginx.conf')
-    tokens = crossplane.lex(config)
+    tokens = parser.lex(config)
     assert list((token, line) for token, line, quoted in tokens) == [
         ('events', 1), ('{', 1), ('worker_connections', 2), ('1024', 2),
         (';', 2), ('}', 3), ('http', 5), ('{', 5), ('server', 6), ('{', 6),
@@ -22,7 +22,7 @@ def test_simple_config():
 def test_with_config_comments():
     dirname = os.path.join(here, 'configs', 'with-comments')
     config = os.path.join(dirname, 'nginx.conf')
-    tokens = crossplane.lex(config)
+    tokens = parser.lex(config)
     assert list((token, line) for token, line, quoted in tokens) == [
         ('events', 1), ('{', 1), ('worker_connections', 2), ('1024', 2),
         (';', 2), ('}', 3),('#comment', 4), ('http', 5), ('{', 5),
@@ -37,7 +37,7 @@ def test_with_config_comments():
 def test_quote_behavior():
     dirname = os.path.join(here, 'configs', 'quote-behavior')
     config = os.path.join(dirname, 'nginx.conf')
-    tokens = crossplane.lex(config)
+    tokens = parser.lex(config)
     assert list(token for token, line, quoted in tokens) == [
         'outer-quote', 'left', '-quote', 'right-"quote"', 'inner"-"quote', ';',
         '', '', 'left-empty', 'right-empty""', 'inner""empty', 'right-empty-single"', ';',
@@ -47,7 +47,7 @@ def test_quote_behavior():
 def test_quoted_right_brace():
     dirname = os.path.join(here, 'configs', 'quoted-right-brace')
     config = os.path.join(dirname, 'nginx.conf')
-    tokens = crossplane.lex(config)
+    tokens = parser.lex(config)
     assert list(token for token, line, quoted in tokens) == [
         'events', '{', '}', 'http', '{', 'log_format', 'main', 'escape=json',
         '{ "@timestamp": "$time_iso8601", ', '"server_name": "$server_name", ',

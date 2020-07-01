@@ -1,3 +1,4 @@
 black
 click
 pytest
+isoparser==0.3

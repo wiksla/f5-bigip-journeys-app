@@ -1,10 +1,15 @@
 import click
-import json
 
-from parser.SCFStateMachine import SCFStateMachine
+from scf_tool.SCFStateMachine import SCFStateMachine
 
-from crossplane.parser import parse as parse_file
-
+from parser import parse as parse_file
+from utils.ucs_ops import tar_file
+from utils.ucs_ops import untar_file
+from utils.ucs_reader import UcsReader
+from utils.image import get_image_from_ucs_reader
+from parser import lex
+from parser import parse
+from parser import build
 
 
 @click.group()
@@ -17,15 +22,43 @@ def cli():
 
 
 @cli.command()
-@click.argument("guest")
-def make_migrate(guest):
+@click.argument("ucs-filename")
+def make_migration(ucs_filename):
     """  Making CBIP config loadable on VELOS (tenant). """
-    click.echo("Convert ucs to be loadable on VELOS tenant: {}".format(guest))
+    click.echo(f"Convert ucs to be loadable on VELOS tenant: {ucs_filename}")
+    output_dir = untar_file(ucs_filename, dir='/tmp')
+    click.echo(f"Ucs was unpacked in: {output_dir}")
+    click.echo("\n")
+    ucs_reader = UcsReader(extracted_ucs_dir=output_dir)
+    click.echo(f"Your hardware is: {ucs_reader.get_ucs_platform()}")
+    click.echo(f"Software Version: \n{ucs_reader.get_version_file()}")
+    tar_file(archive_file='new_example.ucs', input_dir=output_dir)
+    click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
+
+    click.echo(lex(filename='bigip_nginx.conf'))
+
+
+@cli.command()
+@click.argument("config-filename")
+def find_lexers(config_filename):
+    click.echo(lex(filename=config_filename))
+
+
+@cli.command()
+@click.argument("config-filename")
+def parse_config(config_filename):
+    click.echo(parse(filename=config_filename, out=config_filename + '.json', indent=2))
+
+
+@cli.command()
+@click.argument("config-filename")
+def build_config(config_filename):
+    click.echo(build(filename=config_filename))
 
 
 @cli.command()
 @click.argument("config_file")
-def parse_config(config_file):
+def parse_config_scf(config_file):
     """ Parse config file and print its contents"""
 
     with open(config_file, "r") as f:
@@ -81,7 +114,7 @@ def compare_scf_crossplane(config_file):
         } for idx, obj in enumerate(output_crossplane)
     ]
 
-    print(f'Number of objects: scf={len(list_scf)}, crossplane={len(list_crossplane)}')
+    print(f'Number of objects: scf={len(list_scf)}, parser={len(list_crossplane)}')
 
     idx = -1
     failure = False
@@ -99,12 +132,13 @@ def compare_scf_crossplane(config_file):
         print(
             f'Found difference in object no {idx}:\n'
             f'\tscf={scf}\n'
-            f'\tcrossplane={crossplane}'
+            f'\tparser={crossplane}'
         )
 
     if failure:
         import sys
         sys.exit(1)
+
 
 if __name__ == '__main__':
     cli()

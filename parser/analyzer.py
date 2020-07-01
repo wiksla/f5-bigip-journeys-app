@@ -2153,7 +2153,7 @@ def analyze(fname, stmt, term, ctx=(), strict=False, check_ctx=True,
     valid_flag = lambda x: x.lower() in ('on', 'off')
 
     # do this in reverse because we only throw errors at the end if no masks
-    # are valid, and typically the first bit mask is what the parser expects
+    # are valid, and typically the first bit mask is what the scf_tool expects
     for mask in reversed(masks):
         # if the directive isn't a block but should be according to the mask
         if mask & NGX_CONF_BLOCK and term != '{':

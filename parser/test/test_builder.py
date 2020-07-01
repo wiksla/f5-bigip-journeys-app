@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-import crossplane
+import parser
 from . import compare_parsed_and_built
 
 
@@ -48,7 +48,7 @@ def test_build_nested_and_multiple_args():
             ]
         }
     ]
-    built = crossplane.build(payload, indent=4, tabs=False)
+    built = parser.build(payload, indent=4, tabs=False)
     assert built == '\n'.join([
         'events {',
         '    worker_connections 1024;',
@@ -146,7 +146,7 @@ def test_build_with_comments():
             ]
         }
     ]
-    built = crossplane.build(payload, indent=4, tabs=False)
+    built = parser.build(payload, indent=4, tabs=False)
     assert built == '\n'.join([
         'events {',
         '    worker_connections 1024;',
@@ -180,7 +180,7 @@ def test_build_starts_with_comments():
             "args": ["root"]
         }
     ]
-    built = crossplane.build(payload, indent=4, tabs=False)
+    built = parser.build(payload, indent=4, tabs=False)
     assert built == '# foo\nuser root;'
 
 
@@ -192,7 +192,7 @@ def test_build_with_quoted_unicode():
             "args": ["русский текст"],
         }
     ]
-    built = crossplane.build(payload, indent=4, tabs=False)
+    built = parser.build(payload, indent=4, tabs=False)
     assert built == u"env 'русский текст';"
 
 
@@ -222,7 +222,7 @@ def test_build_multiple_comments_on_one_line():
             "comment": "comment3"
         }
     ]
-    built = crossplane.build(payload, indent=4, tabs=False)
+    built = parser.build(payload, indent=4, tabs=False)
     assert built == '#comment1\nuser root; #comment2 #comment3'
 
 
@@ -243,7 +243,7 @@ def test_build_files_with_missing_status_and_errors(tmpdir):
             }
         ]
     }
-    crossplane.builder.build_files(payload, dirname=tmpdir.strpath)
+    parser.builder.build_files(payload, dirname=tmpdir.strpath)
     built_files = tmpdir.listdir()
     assert len(built_files) == 1
     assert built_files[0].strpath == os.path.join(tmpdir.strpath, 'nginx.conf')
@@ -270,7 +270,7 @@ def test_build_files_with_unicode(tmpdir):
             }
         ]
     }
-    crossplane.builder.build_files(payload, dirname=tmpdir.strpath)
+    parser.builder.build_files(payload, dirname=tmpdir.strpath)
     built_files = tmpdir.listdir()
     assert len(built_files) == 1
     assert built_files[0].strpath == os.path.join(tmpdir.strpath, 'nginx.conf')

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 
-from crossplane.lexer import lex
-from crossplane.analyzer import analyze
-from crossplane.analyzer import enter_block_ctx
-from crossplane.errors import NgxParserDirectiveError
+from parser.lexer import lex
+from parser.analyzer import analyze
+from parser.analyzer import enter_block_ctx
+from parser.errors import NgxParserDirectiveError
 
 
 NONAME = {
@@ -137,7 +137,7 @@ def parse(filename, onerror=None, catch_errors=True, ignore=(),
             else:
                 token, __, quoted = next(tokens)  # disregard line numbers of args
 
-            # TODO: add external parser checking and handling
+            # TODO: add external scf_tool checking and handling
 
             # parse arguments by reading tokens
             while token not in ('{', '\n', '}') or quoted:

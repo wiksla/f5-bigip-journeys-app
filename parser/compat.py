@@ -16,7 +16,7 @@ basestring = str
 
 def fix_pep_479(generator):
     """
-    Python 3.7 breaks crossplane's lexer because of PEP 479
+    Python 3.7 breaks parser's lexer because of PEP 479
     Read more here: https://www.python.org/dev/peps/pep-0479/
     """
     @functools.wraps(generator)

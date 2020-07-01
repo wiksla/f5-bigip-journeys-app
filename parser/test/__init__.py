@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 
-from crossplane.compat import basestring
-from crossplane.parser import parse
-from crossplane.builder import build, _enquote
+from parser.compat import basestring
+from parser.parser import parse
+from parser.builder import build, _enquote
 
 here = os.path.dirname(__file__)
 
