@@ -10,9 +10,9 @@ class NgxParserBaseException(Exception):
 
     def __str__(self):
         if self.lineno is not None:
-            return '%s in %s:%s' % self.args
+            return "%s in %s:%s" % self.args
         else:
-            return '%s in %s' % self.args
+            return "%s in %s" % self.args
 
 
 class NgxParserSyntaxError(NgxParserBaseException):

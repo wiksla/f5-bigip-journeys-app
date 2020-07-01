@@ -1,15 +1,14 @@
 import click
 
-from scf_tool.SCFStateMachine import SCFStateMachine
-
-from parser import parse_file
-from utils.ucs_ops import tar_file
-from utils.ucs_ops import untar_file
-from utils.ucs_reader import UcsReader
-from utils.image import get_image_from_ucs_reader
-from parser import lex
-from parser import parse
-from parser import build
+from journeys.parser import build
+from journeys.parser import lex
+from journeys.parser import parse
+from journeys.parser import parse_file
+from journeys.scf_tool.SCFStateMachine import SCFStateMachine
+from journeys.utils.image import get_image_from_ucs_reader
+from journeys.utils.ucs_ops import tar_file
+from journeys.utils.ucs_ops import untar_file
+from journeys.utils.ucs_reader import UcsReader
 
 
 @click.group()
@@ -26,16 +25,16 @@ def cli():
 def make_migration(ucs_filename):
     """  Making CBIP config loadable on VELOS (tenant). """
     click.echo(f"Convert ucs to be loadable on VELOS tenant: {ucs_filename}")
-    output_dir = untar_file(ucs_filename, dir='/tmp')
+    output_dir = untar_file(ucs_filename, dir="/tmp")
     click.echo(f"Ucs was unpacked in: {output_dir}")
     click.echo("\n")
     ucs_reader = UcsReader(extracted_ucs_dir=output_dir)
     click.echo(f"Your hardware is: {ucs_reader.get_ucs_platform()}")
     click.echo(f"Software Version: \n{ucs_reader.get_version_file()}")
-    tar_file(archive_file='new_example.ucs', input_dir=output_dir)
+    tar_file(archive_file="new_example.ucs", input_dir=output_dir)
     click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
 
-    click.echo(lex(filename='bigip_nginx.conf'))
+    click.echo(lex(filename="bigip_nginx.conf"))
 
 
 @cli.command()
@@ -47,7 +46,7 @@ def find_lexers(config_filename):
 @cli.command()
 @click.argument("config-filename")
 def parse_config(config_filename):
-    click.echo(parse(filename=config_filename, out=config_filename + '.json', indent=2))
+    click.echo(parse(filename=config_filename, out=config_filename + ".json", indent=2))
 
 
 @cli.command()
@@ -69,7 +68,7 @@ def parse_config_scf(config_file):
 
     for o in output:
         print(str(o))
-        print('==============')
+        print("==============")
 
 
 # TODO: Remove once not needed
@@ -88,33 +87,28 @@ def compare_scf_crossplane(config_file):
             "index": idx,
             "module": obj.objmodule,
             "type": " ".join(obj.objtype),
-            "name": obj.objname.split('"')[1] if obj.objname and obj.objname.startswith('"') else obj.objname
-        } for idx, obj in enumerate(output_scf)
+            "name": obj.objname.split('"')[1]
+            if obj.objname and obj.objname.startswith('"')
+            else obj.objname,
+        }
+        for idx, obj in enumerate(output_scf)
     ]
 
+    kwargs = {"catch_errors": None, "ignore": [], "comments": False, "strict": False}
 
-    kwargs = {
-        'catch_errors': None,
-        'ignore': [],
-        'comments': False,
-        'strict': False
-    }
-
-    result_crossplane = parse_file(
-        filename = config_file,
-        **kwargs
-    )
-    output_crossplane = result_crossplane['config'][0]['parsed']
+    result_crossplane = parse_file(filename=config_file, **kwargs)
+    output_crossplane = result_crossplane["config"][0]["parsed"]
     list_crossplane = [
         {
             "index": idx,
             "module": obj["directive"],
             "type": obj["type"],
-            "name": obj["name"]
-        } for idx, obj in enumerate(output_crossplane)
+            "name": obj["name"],
+        }
+        for idx, obj in enumerate(output_crossplane)
     ]
 
-    print(f'Number of objects: scf={len(list_scf)}, parser={len(list_crossplane)}')
+    print(f"Number of objects: scf={len(list_scf)}, parser={len(list_crossplane)}")
 
     idx = -1
     failure = False
@@ -130,15 +124,16 @@ def compare_scf_crossplane(config_file):
 
         failure = True
         print(
-            f'Found difference in object no {idx}:\n'
-            f'\tscf={scf}\n'
-            f'\tparser={crossplane}'
+            f"Found difference in object no {idx}:\n"
+            f"\tscf={scf}\n"
+            f"\tparser={crossplane}"
         )
 
     if failure:
         import sys
+
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

@@ -1,97 +1,114 @@
 # -*- coding: utf-8 -*-
-'''Classes to handle parsing TCL like languages
+"""Classes to handle parsing TCL like languages
 Pass in a file handle or string to the scf_tool
 It will iterate through the file char-at-a-time.
 State is held internally to the instance.
-'''
+"""
 
-from scf_tool.AbstractStateMachine import AbstractStateMachine
-from scf_tool.AbstractStateMachine import StateMachineInputError
-from scf_tool.SCFObject import BracedSSVList
-from scf_tool.SCFObject import BracedNLSVList
-from scf_tool.SCFObject import EmptyValue
-from scf_tool.SCFObject import Flag
-from scf_tool.SCFObject import NLSVList
-from scf_tool.SCFObject import PlainString
-from scf_tool.SCFObject import SCFObject
-from scf_tool.SCFObject import SCFProperties
-from scf_tool.SCFObject import SSVList
-
+from .AbstractStateMachine import AbstractStateMachine
+from .AbstractStateMachine import StateMachineInputError
+from .SCFObject import BracedNLSVList
+from .SCFObject import BracedSSVList
+from .SCFObject import EmptyValue
+from .SCFObject import Flag
+from .SCFObject import NLSVList
+from .SCFObject import PlainString
+from .SCFObject import SCFObject
+from .SCFObject import SCFProperties
+from .SCFObject import SSVList
 
 # Constants for the SCFStateMachine
 
-SPACE = '\t\v\f\r '
-EOL = '\n'
-COMMENT = '#'
-ESCAPE = '\\'
+SPACE = "\t\v\f\r "
+EOL = "\n"
+COMMENT = "#"
+ESCAPE = "\\"
 QUOTE = '"'
-OPEN_PAREN = '('
-CLOSE_PAREN = ')'
-OPEN_BRACK = '['
-CLOSE_BRACK = ']'
-OPEN_BRACE = '{'
-CLOSE_BRACE = '}'
-NAME_START = '/'
-COLON = ':'
-DIGIT = '0123456789'
-HEX_DIGIT = '0123456789ABCDEFabcdef'
-BLOBTYPES = [('ltm', ['rule']), ('gtm', ['rule']), ('sys', ['application', 'apl-script']),
-             ('sys', ['application', 'template']), ('sys', ['icall', 'script']),
-             ('cli', ['script'])]
-NLSVTYPES = [('gtm', ['region'], 'region-members'), ('ltm', ['virtual'], 'security-log-profiles')]
-SSVTYPES = [('gtm', ['server'], 'monitor'),
-            ('gtm', ['pool'], 'monitor'),
-            ('gtm', ['monitor', 'external'], 'user-defined'),
-            ('ltm', ['monitor', 'external'], 'user-defined'),
-            ('ltm', ['pool'], 'monitor'),
-            ('ltm', ['node'], 'monitor'),
-            ('ltm', ['default-node-monitor'], 'rule'),
-            ('ltm', ['monitor', 'external'], 'user-defined'),
-            ('gtm', ['link'], 'monitor'),]
-UNQUOTESTR = [('sys', ['crypto', 'cert'], 'common-name'),
-              ('sys', ['crypto', 'cert'], 'expiration'),
-              ('sys', ['crypto', 'cert'], 'organization'),
-              ('sys', ['crypto', 'cert'], 'ou'),
-              ('sys', ['crypto', 'cert'], 'city'),
-              ('sys', ['crypto', 'cert'], 'country'),
-              ('sys', ['crypto', 'cert'], 'state'),
-              ('sys', ['crypto', 'cert'], 'subject-alternative-name'),
-              ('ltm', ['monitor', 'snmp-dca'], 'user-defined'),  # https://cdn.f5.com/product/bugtracker/ID520970.html
-              ]
-QUOTEDNAME = [('wam', ['policy']),
-              ('gtm', ['topology']),
-              ('analytics', ['predefined-report']),
-              ('security',['log', 'profile']),
-              ('security',['dos', 'bot-signature']),
-              ('security',['dos', 'bot-signature-category']),
-              ]
-NONAME = [('cli', ['admin-partitions']),
-          ('auth', ['password-policy']),
-          ('auth', ['remote-role']),
-          ('auth', ['remote-user']),
-          ('auth', ['source']),
-          ('cli', ['global-settings']),
-          ('cli', ['preference']),
-          ('net', ['cos global-settings']),
-          ('net', ['lldp-globals']),
-          ('net', ['packet-filter-trusted']),
-          ('ltm', ['default-node-monitor']),
-          ('ltm', ['dns', 'analytics', 'global-settings']),
-          ('ltm', ['dns', 'cache', 'global-settings']),
-          ('net', ['stp-globals']),
-          ('sys', ['datastor']),
-          ('sys', ['dns']),
-          ('sys', ['global-settings']),
-          ('sys', ['httpd']),
-          ('sys', ['log-rotate']),
-          ('sys', ['ntp']),
-          ('sys', ['outbound-smtp']),
-          ('sys', ['scriptd']),
-          ('sys', ['snmp']),
-          ('sys', ['sshd']),
-          ('sys', ['state-mirroring']),
-          ('sys', ['software', 'update']),
-          ('wom', ['endpoint-discovery']),]
+OPEN_PAREN = "("
+CLOSE_PAREN = ")"
+OPEN_BRACK = "["
+CLOSE_BRACK = "]"
+OPEN_BRACE = "{"
+CLOSE_BRACE = "}"
+NAME_START = "/"
+COLON = ":"
+DIGIT = "0123456789"
+HEX_DIGIT = "0123456789ABCDEFabcdef"
+BLOBTYPES = [
+    ("ltm", ["rule"]),
+    ("gtm", ["rule"]),
+    ("sys", ["application", "apl-script"]),
+    ("sys", ["application", "template"]),
+    ("sys", ["icall", "script"]),
+    ("cli", ["script"]),
+]
+NLSVTYPES = [
+    ("gtm", ["region"], "region-members"),
+    ("ltm", ["virtual"], "security-log-profiles"),
+]
+SSVTYPES = [
+    ("gtm", ["server"], "monitor"),
+    ("gtm", ["pool"], "monitor"),
+    ("gtm", ["monitor", "external"], "user-defined"),
+    ("ltm", ["monitor", "external"], "user-defined"),
+    ("ltm", ["pool"], "monitor"),
+    ("ltm", ["node"], "monitor"),
+    ("ltm", ["default-node-monitor"], "rule"),
+    ("ltm", ["monitor", "external"], "user-defined"),
+    ("gtm", ["link"], "monitor"),
+]
+UNQUOTESTR = [
+    ("sys", ["crypto", "cert"], "common-name"),
+    ("sys", ["crypto", "cert"], "expiration"),
+    ("sys", ["crypto", "cert"], "organization"),
+    ("sys", ["crypto", "cert"], "ou"),
+    ("sys", ["crypto", "cert"], "city"),
+    ("sys", ["crypto", "cert"], "country"),
+    ("sys", ["crypto", "cert"], "state"),
+    ("sys", ["crypto", "cert"], "subject-alternative-name"),
+    (
+        "ltm",
+        ["monitor", "snmp-dca"],
+        "user-defined",
+    ),  # https://cdn.f5.com/product/bugtracker/ID520970.html
+]
+QUOTEDNAME = [
+    ("wam", ["policy"]),
+    ("gtm", ["topology"]),
+    ("analytics", ["predefined-report"]),
+    ("security", ["log", "profile"]),
+    ("security", ["dos", "bot-signature"]),
+    ("security", ["dos", "bot-signature-category"]),
+]
+NONAME = [
+    ("cli", ["admin-partitions"]),
+    ("auth", ["password-policy"]),
+    ("auth", ["remote-role"]),
+    ("auth", ["remote-user"]),
+    ("auth", ["source"]),
+    ("cli", ["global-settings"]),
+    ("cli", ["preference"]),
+    ("net", ["cos global-settings"]),
+    ("net", ["lldp-globals"]),
+    ("net", ["packet-filter-trusted"]),
+    ("ltm", ["default-node-monitor"]),
+    ("ltm", ["dns", "analytics", "global-settings"]),
+    ("ltm", ["dns", "cache", "global-settings"]),
+    ("net", ["stp-globals"]),
+    ("sys", ["datastor"]),
+    ("sys", ["dns"]),
+    ("sys", ["global-settings"]),
+    ("sys", ["httpd"]),
+    ("sys", ["log-rotate"]),
+    ("sys", ["ntp"]),
+    ("sys", ["outbound-smtp"]),
+    ("sys", ["scriptd"]),
+    ("sys", ["snmp"]),
+    ("sys", ["sshd"]),
+    ("sys", ["state-mirroring"]),
+    ("sys", ["software", "update"]),
+    ("wom", ["endpoint-discovery"]),
+]
 
 
 class SCFStateMachine(AbstractStateMachine):
@@ -120,10 +137,10 @@ class SCFStateMachine(AbstractStateMachine):
             state. needs to be a stack so it can deal with nesting types.
     """
 
-    __version__ = '0.2.2'
+    __version__ = "0.2.2"
 
     def __init__(self, source=None, debug=False):
-        super().__init__(source=source, start_state='newobj', debug=debug)
+        super().__init__(source=source, start_state="newobj", debug=debug)
         self.escape = False
         self.quoted = False
         self.comment = False
@@ -137,25 +154,28 @@ class SCFStateMachine(AbstractStateMachine):
 
     def state_finish(self):
         # TODO: fix why this ever happens
-        if self.output[-1].objmodule == '':
+        if self.output[-1].objmodule == "":
             # get rid of the excess empty object
             self.output.pop()
 
     def state_newobj_enter(self, old_state, new_state):
         if self.debug:
             try:
-                print('%s parsed' % self.dest[-1].objname)
+                print("%s parsed" % self.dest[-1].objname)
             except IndexError:
-                print('No object in destination list')
+                print("No object in destination list")
             except AttributeError:
-                print('Last object has no objname attribute')
+                print("Last object has no objname attribute")
         if self.depth > 0:
-            raise StateMachineInputError('Depth is non-zero %d %r' % (self.depth, self.dest),
-                                         self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Depth is non-zero %d %r" % (self.depth, self.dest),
+                self.pos,
+                len(self.lines),
+            )
         self.output.append(SCFObject())
         self.dest.append(self.output[-1])
         if self.debug:
-            print('=' * 80)
+            print("=" * 80)
 
     def state_newobj(self, c, pos):
         if self.escape:
@@ -189,20 +209,22 @@ class SCFStateMachine(AbstractStateMachine):
             pass
         else:
             self.accum = c
-            self.transition('objmodule', clear_accum=False)
+            self.transition("objmodule", clear_accum=False)
             return
 
     def state_objmodule(self, c, pos):
         if c in SPACE:
             self.dest[-1].objmodule = self.accum
-            self.transition('objtype')
+            self.transition("objtype")
         else:
             self.accumulate(c)
 
     def state_objtype_leave(self, old_state, new_state):
-        if new_state not in ['objname']:
-            if (self.output[-1].objmodule, self.output[-1].objtype) not in NONAME and \
-                            len(self.output[-1].objtype) > 1:
+        if new_state not in ["objname"]:
+            if (
+                self.output[-1].objmodule,
+                self.output[-1].objtype,
+            ) not in NONAME and len(self.output[-1].objtype) > 1:
                 self.output[-1].objname = self.output[-1].objtype.pop()
             self.dest.append(self.dest[-1].props)
 
@@ -210,33 +232,38 @@ class SCFStateMachine(AbstractStateMachine):
         if self.quoted:
             if (self.dest[-1].objmodule, self.dest[-1].objtype) in QUOTEDNAME:
                 self.accumulate(c)
-                self.transition('objname', clear_accum=False)
+                self.transition("objname", clear_accum=False)
             else:
-                raise StateMachineInputError("quoted type ('%s',%s)" % (self.dest[-1].objmodule, self.dest[-1].objtype), pos, len(self.lines))
+                raise StateMachineInputError(
+                    "quoted type ('%s',%s)"
+                    % (self.dest[-1].objmodule, self.dest[-1].objtype),
+                    pos,
+                    len(self.lines),
+                )
         elif c in NAME_START:
-            if self.accum == '':
+            if self.accum == "":
                 self.accumulate(c)
-                self.transition('objname', clear_accum=False)
+                self.transition("objname", clear_accum=False)
             else:
                 self.accumulate(c)
         elif c in SPACE:
-            if self.accum != '':
+            if self.accum != "":
                 if COLON in self.accum:
                     # TODO: find a neater way to prepend the space when we need
-                    self.accum = ' %s' % self.accum
+                    self.accum = " %s" % self.accum
                 self.dest[-1].objtype.append(self.accum)
-                self.accum = ''
+                self.accum = ""
         elif c in QUOTE:
             self.accumulate(c)
             self.quoted = True
         elif c in OPEN_BRACE:
             if (self.dest[-1].objmodule, self.dest[-1].objtype[:-1]) in BLOBTYPES:
-                self.transition('nestedblob')
+                self.transition("nestedblob")
             else:
-                self.transition('propsstart')
+                self.transition("propsstart")
         elif c in EOL:
             self.dest[-1].objtype.append(self.accum)
-            self.transition('newobj')
+            self.transition("newobj")
         else:
             self.accumulate(c)
 
@@ -264,14 +291,14 @@ class SCFStateMachine(AbstractStateMachine):
             self.quoted = True
             self.accumulate(c)
         elif c in SPACE:
-            if self.accum != '':
+            if self.accum != "":
                 self.dest[-1].objname = self.accum
-                self.accum = ''
+                self.accum = ""
         elif c in OPEN_BRACE:
             if (self.dest[-1].objmodule, self.dest[-1].objtype) in BLOBTYPES:
-                self.transition('nestedblob')
+                self.transition("nestedblob")
             else:
-                self.transition('propsstart')
+                self.transition("propsstart")
         else:
             # gtm topology  ldns: subnet 163.231.255.0/26  server: datacenter "/Common/Eagan E" {
             self.accumulate(c)
@@ -292,10 +319,10 @@ class SCFStateMachine(AbstractStateMachine):
         elif c in ESCAPE:
             self.escape = True
             self.accumulate(c)
-        elif c in SPACE and self.accum != '':
+        elif c in SPACE and self.accum != "":
             # single character property name on entry
             self.dest.append(self.accum)
-            self.transition('valtypeguess')
+            self.transition("valtypeguess")
         elif c in SPACE + EOL:
             # eat whitespace
             pass
@@ -303,21 +330,25 @@ class SCFStateMachine(AbstractStateMachine):
             # mod type /Common/name { }
             # ------------------------^
             # this property set is done
-            self.transition('propsfinish')
+            self.transition("propsfinish")
         elif self.quoted and c in QUOTE:
-            raise StateMachineInputError('Property name was just an empty double quote', pos, len(self.lines))
-        elif self.accum == '' and c in QUOTE:
+            raise StateMachineInputError(
+                "Property name was just an empty double quote", pos, len(self.lines)
+            )
+        elif self.accum == "" and c in QUOTE:
             self.quoted = True
             self.accumulate(c)
         elif not self.quoted and c in QUOTE:
-            raise StateMachineInputError('Property name has a quote in the middle', pos, len(self.lines))
+            raise StateMachineInputError(
+                "Property name has a quote in the middle", pos, len(self.lines)
+            )
         else:
             # first property
             self.accumulate(c)
-            self.transition('propname', clear_accum=False)
+            self.transition("propname", clear_accum=False)
 
     def state_propnext_enter(self, old_state, new_state):
-        if old_state not in ['propname']:
+        if old_state not in ["propname"]:
             # flags won't have appended to the destination list
             self.dest.pop()
 
@@ -336,24 +367,26 @@ class SCFStateMachine(AbstractStateMachine):
             #         nest1 val1
             #     }
             # ----^
-            self.transition('propsfinish')
+            self.transition("propsfinish")
         else:
             self.accumulate(c)
-            self.transition('propname', clear_accum=False)
+            self.transition("propname", clear_accum=False)
 
     def state_propsfinish(self, c, pos):
         if c in EOL:
             self.dest.pop()
             if isinstance(self.dest[-1], SCFObject):
                 self.dest.pop()
-                self.transition('newobj')
+                self.transition("newobj")
             elif isinstance(self.dest[-1], BracedNLSVList):
-                self.transition('valbracednlsvnext')
+                self.transition("valbracednlsvnext")
             else:
                 self.dest.pop()
-                self.transition('propsstart')
+                self.transition("propsstart")
         else:
-            raise StateMachineInputError('invalid char \'%s\' at propsfinish' % c, pos, len(self.lines))
+            raise StateMachineInputError(
+                "invalid char '%s' at propsfinish" % c, pos, len(self.lines)
+            )
 
     def state_propname_enter(self, old_state, new_state):
         if self.accum.startswith(QUOTE):
@@ -376,50 +409,62 @@ class SCFStateMachine(AbstractStateMachine):
             # mod type /Common/Name {
             #     flag1
             # ---------^
-            if self.accum != '':
+            if self.accum != "":
                 self.dest[-1][self.accum] = Flag()
-                self.transition('propnext')
+                self.transition("propnext")
         elif c in QUOTE:
             self.quoted = True
             self.accumulate(c)
         elif c in CLOSE_BRACE:
-            raise StateMachineInputError('Close brace in propname', pos, len(self.lines))
+            raise StateMachineInputError(
+                "Close brace in propname", pos, len(self.lines)
+            )
         elif not self.quoted and c in SPACE:
             self.dest.append(self.accum)
-            self.transition('valtypeguess')
+            self.transition("valtypeguess")
         else:
             self.accumulate(c)
 
     def state_valtypeguess(self, c, pos):
         """Guess the type for this object"""
-        if (self.output[-1].objmodule, self.output[-1].objtype, self.dest[-1]) in SSVTYPES:
+        if (
+            self.output[-1].objmodule,
+            self.output[-1].objtype,
+            self.dest[-1],
+        ) in SSVTYPES:
             self.dest[-2][self.dest[-1]] = SSVList()
             self.dest.append(self.dest[-2][self.dest[-1]])
             self.accumulate(c)
-            self.transition('valssv', clear_accum=False)
+            self.transition("valssv", clear_accum=False)
         elif c in OPEN_BRACE:
             # we have an SSV, NLSV or Empty Object
-            self.transition('typelist')
+            self.transition("typelist")
         elif c in EOL:
-            raise StateMachineInputError('EOL when attempting to guess type', pos, len(self.lines))
+            raise StateMachineInputError(
+                "EOL when attempting to guess type", pos, len(self.lines)
+            )
         elif c in QUOTE:
             self.quoted = True
             self.accumulate(c)
-            self.transition('valplain', clear_accum=False)
+            self.transition("valplain", clear_accum=False)
         else:
             self.accumulate(c)
-            self.transition('valplain', clear_accum=False)
+            self.transition("valplain", clear_accum=False)
 
     def state_typelist(self, c, pos):
-        if (self.output[-1].objmodule, self.output[-1].objtype, self.dest[-1]) in NLSVTYPES:
+        if (
+            self.output[-1].objmodule,
+            self.output[-1].objtype,
+            self.dest[-1],
+        ) in NLSVTYPES:
             self.dest[-2][self.dest[-1]] = NLSVList()
             self.dest.append(self.dest[-2][self.dest[-1]])
-            self.transition('valnlsv')
+            self.transition("valnlsv")
         elif c in SPACE:
             # mod type /Common/Name {
             #     ssvitem { item1 item2 }
             # -------------^
-            self.transition('typessv_or_empty')
+            self.transition("typessv_or_empty")
         elif c in EOL:
             # tables {
             # --------^
@@ -432,9 +477,11 @@ class SCFStateMachine(AbstractStateMachine):
             #             {
             #                 row { DO1 192.168.114.4 0 }
             #             }
-            self.transition('typebracednlsv_or_props')
+            self.transition("typebracednlsv_or_props")
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' when guessing list type' % c, pos, len(self.lines))
+            raise StateMachineInputError(
+                "Unexpected char '%s' when guessing list type" % c, pos, len(self.lines)
+            )
 
     def state_typebracednlsv_or_props(self, c, pos):
         """Guess the type for this object"""
@@ -453,12 +500,12 @@ class SCFStateMachine(AbstractStateMachine):
             #     }
             self.dest[-2][self.dest[-1]] = BracedNLSVList()
             self.dest.append(self.dest[-2][self.dest[-1]])
-            self.transition('valbracednlsv')
+            self.transition("valbracednlsv")
         elif c in CLOSE_BRACE:
             # empty property
             #
             self.dest[-2][self.dest[-1]] = SCFProperties()
-            self.transition('propnext', clear_accum=False)
+            self.transition("propnext", clear_accum=False)
         else:
             # apm policy access-policy /Common/APM-1_access_profile {
             #     default-ending /Common/APM-1_access_profile_end_deny
@@ -474,7 +521,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.dest[-2][self.dest[-1]] = SCFProperties()
             self.dest.append(self.dest[-2][self.dest[-1]])
             self.accumulate(c)
-            self.transition('propsstart', clear_accum=False)
+            self.transition("propsstart", clear_accum=False)
 
     def state_typessv_or_empty(self, c, pos):
         if c in CLOSE_BRACE:
@@ -482,12 +529,12 @@ class SCFStateMachine(AbstractStateMachine):
             if isinstance(self.dest[-2], SCFObject):
                 # mod type /Common/Name { }
                 # ------------------------^
-                self.transition('newobj')
+                self.transition("newobj")
             else:
                 # mod type /Common/Name {
                 #     prop { }
                 # -----------^
-                self.transition('propnext')
+                self.transition("propnext")
         else:
             if c in QUOTE:
                 self.quoted = True
@@ -499,7 +546,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.dest[-2][self.dest[-1]] = BracedSSVList()
             self.dest.append(self.dest[-2][self.dest[-1]])
             self.accumulate(c)
-            self.transition('valbracedssv', clear_accum=False)
+            self.transition("valbracedssv", clear_accum=False)
 
     def state_valplain_enter(self, old_state, new_state):
         if self.accum in QUOTE:
@@ -513,14 +560,18 @@ class SCFStateMachine(AbstractStateMachine):
 
     def state_valplain_leave(self, old_state, new_state):
         if self.escape:
-            raise StateMachineInputError('Left valplain still escaping', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left valplain still escaping", self.pos, len(self.lines)
+            )
         if self.quoted:
-            raise StateMachineInputError('Left valplain inside quotes', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left valplain inside quotes", self.pos, len(self.lines)
+            )
         try:
             self.dest[-2][self.dest[-1]] = PlainString(self.accum)
         except IndexError as e:
             if self.debug:
-                print('Unable to update destination %s' % e)
+                print("Unable to update destination %s" % e)
             pass
 
     def state_valplain(self, c, pos):
@@ -534,21 +585,30 @@ class SCFStateMachine(AbstractStateMachine):
                 self.quoted = False
             self.accumulate(c)
         elif c in SPACE:
-            if not (self.output[-1].objmodule, self.output[-1].objtype,
-                    self.dest[-1]) in UNQUOTESTR:
-                raise StateMachineInputError('Space in plain value (\'%s\', %s, \'%s\'),' %
-                                             (self.output[-1].objmodule, self.output[-1].objtype,
-                                              self.dest[-1]), pos, len(self.lines))
+            if (
+                not (self.output[-1].objmodule, self.output[-1].objtype, self.dest[-1])
+                in UNQUOTESTR
+            ):
+                raise StateMachineInputError(
+                    "Space in plain value ('%s', %s, '%s'),"
+                    % (
+                        self.output[-1].objmodule,
+                        self.output[-1].objtype,
+                        self.dest[-1],
+                    ),
+                    pos,
+                    len(self.lines),
+                )
             else:
                 self.accumulate(c)
         elif c in EOL:
-            if self.accum == '':
+            if self.accum == "":
                 # ltm thing /C/Blah {
                 #     flag
                 # --------^
                 # }
                 self.accum = Flag()
-            self.transition('propnext')
+            self.transition("propnext")
         elif c in ESCAPE:
             # ltm thing /C/Blah {
             #     eprop escape\n
@@ -574,12 +634,16 @@ class SCFStateMachine(AbstractStateMachine):
 
     def state_valssv_leave(self, old_state, new_state):
         if self.escape:
-            raise StateMachineInputError('Left valssv still escaping', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left valssv still escaping", self.pos, len(self.lines)
+            )
         if self.quoted:
-            raise StateMachineInputError('Left valssv inside quotes', self.pos, len(self.lines))
-        if self.accum != '':
+            raise StateMachineInputError(
+                "Left valssv inside quotes", self.pos, len(self.lines)
+            )
+        if self.accum != "":
             self.dest[-1].append(self.accum)
-            self.accum = ''
+            self.accum = ""
         self.dest.pop()
 
     def state_valssv(self, c, pos):
@@ -597,15 +661,15 @@ class SCFStateMachine(AbstractStateMachine):
             #     monitor /Common/tcp and /Common/http
             # -----------------------^
             # }
-            if self.accum != '':
+            if self.accum != "":
                 self.dest[-1].append(self.accum)
-                self.accum = ''
+                self.accum = ""
         elif c in EOL:
             # ltm thing /C/Blah {
             #     monitor /Common/tcp and /Common/http
             # ----------------------------------------^
             # }
-            self.transition('propnext')
+            self.transition("propnext")
         elif c in ESCAPE:
             # ltm thing /C/Blah {
             #     eprop escape\n
@@ -642,11 +706,11 @@ class SCFStateMachine(AbstractStateMachine):
             # { thing escape\n other }
             # -------^
             self.dest[-1].append(self.accum)
-            self.accum = ''
+            self.accum = ""
         elif c in CLOSE_BRACE:
             # { thing escape\n other }
             # -----------------------^
-            self.transition('propnext')
+            self.transition("propnext")
         elif c in ESCAPE:
             # { thing escape\n other }
             # --------------^
@@ -658,7 +722,7 @@ class SCFStateMachine(AbstractStateMachine):
             self.quoted = True
             self.accumulate(c)
         elif c in EOL:
-            raise StateMachineInputError('EOL inside SSV', pos, len(self.lines))
+            raise StateMachineInputError("EOL inside SSV", pos, len(self.lines))
         else:
             self.accumulate(c)
 
@@ -707,9 +771,9 @@ class SCFStateMachine(AbstractStateMachine):
             # --------------------------------^
             #     }
             # }
-            if self.accum != '':
+            if self.accum != "":
                 self.dest[-1][-1].append(self.accum)
-                self.accum = ''
+                self.accum = ""
         elif c in EOL:
             # gtm region /Common/APAC_IP_OVERRIDE {
             #     region-members {
@@ -720,7 +784,7 @@ class SCFStateMachine(AbstractStateMachine):
             # }
             self.dest[-1][-1].append(self.accum)
             self.dest[-1].append([])
-            self.accum = ''
+            self.accum = ""
         elif c in OPEN_BRACE:
             # gtm region /Common/APAC_IP_OVERRIDE {
             #     region-members {
@@ -740,7 +804,7 @@ class SCFStateMachine(AbstractStateMachine):
             #     }
             # ----^
             # }
-            self.transition('propnext')
+            self.transition("propnext")
         elif c in ESCAPE:
             # sub\tnet 192.165.214.96/28 { thing\}other }
             # ---^
@@ -769,15 +833,17 @@ class SCFStateMachine(AbstractStateMachine):
             #     }
             self.dest[-1].append(SCFProperties())
             self.dest.append(self.dest[-1][-1])
-            self.transition('propsstart')
+            self.transition("propsstart")
         elif c in CLOSE_BRACE:
             #     {
             #         row { DO1 192.168.114.4 0 }
             #     }
             # ----^
-            self.transition('valbracednlsvnext')
+            self.transition("valbracednlsvnext")
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' in nlsvstart' % c, pos, len(self.lines))
+            raise StateMachineInputError(
+                "Unexpected char '%s' in nlsvstart" % c, pos, len(self.lines)
+            )
 
     def state_valbracednlsvnext(self, c, pos):
         if c in SPACE + EOL:
@@ -790,7 +856,7 @@ class SCFStateMachine(AbstractStateMachine):
             # }
             # ^
             self.dest.pop()
-            self.transition('propnext')
+            self.transition("propnext")
         elif c in OPEN_BRACE:
             #     {
             # ----^
@@ -798,9 +864,11 @@ class SCFStateMachine(AbstractStateMachine):
             #     }
             self.dest[-1].append(SCFProperties())
             self.dest.append(self.dest[-1][-1])
-            self.transition('propsstart')
+            self.transition("propsstart")
         else:
-            raise StateMachineInputError('Unexpected char \'%s\' in nlsvnext' % c, pos, len(self.lines))
+            raise StateMachineInputError(
+                "Unexpected char '%s' in nlsvnext" % c, pos, len(self.lines)
+            )
 
     def state_nestedblob_enter(self, old_state, new_state):
         self.nestdepths.append(0)
@@ -808,27 +876,42 @@ class SCFStateMachine(AbstractStateMachine):
     def state_nestedblob_leave(self, old_state, new_state):
         # strip off the initial \n
         try:
-            self.dest[-1]['_blob'] = self.accum[1:]
+            self.dest[-1]["_blob"] = self.accum[1:]
         except Exception as e:
             raise e
         self.dest.pop()
         self.dest.pop()
         self.nestdepths.pop()
         if self.escape:
-            raise StateMachineInputError('Left nestedblob still escaping', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left nestedblob still escaping", self.pos, len(self.lines)
+            )
         if self.quoted:
-            raise StateMachineInputError('Left nestedblob inside quotes', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left nestedblob inside quotes", self.pos, len(self.lines)
+            )
         if self.comment:
-            raise StateMachineInputError('Left nestedblob still escaping', self.pos, len(self.lines))
+            raise StateMachineInputError(
+                "Left nestedblob still escaping", self.pos, len(self.lines)
+            )
 
     def state_nestedblob(self, c, pos):
         if self.debug:
-            print('pos %d nestdepth %d escape %s comment %s quote %s line '
-                  '\'%s\'' % (self.pos, self.nestdepths[-1], self.escape, self.comment, self.quoted,
-                              self.lines[-1]))
+            print(
+                "pos %d nestdepth %d escape %s comment %s quote %s line "
+                "'%s'"
+                % (
+                    self.pos,
+                    self.nestdepths[-1],
+                    self.escape,
+                    self.comment,
+                    self.quoted,
+                    self.lines[-1],
+                )
+            )
         if self.escape:
             if self.debug:
-                print('escape')
+                print("escape")
             self.accumulate(c)
             self.escape = False
         # elif self.quoted:
@@ -843,35 +926,35 @@ class SCFStateMachine(AbstractStateMachine):
         #     self.accumulate(c)
         elif c in EOL:
             if self.debug:
-                print('eol')
+                print("eol")
             if not self.escape:
                 self.comment = False
             self.accumulate(c)
         elif self.comment:
             if self.debug:
-                print('comment')
+                print("comment")
             if c in ESCAPE:
                 self.escape = True
                 if self.debug:
-                    print('escape')
+                    print("escape")
             self.accumulate(c)
         elif c in ESCAPE:
             if self.debug:
-                print('escape')
+                print("escape")
             self.escape = True
             self.accumulate(c)
         elif c in OPEN_BRACE:
             if self.debug:
-                print('openbrace %d' % self.nestdepths[-1])
+                print("openbrace %d" % self.nestdepths[-1])
             self.nestdepths[-1] += 1
             self.accumulate(c)
         elif c in CLOSE_BRACE:
             if self.debug:
-                print('closebrace %d' % self.nestdepths[-1])
+                print("closebrace %d" % self.nestdepths[-1])
             if self.nestdepths[-1] == 0:
                 if self.debug:
-                    print('closebrace done %d' % self.nestdepths[-1])
-                self.transition('newobj')
+                    print("closebrace done %d" % self.nestdepths[-1])
+                self.transition("newobj")
                 return
             self.nestdepths[-1] -= 1
             self.accumulate(c)
@@ -880,9 +963,11 @@ class SCFStateMachine(AbstractStateMachine):
         #         print('start quote')
         #     self.quoted = True
         #     self.accumulate(c)
-        elif c in COMMENT and (self.accum.isspace() or self.accum.strip(' \t').endswith(';')):
+        elif c in COMMENT and (
+            self.accum.isspace() or self.accum.strip(" \t").endswith(";")
+        ):
             if self.debug:
-                print('start comment')
+                print("start comment")
             # self.comment = True
             self.accumulate(c)
         else:
@@ -891,9 +976,11 @@ class SCFStateMachine(AbstractStateMachine):
     def state_transition(self, old_state, new_state):
         if not self.debug:
             return
-        print('----\ntransition %s -> %s' % (old_state, new_state))
-        print('pos %6d dep %4d sym \'%s\' accum \'%s\'' %
-              (self.pos, self.depth, self.symbol, self.accum))
+        print("----\ntransition %s -> %s" % (old_state, new_state))
+        print(
+            "pos %6d dep %4d sym '%s' accum '%s'"
+            % (self.pos, self.depth, self.symbol, self.accum)
+        )
         for (i, d) in enumerate(self.dest):
-            print('%d %s+---%s (%s)' % (i, ' ' * (i * 4), type(d), str(d)))
-        print('----')
+            print("%d %s+---%s (%s)" % (i, " " * (i * 4), type(d), str(d)))
+        print("----")

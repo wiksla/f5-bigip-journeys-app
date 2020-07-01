@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 
-from parser.compat import basestring
-from parser.parser import parse
-from parser.builder import build, _enquote
+from journeys.parser.builder import _enquote
+from journeys.parser.builder import build
+from journeys.parser.compat import basestring
+from journeys.parser.parser import parse
 
 here = os.path.dirname(__file__)
 
@@ -26,24 +27,24 @@ def assert_equal_payloads(a, b, ignore_keys=()):
 
 
 def compare_parsed_and_built(conf_dirname, conf_basename, tmpdir, **kwargs):
-    original_dirname = os.path.join(here, 'configs', conf_dirname)
+    original_dirname = os.path.join(here, "configs", conf_dirname)
     original_path = os.path.join(original_dirname, conf_basename)
     original_payload = parse(original_path, **kwargs)
-    original_parsed = original_payload['config'][0]['parsed']
+    original_parsed = original_payload["config"][0]["parsed"]
 
     build1_config = build(original_parsed)
-    build1_file = tmpdir.join('build1.conf')
-    build1_file.write_text(build1_config, encoding='utf-8')
+    build1_file = tmpdir.join("build1.conf")
+    build1_file.write_text(build1_config, encoding="utf-8")
     build1_payload = parse(build1_file.strpath, **kwargs)
-    build1_parsed = build1_payload['config'][0]['parsed']
+    build1_parsed = build1_payload["config"][0]["parsed"]
 
-    assert_equal_payloads(original_parsed, build1_parsed, ignore_keys=['line'])
+    assert_equal_payloads(original_parsed, build1_parsed, ignore_keys=["line"])
 
     build2_config = build(build1_parsed)
-    build2_file = tmpdir.join('build2.conf')
-    build2_file.write_text(build2_config, encoding='utf-8')
+    build2_file = tmpdir.join("build2.conf")
+    build2_file.write_text(build2_config, encoding="utf-8")
     build2_payload = parse(build2_file.strpath, **kwargs)
-    build2_parsed = build2_payload['config'][0]['parsed']
+    build2_parsed = build2_payload["config"][0]["parsed"]
 
     assert build1_config == build2_config
     assert_equal_payloads(build1_parsed, build2_parsed, ignore_keys=[])

@@ -1,92 +1,110 @@
-
 import io
+import json
 import os
 import sys
 from traceback import format_exception
 
-from .parser import parse as parse_file
+from .builder import build as build_string
+from .builder import build_files
+from .compat import input
 from .lexer import lex as lex_file
-from .builder import build as build_string, build_files
-from parser.compat import json, input
+from .parser import parse as parse_file
 
 
 def _prompt_yes():
     try:
-        return input('overwrite? (y/n [n]) ').lower().startswith('y')
+        return input("overwrite? (y/n [n]) ").lower().startswith("y")
     except (KeyboardInterrupt, EOFError):
         sys.exit(1)
 
 
 def _dump_payload(obj, fp, indent):
-    kwargs = {'indent': indent}
+    kwargs = {"indent": indent}
     if indent is None:
-        kwargs['separators'] = ',', ':'
-    fp.write(json.dumps(obj, **kwargs) + u'\n')
+        kwargs["separators"] = ",", ":"
+    fp.write(json.dumps(obj, **kwargs) + u"\n")
 
 
-def parse(filename, out, indent=None, catch=None, tb_onerror=None, ignore='', comments=False, strict=False):
+def parse(
+    filename,
+    out,
+    indent=None,
+    catch=None,
+    tb_onerror=None,
+    ignore="",
+    comments=False,
+    strict=False,
+):
 
-    ignore = ignore.split(',') if ignore else []
+    ignore = ignore.split(",") if ignore else []
 
     def callback(e):
         exc = sys.exc_info() + (10,)
-        return ''.join(format_exception(*exc)).rstrip()
+        return "".join(format_exception(*exc)).rstrip()
 
     kwargs = {
-        'catch_errors': catch,
-        'ignore': ignore,
-        'comments': comments,
-        'strict': strict
+        "catch_errors": catch,
+        "ignore": ignore,
+        "comments": comments,
+        "strict": strict,
     }
 
     if tb_onerror:
-        kwargs['onerror'] = callback
+        kwargs["onerror"] = callback
 
     payload = parse_file(filename, **kwargs)
-    o = sys.stdout if out is None else io.open(out, 'w', encoding='utf-8')
+    o = sys.stdout if out is None else io.open(out, "w", encoding="utf-8")
     try:
         _dump_payload(payload, o, indent=indent)
     finally:
         o.close()
 
 
-def build(filename, dirname=None, force=False, indent=4, tabs=False,
-          header=True, stdout=False, verbose=False):
+def build(
+    filename,
+    dirname=None,
+    force=False,
+    indent=4,
+    tabs=False,
+    header=True,
+    stdout=False,
+    verbose=False,
+):
 
     if dirname is None:
         dirname = os.getcwd()
 
     # read the json payload from the specified file
-    with open(filename, 'r') as fp:
+    with open(filename, "r") as fp:
         payload = json.load(fp)
 
     # find which files from the json payload will overwrite existing files
     if not force and not stdout:
         existing = []
-        for config in payload['config']:
-            path = config['file']
+        for config in payload["config"]:
+            path = config["file"]
             if not os.path.isabs(path):
                 path = os.path.join(dirname, path)
             if os.path.exists(path):
                 existing.append(path)
         # ask the user if it's okay to overwrite existing files
         if existing:
-            print('building {} would overwrite these files:'.format(filename))
-            print('\n'.join(existing))
+            print("building {} would overwrite these files:".format(filename))
+            print("\n".join(existing))
             if not _prompt_yes():
-                print('not overwritten')
+                print("not overwritten")
                 return
 
     # if stdout is set then just print each file after another like nginx -T
     if stdout:
-        for config in payload['config']:
-            path = config['file']
+        for config in payload["config"]:
+            path = config["file"]
             if not os.path.isabs(path):
                 path = os.path.join(dirname, path)
-            parsed = config['parsed']
+            parsed = config["parsed"]
             output = build_string(parsed, indent=indent, tabs=tabs, header=header)
-            output = output.rstrip() + '\n'
-            print('# ' + path + '\n' + output)
+            output = output.rstrip() + "\n"
+            print("# " + path + "\n" + output)
         return
 
     # build the nginx configuration file from the json payload
@@ -94,11 +112,11 @@ def build(filename, dirname=None, force=False, indent=4, tabs=False,
 
     # if verbose print the paths of the config files that were created
     if verbose:
-        for config in payload['config']:
-            path = config['file']
+        for config in payload["config"]:
+            path = config["file"]
             if not os.path.isabs(path):
                 path = os.path.join(dirname, path)
-            print('wrote to ' + path)
+            print("wrote to " + path)
 
 
 def lex(filename, out=False, indent=None, line_numbers=False):
@@ -111,7 +129,7 @@ def lex(filename, out=False, indent=None, line_numbers=False):
     if not out:
         print(payload)
     else:
-        o = io.open(out, 'w', encoding='utf-8')
+        o = io.open(out, "w", encoding="utf-8")
         try:
             _dump_payload(payload, o, indent=indent)
         finally:

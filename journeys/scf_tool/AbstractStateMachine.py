@@ -52,9 +52,9 @@ class AbstractStateMachine:
 
     """
 
-    __version__ = '0.0.3'
+    __version__ = "0.0.3"
 
-    def __init__(self, source=None, start_state='normal', debug=False):
+    def __init__(self, source=None, start_state="normal", debug=False):
         """Initialise the State Machine
             Call this with super().__init__ when subclassing
 
@@ -64,14 +64,14 @@ class AbstractStateMachine:
         """
         self.debug = debug
         self.pos = 0
-        self.symbol = ''
+        self.symbol = ""
         self.method = None
         self.input = source
         self.output = []
         self.dest = []
-        self.accum = ''
+        self.accum = ""
         self.state = start_state
-        self.lines = ['']
+        self.lines = [""]
 
     @property
     def depth(self):
@@ -93,7 +93,7 @@ class AbstractStateMachine:
         Returns:
             self.output -- the output list
         """
-        start = getattr(self, 'state_start', None)
+        start = getattr(self, "state_start", None)
         if start:
             start()
 
@@ -101,13 +101,13 @@ class AbstractStateMachine:
         self.transition(self.state)
 
         for (self.pos, self.symbol) in enumerate(self.input):
-            if self.symbol in '\n':
-                self.lines.append('')
+            if self.symbol in "\n":
+                self.lines.append("")
             else:
                 self.lines[-1] += self.symbol
             self.method(self.symbol, self.pos)
 
-        finish = getattr(self, 'state_finish', None)
+        finish = getattr(self, "state_finish", None)
         if finish:
             finish()
 
@@ -136,41 +136,50 @@ class AbstractStateMachine:
 
         if self.debug:
             print(
-                '(line %4d) (line_pos %3d) (abs_pos %6d) (dep %4d) state %12s -> %12s sym \'%s\' accum \'%s\''
-                % (len(self.lines), len(self.lines[-1]), self.pos, self.depth, self.state,
-                   new_state, self.symbol, self.accum))
-        leave = getattr(self, 'state_%s_leave' % (self.state), None)
+                "(line %4d) (line_pos %3d) (abs_pos %6d) (dep %4d) state %12s -> %12s sym '%s' accum '%s'"
+                % (
+                    len(self.lines),
+                    len(self.lines[-1]),
+                    self.pos,
+                    self.depth,
+                    self.state,
+                    new_state,
+                    self.symbol,
+                    self.accum,
+                )
+            )
+        leave = getattr(self, "state_%s_leave" % (self.state), None)
         if leave:
             if self.debug:
-                print('state_%s_leave %s -> %s' % (self.state, self.state, new_state))
+                print("state_%s_leave %s -> %s" % (self.state, self.state, new_state))
             leave(old_state=self.state, new_state=new_state)
-        enter = getattr(self, 'state_%s_enter' % (new_state), None)
+        enter = getattr(self, "state_%s_enter" % (new_state), None)
         if enter:
             if self.debug:
-                print('state_%s_enter %s -> %s' % (new_state, self.state, new_state))
+                print("state_%s_enter %s -> %s" % (new_state, self.state, new_state))
             enter(old_state=self.state, new_state=new_state)
-        trans = getattr(self, 'state_transition', None)
+        trans = getattr(self, "state_transition", None)
         if trans:
             if self.debug:
-                print('state_transition %s -> %s' % (self.state, new_state))
+                print("state_transition %s -> %s" % (self.state, new_state))
             trans(old_state=self.state, new_state=new_state)
 
         if clear_accum:
             if self.debug:
-                print('accumulator cleared')
-            self.accum = ''
+                print("accumulator cleared")
+            self.accum = ""
         else:
             if self.debug:
-                print('accumulator: \'%s\'' % self.accum)
+                print("accumulator: '%s'" % self.accum)
 
         self.tmp = tmp
 
-        self.method = getattr(self, 'state_%s' % (new_state), None)
+        self.method = getattr(self, "state_%s" % (new_state), None)
         if not self.method:
             raise StateMachineTransitionError(self.state, new_state, self.pos)
         self.state = new_state
         if self.debug:
-            print('line \'%s\'' % self.lines[-1])
+            print("line '%s'" % self.lines[-1])
 
     def accumulate(self, c):
         """Accumulate a character into self.accum

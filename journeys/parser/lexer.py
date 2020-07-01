@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import itertools
 import io
+import itertools
 
-from parser.compat import fix_pep_479
-from parser.errors import NgxParserSyntaxError
+from .compat import fix_pep_479
+from .errors import NgxParserSyntaxError
 
 EXTERNAL_LEXERS = {}
 
@@ -12,7 +12,7 @@ EXTERNAL_LEXERS = {}
 def _iterescape(iterable):
     chars = iter(iterable)
     for char in chars:
-        if char == '\\':
+        if char == "\\":
             char = char + next(chars)
         yield char
 
@@ -21,7 +21,7 @@ def _iterlinecount(iterable):
     line = 1
     chars = iter(iterable)
     for char in chars:
-        if char.endswith('\n'):
+        if char.endswith("\n"):
             line += 1
         yield (char, line)
 
@@ -33,7 +33,7 @@ def _lex_file_object(file_obj):
 
     Yields 3-tuples like (token, lineno, quoted)
     """
-    token = ''  # the token buffer
+    token = ""  # the token buffer
     token_line = 0  # the line the token starts on
     next_token_is_directive = True
 
@@ -53,21 +53,21 @@ def _lex_file_object(file_obj):
                         next_token_is_directive = True
                 else:
                     next_token_is_directive = False
-                token = ''
+                token = ""
 
             # disregard until char isn't a whitespace character, keep newlines
             while char.isspace():
-                if char == '\n':
+                if char == "\n":
                     yield (char, line, False)
                 char, line = next(it)
 
         # if starting comment
-        if not token and char == '#':
-            while not char.endswith('\n'):
+        if not token and char == "#":
+            while not char.endswith("\n"):
                 token = token + char
                 char, _ = next(it)
             yield (token, line, False)
-            token = ''
+            token = ""
             continue
 
         if not token:
@@ -83,7 +83,7 @@ def _lex_file_object(file_obj):
             quote = char
             char, line = next(it)
             while char != quote:
-                token += quote if char == '\\' + quote else char
+                token += quote if char == "\\" + quote else char
                 char, line = next(it)
 
             yield (token, token_line, True)  # True because this is in quotes
@@ -96,15 +96,15 @@ def _lex_file_object(file_obj):
             else:
                 next_token_is_directive = False
 
-            token = ''
+            token = ""
             continue
 
         # handle special characters that are treated like full tokens
-        if char in ('{', '}'):
+        if char in ("{", "}"):
             # if token complete yield it and reset token buffer
             if token:
                 yield (token, token_line, False)
-                token = ''
+                token = ""
 
             # this character is a full token so yield it now
             yield (char, line, False)
@@ -120,9 +120,9 @@ def _balance_braces(tokens, filename=None):
     depth = 0
 
     for token, line, quoted in tokens:
-        if token == '}' and not quoted:
+        if token == "}" and not quoted:
             depth -= 1
-        elif token == '{' and not quoted:
+        elif token == "{" and not quoted:
             depth += 1
 
         # raise error if we ever have more right braces than left
@@ -140,7 +140,7 @@ def _balance_braces(tokens, filename=None):
 
 def lex(filename):
     """Generates tokens from an nginx config file"""
-    with io.open(filename, mode='r', encoding='utf-8') as f:
+    with io.open(filename, mode="r", encoding="utf-8") as f:
         it = _lex_file_object(f)
         it = _balance_braces(it, filename)
         for token, line, quoted in it:

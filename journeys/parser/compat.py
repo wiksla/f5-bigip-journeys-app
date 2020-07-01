@@ -2,13 +2,7 @@
 import functools
 import sys
 
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
-
-PY3 = (sys.version_info[0] == 3)
+PY3 = sys.version_info[0] == 3
 
 input = input
 basestring = str
@@ -19,6 +13,7 @@ def fix_pep_479(generator):
     Python 3.7 breaks parser's lexer because of PEP 479
     Read more here: https://www.python.org/dev/peps/pep-0479/
     """
+
     @functools.wraps(generator)
     def _wrapped_generator(*args, **kwargs):
         try:

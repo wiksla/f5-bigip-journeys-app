@@ -1,4 +1,2 @@
-black
-click
-pytest
+click==7.1.2
 isoparser==0.3

@@ -1,0 +1,18 @@
+---
+
+stages:
+  - test
+  - deploy
+
+## Disable until initial format/lint get applied
+
+format-and-lint:
+  stage: test
+  image: python:3.8
+  tags:
+    - docker-executor
+  script:
+    - pip install -r requirements.txt -r test-requirements.txt
+    - make format
+    - git diff --exit-code
+    - make lint
