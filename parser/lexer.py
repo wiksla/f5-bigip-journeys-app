@@ -2,8 +2,8 @@
 import itertools
 import io
 
-from crossplane.compat import fix_pep_479
-from crossplane.errors import NgxParserSyntaxError
+from parser.compat import fix_pep_479
+from parser.errors import NgxParserSyntaxError
 
 EXTERNAL_LEXERS = {}
 

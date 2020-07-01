@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import crossplane
+import parser
 
 
 def test_state_directive():
@@ -19,16 +19,16 @@ def test_state_directive():
     ])
 
     for ctx in good_contexts:
-        crossplane.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
+        parser.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
 
     # the state directive should not be in any of these contexts
-    bad_contexts = set(crossplane.analyzer.CONTEXTS) - good_contexts
+    bad_contexts = set(parser.analyzer.CONTEXTS) - good_contexts
 
     for ctx in bad_contexts:
         try:
-            crossplane.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
+            parser.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
             raise Exception("bad context for 'state' passed: " + repr(ctx))
-        except crossplane.errors.NgxParserDirectiveContextError:
+        except parser.errors.NgxParserDirectiveContextError:
             continue
 
 
@@ -46,14 +46,14 @@ def test_flag_directive_args():
 
     for args in good_args:
         stmt['args'] = args
-        crossplane.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
+        parser.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
 
     bad_args = [['1'], ['0'], ['true'], ['okay'], ['']]
 
     for args in bad_args:
         stmt['args'] = args
         try:
-            crossplane.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
+            parser.analyzer.analyze(fname, stmt, term=';', ctx=ctx)
             raise Exception('bad args for flag directive: ' + repr(args))
-        except crossplane.errors.NgxParserDirectiveArgumentsError as e:
+        except parser.errors.NgxParserDirectiveArgumentsError as e:
             assert e.strerror.endswith('it must be "on" or "off"')

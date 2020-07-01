@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 '''Classes to handle parsing TCL like languages
-Pass in a file handle or string to the parser
+Pass in a file handle or string to the scf_tool
 It will iterate through the file char-at-a-time.
 State is held internally to the instance.
 '''
 
-from parser.AbstractStateMachine import AbstractStateMachine
-from parser.AbstractStateMachine import StateMachineInputError
-from parser.SCFObject import BracedSSVList
-from parser.SCFObject import BracedNLSVList
-from parser.SCFObject import EmptyValue
-from parser.SCFObject import Flag
-from parser.SCFObject import NLSVList
-from parser.SCFObject import PlainString
-from parser.SCFObject import SCFObject
-from parser.SCFObject import SCFProperties
-from parser.SCFObject import SSVList
+from scf_tool.AbstractStateMachine import AbstractStateMachine
+from scf_tool.AbstractStateMachine import StateMachineInputError
+from scf_tool.SCFObject import BracedSSVList
+from scf_tool.SCFObject import BracedNLSVList
+from scf_tool.SCFObject import EmptyValue
+from scf_tool.SCFObject import Flag
+from scf_tool.SCFObject import NLSVList
+from scf_tool.SCFObject import PlainString
+from scf_tool.SCFObject import SCFObject
+from scf_tool.SCFObject import SCFProperties
+from scf_tool.SCFObject import SSVList
 
 
 # Constants for the SCFStateMachine
@@ -95,7 +95,7 @@ NONAME = [('cli', ['admin-partitions']),
 
 
 class SCFStateMachine(AbstractStateMachine):
-    """State machine for a char-by-char parser of SCF files
+    """State machine for a char-by-char scf_tool of SCF files
 
     Attributes:
         debug -- The debug state of the object

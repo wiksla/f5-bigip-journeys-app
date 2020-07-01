@@ -65,7 +65,7 @@ def build(payload, indent=4, tabs=False, header=False):
 
     head = ''
     if header:
-        head += '# This config was built from JSON using NGINX crossplane.\n'
+        head += '# This config was built from JSON using NGINX parser.\n'
         head += '# If you encounter any bugs please report them here:\n'
         head += '# https://github.com/nginxinc/crossplane/issues\n'
         head += '\n'
@@ -112,7 +112,7 @@ def build(payload, indent=4, tabs=False, header=False):
 
 def build_files(payload, dirname=None, indent=4, tabs=False, header=False):
     """
-    Uses a full nginx config payload (output of crossplane.parse) to build
+    Uses a full nginx config payload (output of parser.parse) to build
     config files, then writes those files to disk.
     """
     if dirname is None:

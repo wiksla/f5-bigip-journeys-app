@@ -2,15 +2,15 @@
 
 from unittest import TestCase
 
-import parser.SCFStateMachine as SCFStateMachine
-from parser.SCFObject import BracedSSVList
-from parser.SCFObject import BracedNLSVList
-from parser.SCFObject import EmptyValue
-from parser.SCFObject import Flag
-from parser.SCFObject import NLSVList
-from parser.SCFObject import SCFObject
-from parser.SCFObject import SCFProperties
-from parser.SCFObject import SSVList
+import scf_tool.SCFStateMachine as SCFStateMachine
+from scf_tool.SCFObject import BracedSSVList
+from scf_tool.SCFObject import BracedNLSVList
+from scf_tool.SCFObject import EmptyValue
+from scf_tool.SCFObject import Flag
+from scf_tool.SCFObject import NLSVList
+from scf_tool.SCFObject import SCFObject
+from scf_tool.SCFObject import SCFProperties
+from scf_tool.SCFObject import SSVList
 
 
 class TestVirtualServer(TestCase):

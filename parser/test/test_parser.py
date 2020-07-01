@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 
-import crossplane
-from crossplane.test import here
+import parser
+from parser.test import here
 
 
 def test_ignore_directives():
@@ -10,7 +10,7 @@ def test_ignore_directives():
     config = os.path.join(dirname, 'nginx.conf')
 
     # check that you can ignore multiple directives
-    payload = crossplane.parse(config, ignore=['listen', 'server_name'])
+    payload = parser.parse(config, ignore=['listen', 'server_name'])
     assert payload == {
         "status": "ok",
         "errors": [],
@@ -64,7 +64,7 @@ def test_ignore_directives():
     }
 
     # check that you can also ignore block directives
-    payload = crossplane.parse(config, ignore=['events', 'server'])
+    payload = parser.parse(config, ignore=['events', 'server'])
     assert payload == {
         "status": "ok",
         "errors": [],
@@ -89,7 +89,7 @@ def test_ignore_directives():
 def test_config_with_comments():
     dirname = os.path.join(here, 'configs', 'with-comments')
     config = os.path.join(dirname, 'nginx.conf')
-    payload = crossplane.parse(config, comments=True)
+    payload = parser.parse(config, comments=True)
     assert payload == {
        "errors" : [],
        "status" : "ok",
@@ -191,7 +191,7 @@ def test_config_with_comments():
 def test_config_without_comments():
     dirname = os.path.join(here, 'configs', 'with-comments')
     config = os.path.join(dirname, 'nginx.conf')
-    payload = crossplane.parse(config, comments=False)
+    payload = parser.parse(config, comments=False)
     assert payload == {
        "errors" : [],
        "status" : "ok",
@@ -269,7 +269,7 @@ def test_config_without_comments():
 def test_parse_strict():
     dirname = os.path.join(here, 'configs', 'spelling-mistake')
     config = os.path.join(dirname, 'nginx.conf')
-    payload = crossplane.parse(config, comments=True, strict=True)
+    payload = parser.parse(config, comments=True, strict=True)
     assert payload == {
         'status' : 'failed',
         'errors' : [
@@ -334,7 +334,7 @@ def test_parse_missing_semicolon():
 
     # test correct error is raised when broken proxy_pass is in upper block
     above_config = os.path.join(dirname, 'broken-above.conf')
-    above_payload = crossplane.parse(above_config)
+    above_payload = parser.parse(above_config)
     assert above_payload == {
         "status": "failed",
         "errors": [
@@ -394,7 +394,7 @@ def test_parse_missing_semicolon():
 
     # test correct error is raised when broken proxy_pass is in lower block
     below_config = os.path.join(dirname, 'broken-below.conf')
-    below_payload = crossplane.parse(below_config)
+    below_payload = parser.parse(below_config)
     assert below_payload == {
         "status": "failed",
         "errors": [
@@ -457,7 +457,7 @@ def test_parse_missing_semicolon():
 def test_comments_between_args():
     dirname = os.path.join(here, 'configs', 'comments-between-args')
     config = os.path.join(dirname, 'nginx.conf')
-    payload = crossplane.parse(config, comments=True)
+    payload = parser.parse(config, comments=True)
     assert payload == {
         'status': 'ok',
         'errors': [],
