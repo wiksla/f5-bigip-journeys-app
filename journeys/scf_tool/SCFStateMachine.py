@@ -71,6 +71,20 @@ UNQUOTESTR = [
         ["monitor", "snmp-dca"],
         "user-defined",
     ),  # https://cdn.f5.com/product/bugtracker/ID520970.html
+    ("class", ["dr_test_block"], "network"),
+    ("daemon", ["mcpd"], "heartbeat"),
+    ("daemon", ["tmm"], "heartbeat"),
+    ("datastor", [], "low"),
+    ("datastor", [], "high"),
+    ("interface", ["1.7"], "media"),
+    ("ltm", ["monitor", "firepass"], "user-defined"),
+    ("ltm", ["monitor", "snmp-dca-base"], "user-defined"),
+    ("monitor", ["CIV1_Prod_Monitor"], "defaults"),
+    ("stp", ["instance"], "external"),
+    ("stp", ["instance"], "interfaces"),
+    ("stp", ["instance"], "internal"),
+    ("stp", [], "config"),
+    ("sys", ["file", "ssl-cert"], "cache-path"),
 ]
 QUOTEDNAME = [
     ("wam", ["policy"]),
@@ -79,6 +93,11 @@ QUOTEDNAME = [
     ("security", ["log", "profile"]),
     ("security", ["dos", "bot-signature"]),
     ("security", ["dos", "bot-signature-category"]),
+    ("security", ["bot-defense", "signature"]),
+    ("analytics", ["application-security", "scheduled-report"]),
+    ("apm", ["policy", "image-file"]),
+    ("asm", ["predefined-policy"]),
+    ("net", ["dns-resolver"]),
 ]
 NONAME = [
     ("cli", ["admin-partitions"]),
@@ -963,12 +982,12 @@ class SCFStateMachine(AbstractStateMachine):
         #         print('start quote')
         #     self.quoted = True
         #     self.accumulate(c)
-        elif c in COMMENT and (
-            self.accum.isspace() or self.accum.strip(" \t").endswith(";")
-        ):
-            if self.debug:
-                print("start comment")
-            # self.comment = True
+        elif c in COMMENT:
+            if not self.comment:
+                if self.debug:
+                    print("start comment")
+                self.comment = True
+
             self.accumulate(c)
         else:
             self.accumulate(c)
