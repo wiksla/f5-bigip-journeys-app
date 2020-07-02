@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from .analyzer import analyze
 from .analyzer import enter_block_ctx
-from .errors import NgxParserDirectiveError
 from .lexer import lex
 
 NONAME = {
@@ -89,7 +87,6 @@ def parse(
 
     def _parse(parsing, tokens, ctx=(), consume=False):
         """Recursively parses nginx config contexts"""
-        fname = parsing["file"]
         parsed = []
 
         # parse recursively by pulling from a flat stream of tokens
@@ -146,33 +143,6 @@ def parse(
                 if token == "{" and not quoted:
                     _parse(parsing, tokens, consume=True)
                 continue
-
-            try:
-                # raise errors if this statement is invalid
-                analyze(
-                    fname=fname,
-                    stmt=stmt,
-                    term=token,
-                    ctx=ctx,
-                    strict=strict,
-                    check_ctx=check_ctx,
-                    check_args=check_args,
-                )
-            except NgxParserDirectiveError as e:
-                if catch_errors:
-                    _handle_error(parsing, e)
-
-                    # if it was a block but shouldn't have been then consume
-                    if e.strerror.endswith(' is not terminated by ";"'):
-                        if token != "}" and not quoted:
-                            _parse(parsing, tokens, consume=True)
-                        else:
-                            break
-
-                    # keep on parsin'
-                    continue
-                else:
-                    raise e
 
             # if this statement terminated with '{' then it is a block
             if token == "{" and not quoted:
