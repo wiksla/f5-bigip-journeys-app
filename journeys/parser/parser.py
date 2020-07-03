@@ -10,7 +10,7 @@ def parse(
     onerror=None,
     catch_errors=True,
     ignore=(),
-    comments=False,
+    comments=True,
     strict=False,
     check_ctx=True,
     check_args=True,

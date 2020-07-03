@@ -32,7 +32,7 @@ def parse(
     catch=None,
     tb_onerror=None,
     ignore="",
-    comments=False,
+    comments=True,
     strict=False,
 ):
 
@@ -66,7 +66,7 @@ def build(
     force=False,
     indent=4,
     tabs=False,
-    header=True,
+    header=False,
     stdout=False,
     verbose=False,
 ):
