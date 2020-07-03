@@ -68,10 +68,10 @@ def build(payload, indent=4, tabs=False, header=False):
     if header:
         head += "# Built by journeys app.\n"
         head += "\n"
-    
+
     def _build_blob(output, block):
         # blobs will always have len = 1 and be stored in directive
-        blob = block[0]['directive']
+        blob = block[0]["directive"]
         output += blob
         return output
 
@@ -102,7 +102,11 @@ def build(payload, indent=4, tabs=False, header=False):
 
                 if stmt.get("block") is not None:
                     built += " {"
-                    if depth == 0 and directive in BLOBTYPES and stmt['type'].split(' ') in BLOBTYPES[directive]:
+                    if (
+                        depth == 0
+                        and directive in BLOBTYPES
+                        and stmt["type"].split(" ") in BLOBTYPES[directive]
+                    ):
                         built = _build_blob(built, stmt["block"])
                     else:
                         built = _build_block(built, stmt["block"], depth + 1, line)
