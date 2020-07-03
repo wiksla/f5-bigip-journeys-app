@@ -4,35 +4,11 @@ import itertools
 from collections import deque
 
 from .compat import fix_pep_479
+from .const import BLOBTYPES
+from .const import MODULES
 from .errors import NgxParserSyntaxError
 
 EXTERNAL_LEXERS = {}
-
-BLOBTYPES = (
-    "ltm rule ",
-    "gtm rule ",
-    "sys application apl-script ",
-    "sys application template ",
-    "sys icall script ",
-    "cli script ",
-)
-MODULES = (
-    "analytics ",
-    "apm ",
-    "asm ",
-    "auth ",
-    "cli ",
-    "gtm ",
-    "ilx ",
-    "ltm ",
-    "net ",
-    "pem ",
-    "security ",
-    "sys ",
-    "vcmp ",
-    "wam ",
-    "wom ",
-)
 
 
 class _LookaheadIterator:
@@ -92,6 +68,15 @@ def _lex_file_object(file_obj):
     full_field = []
     blob = False
 
+    # prepare substrings for blobs / modules matching
+    # append a space to each to avoid capturing word parts
+    blobtypes = []
+    for module, fields in BLOBTYPES.items():
+        for field in fields:
+            blobtypes.append(" ".join([module, *field]) + " ")
+    blobtypes = tuple(blobtypes)
+    modules = tuple(f"{module} " for module in MODULES)
+
     it = itertools.chain.from_iterable(file_obj)
     it = _iterescape(it)  # treat escaped characters differently
     it = _LookaheadIterator(it)  # allow us to look up the next sequence of characters
@@ -102,15 +87,17 @@ def _lex_file_object(file_obj):
         # until an exit condition happens
         if blob:
             token += char
-            if (char == "\n" and "".join(it.buffer).startswith(MODULES)) or len(
+            if (char == "\n" and "".join(it.buffer).startswith(modules)) or len(
                 it.buffer
             ) == 0:
                 blob = False
-                # find the last occurence of a closing brace
-                # (a commented block here with a closing brace inside will break this..)
+                # find the last occurence of a closing brace, ensure it's not inside a comment
                 # (will consume any comments inbetween)
                 brace_index = token.rfind("}")
                 token = token[:brace_index]
+                while "#" in token[token.rfind("\n") :]:
+                    brace_index = token.rfind("}")
+                    token = token[:brace_index]
                 yield token, token_line, False
                 yield "}", line, False
                 yield "\n", line, False
@@ -188,7 +175,7 @@ def _lex_file_object(file_obj):
             # this character is a full token so yield it now
             yield (char, line, False)
 
-            if char == "{" and " ".join(full_field).startswith(BLOBTYPES):
+            if char == "{" and " ".join(full_field).startswith(blobtypes):
                 blob = True
             else:
                 next_token_is_directive = True
