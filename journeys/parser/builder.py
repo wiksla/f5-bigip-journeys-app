@@ -3,6 +3,8 @@ import codecs
 import os
 import re
 
+from .const import BLOBTYPES
+
 DELIMITERS = ("{", "}", ";")
 EXTERNAL_BUILDERS = {}
 ESCAPE_SEQUENCES_RE = re.compile(r"(\\x[0-9a-f]{2}|\\[0-7]{1,3})")
@@ -64,10 +66,14 @@ def build(payload, indent=4, tabs=False, header=False):
 
     head = ""
     if header:
-        head += "# This config was built from JSON using NGINX parser.\n"
-        head += "# If you encounter any bugs please report them here:\n"
-        head += "# https://github.com/nginxinc/crossplane/issues\n"
+        head += "# Built by journeys app.\n"
         head += "\n"
+    
+    def _build_blob(output, block):
+        # blobs will always have len = 1 and be stored in directive
+        blob = block[0]['directive']
+        output += blob
+        return output
 
     def _build_block(output, block, depth, last_line):
         margin = padding * depth
@@ -96,8 +102,12 @@ def build(payload, indent=4, tabs=False, header=False):
 
                 if stmt.get("block") is not None:
                     built += " {"
-                    built = _build_block(built, stmt["block"], depth + 1, line)
-                    built += "\n" + margin + "}"
+                    if depth == 0 and directive in BLOBTYPES and stmt['type'].split(' ') in BLOBTYPES[directive]:
+                        built = _build_blob(built, stmt["block"])
+                    else:
+                        built = _build_block(built, stmt["block"], depth + 1, line)
+                        built += "\n" + margin
+                    built += "}"
 
             output += ("\n" if output else "") + margin + built
             last_line = line
