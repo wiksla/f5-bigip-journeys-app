@@ -1,5 +1,9 @@
+import sys
+
 import click
 
+from journeys.config import Config
+from journeys.modifier.dependency import build_dependency_map
 from journeys.parser import build
 from journeys.parser import lex
 from journeys.parser import parse
@@ -55,6 +59,14 @@ def parse_config(config_filename):
 @click.argument("config-filename")
 def build_config(config_filename):
     click.echo(build(filename=config_filename))
+
+
+@cli.command()
+@click.argument("config-filename")
+def build_dependency_tree(config_filename):
+
+    config = Config.from_conf(filename=config_filename)
+    build_dependency_map(config)
 
 
 @cli.command()
@@ -133,8 +145,6 @@ def compare_scf_crossplane(config_file):
         )
 
     if failure:
-        import sys
-
         sys.exit(1)
 
 
