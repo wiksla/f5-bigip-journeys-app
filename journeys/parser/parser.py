@@ -6,7 +6,8 @@ from .lexer import lex
 
 
 def parse(
-    filename,
+    iterable,
+    filename="unnamed",
     onerror=None,
     catch_errors=True,
     ignore=(),
@@ -18,7 +19,8 @@ def parse(
     """
     Parses an nginx config file and returns a nested dict payload
 
-    :param filename: string contianing the name of the config file to parse
+    :param iterable: object from which we can read the subsequent characters
+    :param filename: identifier for the file, saved in the output json
     :param onerror: function that determines what's saved in "callback"
     :param catch_errors: bool; if False, parse stops after first error
     :param ignore: list or tuple of directives to exclude from the payload
@@ -34,9 +36,6 @@ def parse(
         "errors": [],
         "config": [],
     }
-
-    # start with the main nginx config file/context
-    includes = [(filename, ())]  # stores (filename, config context) tuples
 
     def _handle_error(parsing, e):
         """Adds representaions of an error to the payload"""
@@ -152,15 +151,13 @@ def parse(
             stmt["type"] = type_
             stmt["name"] = name
 
-    # the includes list grows as "include" directives are found in _parse
-    for fname, ctx in includes:
-        tokens = lex(fname)
-        parsing = {"file": fname, "status": "ok", "errors": [], "parsed": []}
-        try:
-            parsing["parsed"] = _parse(parsing, tokens, ctx=ctx)
-        except Exception as e:
-            _handle_error(parsing, e)
+    tokens = lex(iterable)
+    parsing = {"file": filename, "status": "ok", "errors": [], "parsed": []}
+    try:
+        parsing["parsed"] = _parse(parsing, tokens, ctx=())
+    except Exception as e:
+        _handle_error(parsing, e)
 
-        payload["config"].append(parsing)
+    payload["config"].append(parsing)
 
     return payload

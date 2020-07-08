@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import io
 import itertools
 from collections import deque
 
@@ -56,7 +55,7 @@ def _iterlinecount(iterable):
 
 
 @fix_pep_479
-def _lex_file_object(file_obj):
+def _lex_file_object(iterable):
     """
     Generates token tuples from an nginx config file object
 
@@ -77,7 +76,7 @@ def _lex_file_object(file_obj):
     blobtypes = tuple(blobtypes)
     modules = tuple(f"{module} " for module in MODULES)
 
-    it = itertools.chain.from_iterable(file_obj)
+    it = itertools.chain.from_iterable(iterable)
     it = _iterescape(it)  # treat escaped characters differently
     it = _LookaheadIterator(it)  # allow us to look up the next sequence of characters
     it_lines = _iterlinecount(it)  # count the number of newline characters
@@ -209,13 +208,12 @@ def _balance_braces(tokens, filename=None):
         raise NgxParserSyntaxError(reason, filename, line)
 
 
-def lex(filename):
+def lex(iterable):
     """Generates tokens from an nginx config file"""
-    with io.open(filename, mode="r", encoding="utf-8") as f:
-        it = _lex_file_object(f)
-        it = _balance_braces(it, filename)
-        for token, line, quoted in it:
-            yield (token, line, quoted)
+    it = _lex_file_object(iterable)
+    it = _balance_braces(it)
+    for token, line, quoted in it:
+        yield (token, line, quoted)
 
 
 def register_external_lexer(directives, lexer):

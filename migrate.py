@@ -98,7 +98,8 @@ def compare_scf_crossplane(config_file):
 
     kwargs = {"catch_errors": None, "ignore": [], "comments": False, "strict": False}
 
-    result_crossplane = parse_file(filename=config_file, **kwargs)
+    with open(config_file, "r") as f:
+        result_crossplane = parse_file(f, filename=config_file, **kwargs)
     output_crossplane = result_crossplane["config"][0]["parsed"]
     list_crossplane = [
         {

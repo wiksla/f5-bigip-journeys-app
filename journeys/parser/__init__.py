@@ -52,7 +52,8 @@ def parse(
     if tb_onerror:
         kwargs["onerror"] = callback
 
-    payload = parse_file(filename, **kwargs)
+    with open(filename, "r") as f:
+        payload = parse_file(f, filename, **kwargs)
     o = sys.stdout if out is None else io.open(out, "w", encoding="utf-8")
     try:
         _dump_payload(payload, o, indent=indent)
