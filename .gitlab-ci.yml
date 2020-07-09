@@ -16,3 +16,12 @@ format-and-lint:
     - make format
     - git diff --exit-code
     - make lint
+
+test:
+  stage: test
+  image: python:3.8
+  tags:
+    - docker-executor
+  script:
+    - pip install -r requirements.txt -r test-requirements.txt
+    - make test

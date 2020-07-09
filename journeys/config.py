@@ -29,7 +29,7 @@ class Config:
         """Return an instance of all top level fields in the config."""
         return FieldCollection(self.data["config"][0]["parsed"], self, TopLevelField)
 
-    def build(self, dirname: str):
+    def build(self, dirname: Optional[str] = None):
         """Build the conf file using the stored data.
 
         Filenames will be the same as in original input files.

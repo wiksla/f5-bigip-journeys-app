@@ -1,7 +1,7 @@
 import pytest
 
-from utils.image import parse_version_file
-from utils.image import short_edition
+from journeys.utils.image import parse_version_file
+from journeys.utils.image import short_edition
 
 VERSION_FILE_1 = """
 Product: BIG-IP

@@ -15,6 +15,7 @@ class FieldDependency:
         field_name (str): Name of the field which would be used from object that is being checked.
         type_matcher (Tuple[str, ...]): Pattern to use for searching dependency candidates.
     """
+
     field_name: str
     type_matcher: Tuple[str, ...]
 
@@ -49,6 +50,7 @@ class FieldDependency:
 @dataclass
 class FieldToNameDependency(FieldDependency):
     """ Subclass of FieldDependency that takes a dependency candidate name as a value"""
+
     def get_target_value(self, obj: Field):
         return obj.name
 
@@ -56,6 +58,7 @@ class FieldToNameDependency(FieldDependency):
 @dataclass
 class FieldToFieldDependency(FieldDependency):
     """ Subclass of FieldDependency that takes a dependency candidate field named target_field_name as a value"""
+
     target_field_name: str
 
     def get_target_value(self, obj):
@@ -70,6 +73,7 @@ class SubCollectionDependency:
         field_name (str): name of the field that contains a subcollection of items
         dependency (FieldDependency): dependency object to check the subcollection items against
     """
+
     field_name: str
     dependency: FieldDependency
 

@@ -1,7 +1,7 @@
 
 export ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-.PHONY = format lint test asd
+.PHONY = format lint test
 sources = journeys test migrate.py
 
 format:
@@ -12,5 +12,7 @@ lint:
 	flake8 $(sources)
 	pylint --errors-only $(sources)
 
-test:
-	pytest
+test: FORCE
+	PYTHONPATH=$$PYTHONPATH:${ROOT_DIR} pytest
+
+FORCE:
