@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Iterable
 from typing import Optional
@@ -7,6 +8,9 @@ from typing import Union
 
 from journeys.parser import build_files
 from journeys.parser import parse_file
+from journeys.parser.parser import parse_dir
+
+log = logging.getLogger(__name__)
 
 
 class Config:
@@ -21,19 +25,58 @@ class Config:
         config = parse_file(string, out_filename)
         return cls(config)
 
+    @classmethod
+    def from_dir(cls, dirname: str) -> Config:
+        config = parse_dir(dirname)
+        return cls(config)
+
     def __init__(self, config: dict):
         self.data = config
+        self.combined_fields = self._combine_fields()
+
+    def _combine_fields(self) -> list:
+        out = []
+        for conf in self.data["config"]:
+            for field in conf["parsed"]:
+                field["file"] = conf["file"]
+                out.append(field)
+        return out
+
+    def _rebuild_data(self):
+        """Read all items from combined_fields
+        and fill in their respective field lists in original data.
+        """
+        file_index = {}
+        for idx, conf in enumerate(self.data["config"]):
+            file_index[conf["file"]] = idx
+            conf["parsed"] = []
+
+        for item in self.combined_fields:
+            try:
+                index = file_index[item["file"]]
+                self.data["config"][index]["parsed"].append(item)
+            except KeyError as e:
+                id_ = " ".join((item["directive"], *item["args"]))
+                if "file" in str(e):
+                    log.warn(
+                        f"Build: Key 'file' not found for root field {id_}. Skipping."
+                    )
+                else:
+                    log.warn(
+                        f"Build: File {item['file']} for {id_} does not exist in original config. Skipping."
+                    )
 
     @property
     def fields(self) -> FieldCollection:
         """Return an instance of all top level fields in the config."""
-        return FieldCollection(self.data["config"][0]["parsed"], self, TopLevelField)
+        return FieldCollection(self.combined_fields, self, TopLevelField)
 
     def build(self, dirname: Optional[str] = None):
         """Build the conf file using the stored data.
 
         Filenames will be the same as in original input files.
         """
+        self._rebuild_data()
         build_files(self.data, dirname=dirname)
 
 
@@ -101,10 +144,6 @@ class Field:
         else:
             self.data["args"] = list(value)
 
-    def delete(self):
-        """Remove self from parent collection."""
-        self.parent.remove(self)
-
     @property
     def id(self) -> str:
         """Return a block identifier - all arguments without any nested blocks.
@@ -112,6 +151,10 @@ class Field:
         Note that the id may not necessarily be unique outside of depth=0.
         """
         return " ".join(self.args)
+
+    def delete(self):
+        """Remove self from parent collection."""
+        self.parent.remove(self)
 
     def create_block(self):
         """If not existent yet, create an empty block that can accept new fields.
@@ -125,6 +168,32 @@ class Field:
     def delete_block(self):
         """Remove a block with any contents from the field, leaving only args."""
         self.data.pop("block", "")
+
+    def insert_before(self, args: Iterable[str] = None, block: bool = False):
+        """Convenience function to insert a field before
+        the current one in the parent collection.
+
+        Uses the same 'args' and 'block' arguments as FieldCollection.add.
+        """
+        index = self.parent.index(self)
+        kwargs = {"args": args, "block": block, "index": index}
+        if "file" in self.data:
+            kwargs["file"] = self.data["file"]
+
+        return self.parent.add(**kwargs)
+
+    def insert_after(self, args: Iterable[str] = None, block: bool = False):
+        """Convenience function to insert a field after
+        the current one in the parent collection.
+
+        Uses the same 'args' and 'block' arguments as FieldCollection.add.
+        """
+        index = self.parent.index(self)
+        kwargs = {"args": args, "block": block, "index": index + 1}
+        if "file" in self.data:
+            kwargs["file"] = self.data["file"]
+
+        return self.parent.add(**kwargs)
 
     def __eq__(self, other: Field):
         return other.data is self.data
@@ -155,6 +224,15 @@ class TopLevelField(Field):
         """Get a key - all arguments as a top level field."""
         # For top level items, the whole directive + args consitute a key
         return self.id
+
+    @property
+    def file(self) -> str:
+        """Return the file to which this field is assigned to."""
+        return self.data["file"]
+
+    @file.setter
+    def file(self, value):
+        self.data["file"] = value
 
 
 class FieldCollection:
@@ -224,12 +302,21 @@ class FieldCollection:
             if not item["directive"].startswith("#"):
                 yield self.field_cls(item, self)
 
-    def add(self, args: Iterable[str] = None, block: bool = False) -> Field:
+    def add(
+        self,
+        args: Iterable[str] = None,
+        block: bool = False,
+        index: Optional[int] = None,
+        file: Optional[str] = None,
+    ) -> Field:
         """Add a new field to this collection.
 
           args - the list of arguments defining the field. If none, the field
         will be treated as an unnamed one.
           block - whether to initialize an empty { } block inside the field
+          index - index in which to insert the new field. End by default
+          file - assign a file value to the newly created field. Necessary if we're creating
+        top level fields
 
         Examples:
         c.fields.add(('ltm', 'pool', '/Common/pool'), True)
@@ -243,13 +330,30 @@ class FieldCollection:
         }
         if block:
             d["block"] = {}
-        field = Field(d, self)
-        self.data.append(d)
+
+        if issubclass(self.field_cls, TopLevelField) and file is None:
+            raise ValueError(
+                "File argument needs to be defined when adding a top level field."
+            )
+
+        if file is not None:
+            d["file"] = file
+
+        field = self.field_cls(d, self)
+
+        if index is None:
+            self.data.append(d)
+        else:
+            self.data.insert(index, d)
         return field
 
     def remove(self, field: Field):
         """Remove the given field from the collection."""
         self.data.remove(field.data)
+
+    def index(self, field: Field):
+        """Get the index of the element 'field' in the current collection."""
+        return self.data.index(field.data)
 
     def __getitem__(self, key: Union[str, int, tuple]) -> Field:
         """Return the first field matching the key.

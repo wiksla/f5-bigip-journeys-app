@@ -96,7 +96,9 @@ def test_fields_contains(conf):
 
 def test_add_field(conf):
     assert "fake field /Common/fake" not in conf.fields
-    conf.fields.add(("fake", "field", "/Common/fake"), block=True)
+    conf.fields.add(
+        ("fake", "field", "/Common/fake"), block=True, file="sample_bigip.conf"
+    )
     assert "fake field /Common/fake" in conf.fields
     assert conf.fields[("fake", "field", "/Common/fake")].fields is not None
 

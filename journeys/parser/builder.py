@@ -112,6 +112,8 @@ def build(payload, indent=4, tabs=False, header=False):
                         built = _build_block(built, stmt["block"], depth + 1, line)
                         built += "\n" + margin
                     built += "}"
+                if stmt.get("comment") is not None:
+                    built += " #" + stmt["comment"]
 
             output += ("\n" if output else "") + margin + built
             last_line = line

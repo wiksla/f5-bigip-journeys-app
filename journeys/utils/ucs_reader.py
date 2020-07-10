@@ -2,6 +2,8 @@ import configparser
 import os
 from functools import partial
 
+from journeys.config import Config
+
 
 class UcsReader:
     """ Component used to get data from extracted ucs """
@@ -9,6 +11,9 @@ class UcsReader:
     def __init__(self, extracted_ucs_dir):
         self.ucs_path = partial(os.path.join, extracted_ucs_dir)
         self.ucs_platform_kwargs = self._get_ucs_platform_kwargs()
+
+    def get_config(self):
+        return Config.from_dir(self.ucs_path("config"))
 
     def get_ucs_platform(self):
         return self.ucs_platform_kwargs["platform"]

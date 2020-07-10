@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from pathlib import Path
 
 from .analyzer import enter_block_ctx
 from .const import NONAME
@@ -159,5 +160,26 @@ def parse(
         _handle_error(parsing, e)
 
     payload["config"].append(parsing)
+
+    return payload
+
+
+def parse_dir(dirname, search_glob="bigip*.conf", **kwargs):
+    # TODO: replace glob with an exact file list
+    # (customers love to keep backup confs with weird names)
+
+    payload = {
+        "status": "ok",
+        "errors": [],
+        "config": [],
+    }
+
+    for path in Path(dirname).glob(search_glob):
+        with open(path, "r") as f:
+            conf = parse(f, str(path.relative_to(dirname)), **kwargs)
+        payload["config"].extend(conf["config"])
+        if conf["status"] == "failed":
+            payload["status"] = "failed"
+            payload["errors"].extend(conf["errors"])
 
     return payload
