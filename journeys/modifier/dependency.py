@@ -1,6 +1,8 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Dict
 from typing import List
+from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -19,7 +21,7 @@ class FieldDependencyMixIn:
 
     type_matcher: Union[Tuple[str, ...], List[Tuple[str, ...]]]
 
-    def find(self, objects: FieldCollection, obj: Field):
+    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
         """Finds obj dependency among objects.
 
         Dependency search is done by:
@@ -52,26 +54,26 @@ class FieldDependencyMixIn:
 class FromFieldValueDependencyMixIn:
     field_name: str
 
-    def get_value(self, obj):
+    def get_value(self, obj) -> str:
         field = obj.fields[self.field_name]
         return field.value
 
 
 @dataclass
 class FromFieldKeyDependencyMixIn:
-    def get_value(self, obj):
+    def get_value(self, obj) -> str:
         return obj.key
 
 
 @dataclass
 class FromNameDependencyMixIn:
-    def get_value(self, obj):
+    def get_value(self, obj) -> str:
         return obj.name
 
 
 @dataclass
 class ToNameDependencyMixIn:
-    def get_target_value(self, obj: Field):
+    def get_target_value(self, obj: Field) -> str:
         return obj.name
 
 
@@ -79,7 +81,7 @@ class ToNameDependencyMixIn:
 class ToFieldValueDependencyMixIn:
     target_field_name: str
 
-    def get_target_value(self, obj):
+    def get_target_value(self, obj) -> str:
         return obj.fields[self.target_field_name].value
 
 
@@ -123,7 +125,7 @@ class SubCollectionDependency:
     field_name: str
     dependency: FieldDependencyMixIn
 
-    def find(self, objects: FieldCollection, obj: Field):
+    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
         members = obj.fields[self.field_name].fields
         ret = []
 
@@ -194,7 +196,13 @@ DEPENDENCIES_MATRIX = {
 }
 
 
-def build_dependency_map(config: Config, dependencies_matrix=None):
+@dataclass(frozen=True)
+class DependencyMap:
+    forward: Dict[str, Set[str]]
+    reverse: Dict[str, Set[str]]
+
+
+def build_dependency_map(config: Config, dependencies_matrix=None) -> DependencyMap:
     """
     Builds a full dependency map (id -> set(id)) for given config object
     """
@@ -202,13 +210,16 @@ def build_dependency_map(config: Config, dependencies_matrix=None):
         dependencies_matrix = DEPENDENCIES_MATRIX
 
     objects = config.fields
-    result = defaultdict(set)
+    dependency_map = defaultdict(set)
+    reverse_dependency_map = defaultdict(set)
 
     for type_matcher, dependencies in dependencies_matrix.items():
         for obj in objects.get_all(type_matcher):
             for dependency in dependencies:
-                sub_result = dependency.find(objects, obj)
-                if sub_result:
-                    result[obj.id].update(sub_result)
+                result = dependency.find(objects, obj)
+                if result:
+                    dependency_map[obj.id].update(result)
+                    for dependency_id in result:
+                        reverse_dependency_map[dependency_id].add(obj.id)
 
-    return result
+    return DependencyMap(forward=dependency_map, reverse=reverse_dependency_map)

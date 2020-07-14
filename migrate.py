@@ -62,7 +62,7 @@ def build_config(config_filename):
 def build_dependency_tree(config_filename):
 
     config = Config.from_conf(filename=config_filename)
-    build_dependency_map(config)
+    _ = build_dependency_map(config)
 
 
 if __name__ == "__main__":

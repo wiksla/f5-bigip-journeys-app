@@ -208,8 +208,11 @@ ltm pool /Common/test_pool {{
     monitor_id = "ltm monitor tcp /Common/tcp_custom"
     node_id = "ltm node /Common/192.168.0.100"
 
-    assert len(result) == 1
-    assert result[pool_id] == {monitor_id, node_id}
+    assert len(result.forward) == 1
+    assert len(result.reverse) == 2
+    assert result.forward[pool_id] == {monitor_id, node_id}
+    assert result.reverse[monitor_id] == {pool_id}
+    assert result.reverse[node_id] == {pool_id}
 
 
 def test_build_dependencies_map_net_module():
@@ -277,40 +280,72 @@ net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
 
     result = build_dependency_map(config=config)
 
-    assert result["net vlan-group /Common/virtWire"] == {
+    assert result.forward["net vlan-group /Common/virtWire"] == {
         "net vlan /Common/virtWire_vlan_4096_1_353",
         "net vlan /Common/virtWire_vlan_4096_2_354",
     }
 
-    assert result["net vlan /Common/virtWire_vlan_4096_1_353"] == {
+    assert result.forward["net vlan /Common/virtWire_vlan_4096_1_353"] == {
         "net fdb vlan /Common/virtWire_vlan_4096_1_353",
         "net trunk trunk_external",
     }
 
-    assert result["net vlan /Common/virtWire_vlan_4096_2_354"] == {
+    assert result.forward["net vlan /Common/virtWire_vlan_4096_2_354"] == {
         "net fdb vlan /Common/virtWire_vlan_4096_2_354",
         "net trunk trunk_internal",
     }
 
-    assert result["net trunk trunk_external"] == {
+    assert result.forward["net trunk trunk_external"] == {
         "net interface 2.1",
         "net interface 2.2",
     }
 
-    assert result["net trunk trunk_internal"] == {
+    assert result.forward["net trunk trunk_internal"] == {
         "net interface 1.1",
         "net interface 1.2",
     }
 
-    assert result["net route-domain /Common/0"] == {
+    assert result.forward["net route-domain /Common/0"] == {
         "net vlan-group /Common/virtWire",
         "net vlan /Common/virtWire_vlan_4096_1_353",
         "net vlan /Common/virtWire_vlan_4096_2_354",
     }
 
-    assert result["net stp /Common/cist"] == {
+    assert result.forward["net stp /Common/cist"] == {
         "net vlan /Common/virtWire_vlan_4096_1_353",
         "net vlan /Common/virtWire_vlan_4096_2_354",
         "net trunk trunk_external",
         "net trunk trunk_internal",
+    }
+
+    assert result.reverse["net trunk trunk_internal"] == {
+        "net stp /Common/cist",
+        "net vlan /Common/virtWire_vlan_4096_2_354",
+    }
+    assert result.reverse["net trunk trunk_external"] == {
+        "net vlan /Common/virtWire_vlan_4096_1_353",
+        "net stp /Common/cist",
+    }
+    assert result.reverse["net vlan /Common/virtWire_vlan_4096_2_354"] == {
+        "net vlan-group /Common/virtWire",
+        "net route-domain /Common/0",
+        "net stp /Common/cist",
+    }
+    assert result.reverse["net vlan /Common/virtWire_vlan_4096_1_353"] == {
+        "net vlan-group /Common/virtWire",
+        "net route-domain /Common/0",
+        "net stp /Common/cist",
+    }
+    assert result.reverse["net vlan-group /Common/virtWire"] == {
+        "net route-domain /Common/0"
+    }
+    assert result.reverse["net interface 1.2"] == {"net trunk trunk_internal"}
+    assert result.reverse["net interface 1.1"] == {"net trunk trunk_internal"}
+    assert result.reverse["net interface 2.2"] == {"net trunk trunk_external"}
+    assert result.reverse["net interface 2.1"] == {"net trunk trunk_external"}
+    assert result.reverse["net fdb vlan /Common/virtWire_vlan_4096_2_354"] == {
+        "net vlan /Common/virtWire_vlan_4096_2_354"
+    }
+    assert result.reverse["net fdb vlan /Common/virtWire_vlan_4096_1_353"] == {
+        "net vlan /Common/virtWire_vlan_4096_1_353"
     }
