@@ -210,3 +210,107 @@ ltm pool /Common/test_pool {{
 
     assert len(result) == 1
     assert result[pool_id] == {monitor_id, node_id}
+
+
+def test_build_dependencies_map_net_module():
+    config_string = """
+net stp /Common/cist {
+    trunks {
+        trunk_external {}
+        trunk_internal {}
+    }
+    vlans {
+        /Common/virtWire_vlan_4096_1_353
+        /Common/virtWire_vlan_4096_2_354
+    }
+}
+
+net interface 1.1 {}
+net interface 1.2 {}
+net interface 2.1 {}
+net interface 2.2 {}
+
+net route-domain /Common/0 {
+    vlans {
+        /Common/virtWire_vlan_4096_1_353
+        /Common/virtWire_vlan_4096_2_354
+        /Common/virtWire
+    }
+}
+
+net trunk trunk_external {
+    interfaces {
+        2.1
+        2.2
+    }
+}
+net trunk trunk_internal {
+    interfaces {
+        1.1
+        1.2
+    }
+}
+
+net vlan /Common/virtWire_vlan_4096_1_353 {
+    interfaces {
+        trunk_external {}
+    }
+}
+net vlan /Common/virtWire_vlan_4096_2_354 {
+    interfaces {
+        trunk_internal {}
+    }
+}
+
+net vlan-group /Common/virtWire {
+    members {
+        /Common/virtWire_vlan_4096_1_353
+        /Common/virtWire_vlan_4096_2_354
+    }
+}
+
+net fdb vlan /Common/virtWire_vlan_4096_1_353 { }
+net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
+    """
+
+    config = Config.from_string(string=config_string)
+
+    result = build_dependency_map(config=config)
+
+    assert result["net vlan-group /Common/virtWire"] == {
+        "net vlan /Common/virtWire_vlan_4096_1_353",
+        "net vlan /Common/virtWire_vlan_4096_2_354",
+    }
+
+    assert result["net vlan /Common/virtWire_vlan_4096_1_353"] == {
+        "net fdb vlan /Common/virtWire_vlan_4096_1_353",
+        "net trunk trunk_external",
+    }
+
+    assert result["net vlan /Common/virtWire_vlan_4096_2_354"] == {
+        "net fdb vlan /Common/virtWire_vlan_4096_2_354",
+        "net trunk trunk_internal",
+    }
+
+    assert result["net trunk trunk_external"] == {
+        "net interface 2.1",
+        "net interface 2.2",
+    }
+
+    assert result["net trunk trunk_internal"] == {
+        "net interface 1.1",
+        "net interface 1.2",
+    }
+
+    assert result["net route-domain /Common/0"] == {
+        "net vlan-group /Common/virtWire",
+        "net vlan /Common/virtWire_vlan_4096_1_353",
+        "net vlan /Common/virtWire_vlan_4096_2_354",
+    }
+
+    assert result["net stp /Common/cist"] == {
+        "net vlan /Common/virtWire_vlan_4096_1_353",
+        "net vlan /Common/virtWire_vlan_4096_2_354",
+        "net trunk trunk_external",
+        "net trunk trunk_internal",
+    }

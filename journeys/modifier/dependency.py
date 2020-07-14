@@ -1,6 +1,8 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import List
 from typing import Tuple
+from typing import Union
 
 from journeys.config import Config
 from journeys.config import Field
@@ -15,7 +17,7 @@ class FieldDependencyMixIn:
         type_matcher (Tuple[str, ...]): Pattern to use for searching dependency candidates.
     """
 
-    type_matcher: Tuple[str, ...]
+    type_matcher: Union[Tuple[str, ...], List[Tuple[str, ...]]]
 
     def find(self, objects: FieldCollection, obj: Field):
         """Finds obj dependency among objects.
@@ -32,10 +34,16 @@ class FieldDependencyMixIn:
             return []
 
         ret = []
-        for candidate in objects.get_all(self.type_matcher):
 
-            if self.get_target_value(obj=candidate) == value:
-                ret.append(candidate.id)
+        if isinstance(self.type_matcher, list):
+            type_matcher_list = self.type_matcher
+        else:
+            type_matcher_list = [self.type_matcher]
+
+        for type_matcher in type_matcher_list:
+            for candidate in objects.get_all(type_matcher):
+                if self.get_target_value(obj=candidate) == value:
+                    ret.append(candidate.id)
 
         return ret
 
@@ -150,7 +158,39 @@ DEPENDENCIES_MATRIX = {
             dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
         )
     ],
-    ("net", "vlan"): [NameToNameDependency(type_matcher=("net", "fdb", "vlan"))],
+    ("net", "vlan"): [
+        NameToNameDependency(type_matcher=("net", "fdb", "vlan")),
+        SubCollectionDependency(
+            field_name="interfaces",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+        ),
+    ],
+    ("net", "trunk"): [
+        SubCollectionDependency(
+            field_name="interfaces",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "interface")),
+        )
+    ],
+    ("net", "route-domain"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        ),
+    ],
+    ("net", "stp"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        ),
+        SubCollectionDependency(
+            field_name="trunks",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+        ),
+    ],
 }
 
 
