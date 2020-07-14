@@ -6,7 +6,6 @@ from traceback import format_exception
 
 from .builder import build as build_string
 from .builder import build_files
-from .compat import input
 from .lexer import lex as lex_file
 from .parser import parse as parse_file
 
@@ -96,7 +95,7 @@ def build(
                 print("not overwritten")
                 return
 
-    # if stdout is set then just print each file after another like nginx -T
+    # if stdout is set then just print each file after another
     if stdout:
         for config in payload["config"]:
             path = config["file"]
@@ -108,7 +107,7 @@ def build(
             print("# " + path + "\n" + output)
         return
 
-    # build the nginx configuration file from the json payload
+    # build the configuration file from the json payload
     build_files(payload, dirname=dirname, indent=indent, tabs=tabs, header=header)
 
     # if verbose print the paths of the config files that were created

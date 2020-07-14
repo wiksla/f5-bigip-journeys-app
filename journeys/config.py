@@ -10,6 +10,7 @@ from typing import Union
 
 from journeys.parser import build_files
 from journeys.parser import parse_file
+from journeys.parser.const import NONAME
 from journeys.parser.parser import parse_dir
 
 log = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class Config:
                 index = file_index[item["file"]]
                 self.data["config"][index]["parsed"].append(item)
             except KeyError as e:
-                id_ = " ".join((item["directive"], *item["args"]))
+                id_ = " ".join(item["args"])
                 if "file" in str(e):
                     log.warn(
                         f"Build: Key 'file' not found for root field {id_}. Skipping."
@@ -95,36 +96,31 @@ class Field:
     @property
     def key(self) -> str:
         """Get the key - the first field argument."""
-        if self.data["directive"] == "_unnamed":
+        try:
+            return self.data["args"][0]
+        except IndexError:
             return None
-        else:
-            return self.data["directive"]
 
     @key.setter
     def key(self, key: Union[str, None]):
         """Set the key - the first field argument."""
         old_args = self.args
         if key is not None:
-            self.data["directive"] = key
+            self.data["args"][0] = key
         else:
-            self.data["directive"] = "_unnamed"
+            self.data["args"] = []
         self.parent.update(self, old_args)
 
     @property
     def args(self) -> tuple:
         """Return a tuple of all field arguments - key + values."""
-        return (self.data["directive"], *self.data["args"])
+        return tuple(self.data["args"])
 
     @args.setter
     def args(self, args: Iterable[str]):
         """Set all arguments - key + values at once."""
         old_args = self.args
-        if not args:
-            self.data["directive"] = "_unnamed"
-            self.data["args"] = []
-        else:
-            self.data["directive"] = args[0]
-            self.data["args"] = list(args[1:])
+        self.data["args"] = list(args)
         self.parent.update(self, old_args)
 
     @property
@@ -138,7 +134,7 @@ class Field:
     def value(self) -> str:
         """Return any arguments following the field key."""
         # are there any non-top fields that have both? or more than one arg?
-        return " ".join(self.data["args"])
+        return " ".join(self.data["args"][1:])
 
     @value.setter
     def value(self, value: Union[str, Iterable[str], None]):
@@ -148,11 +144,11 @@ class Field:
         """
         old_args = self.args
         if isinstance(value, str):
-            self.data["args"] = [value]
+            self.data["args"][1:] = [value]
         elif value is None:
-            self.data["args"] = []
+            self.data["args"][1:] = []
         else:
-            self.data["args"] = list(value)
+            self.data["args"][1:] = list(value)
         self.parent.update(self, old_args)
 
     @property
@@ -215,20 +211,23 @@ class Field:
 
 
 class TopLevelField(Field):
-    # TODO: Move NONAME recognition here OR add blank 'type' and 'name' to comment blocks in parser.py
     @property
     def module(self) -> str:
-        return self.data["directive"]
+        return self.data["args"][0]
 
     @property
     def type(self) -> Optional[str]:
-        # Comments don't have a field 'type'
-        return self.data["type"] if "type" in self.data else None
+        if self.args in NONAME:
+            return self.args[1:]
+        else:
+            return self.args[1:-1]
 
     @property
     def name(self) -> Optional[str]:
-        # Comments don't have a field 'name'
-        return self.data["name"] if "name" in self.data else None
+        if self.args in NONAME:
+            return None
+        else:
+            return self.args[-1]
 
     @property
     def key(self) -> str:
@@ -310,7 +309,7 @@ class FieldCollection:
     def all(self) -> Iterable[Field]:
         """Return a generator of all non-comment elements."""
         for item in self.data:
-            if not item["directive"].startswith("#"):
+            if item["args"] and not item["args"][0].startswith("#"):
                 yield self.field_cls(item, self)
 
     def add(
@@ -335,10 +334,7 @@ class FieldCollection:
         """
         # TODO: type and name for top level fields?
         args = args or []
-        d = {
-            "directive": args[0] if args else "_unnamed",
-            "args": list(args[1:]) if len(args) > 1 else [],
-        }
+        d = {"args": list(args)}
         if block:
             d["block"] = {}
 

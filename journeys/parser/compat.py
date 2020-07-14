@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 import functools
-import sys
-
-PY3 = sys.version_info[0] == 3
-
-input = input
-basestring = str
 
 
 def fix_pep_479(generator):

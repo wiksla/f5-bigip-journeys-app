@@ -5,9 +5,7 @@ from collections import deque
 from .compat import fix_pep_479
 from .const import BLOBTYPES
 from .const import MODULES
-from .errors import NgxParserSyntaxError
-
-EXTERNAL_LEXERS = {}
+from .errors import ParserSyntaxError
 
 
 class _LookaheadIterator:
@@ -57,23 +55,18 @@ def _iterlinecount(iterable):
 @fix_pep_479
 def _lex_file_object(iterable):
     """
-    Generates token tuples from an nginx config file object
+    Generates token tuples from a config file object
 
     Yields 3-tuples like (token, lineno, quoted)
     """
     token = ""  # the token buffer
     token_line = 0  # the line the token starts on
-    next_token_is_directive = True
     full_field = []
     blob = False
 
     # prepare substrings for blobs / modules matching
     # append a space to each to avoid capturing word parts
-    blobtypes = []
-    for module, fields in BLOBTYPES.items():
-        for field in fields:
-            blobtypes.append(" ".join([module, *field]) + " ")
-    blobtypes = tuple(blobtypes)
+    blobtypes = tuple(" ".join(args) + " " for args in BLOBTYPES)
     modules = tuple(f"{module} " for module in MODULES)
 
     it = itertools.chain.from_iterable(iterable)
@@ -101,7 +94,6 @@ def _lex_file_object(iterable):
                 yield "}", line, False
                 yield "\n", line, False
                 token = ""
-                next_token_is_directive = True
             continue
 
         # handle whitespace
@@ -110,12 +102,6 @@ def _lex_file_object(iterable):
             if token:
                 yield (token, token_line, False)
                 full_field.append(token)
-                if next_token_is_directive and token in EXTERNAL_LEXERS:
-                    for custom_lexer_token in EXTERNAL_LEXERS[token](it_lines, token):
-                        yield custom_lexer_token
-                        next_token_is_directive = True
-                else:
-                    next_token_is_directive = False
                 token = ""
 
             # disregard until char isn't a whitespace character, keep newlines
@@ -140,10 +126,6 @@ def _lex_file_object(iterable):
 
         # if a quote is found, add the whole string to the token buffer
         if char in ('"', "'"):
-            # if a quote is inside a token, treat it like any other char
-            # if token:
-            #     token += char
-            #     continue
 
             quote = char
             char, line = next(it_lines)
@@ -152,14 +134,6 @@ def _lex_file_object(iterable):
                 char, line = next(it_lines)
 
             yield (token, token_line, True)  # True because this is in quotes
-
-            # handle quoted external directives
-            if next_token_is_directive and token in EXTERNAL_LEXERS:
-                for custom_lexer_token in EXTERNAL_LEXERS[token](it_lines, token):
-                    yield custom_lexer_token
-                    next_token_is_directive = True
-            else:
-                next_token_is_directive = False
 
             token = ""
             continue
@@ -176,8 +150,6 @@ def _lex_file_object(iterable):
 
             if char == "{" and " ".join(full_field).startswith(blobtypes):
                 blob = True
-            else:
-                next_token_is_directive = True
             full_field = []
             continue
 
@@ -198,24 +170,19 @@ def _balance_braces(tokens, filename=None):
         # raise error if we ever have more right braces than left
         if depth < 0:
             reason = 'unexpected "}"'
-            raise NgxParserSyntaxError(reason, filename, line)
+            raise ParserSyntaxError(reason, filename, line)
         else:
             yield (token, line, quoted)
 
     # raise error if we have less right braces than left at EOF
     if depth > 0:
         reason = 'unexpected end of file, expecting "}"'
-        raise NgxParserSyntaxError(reason, filename, line)
+        raise ParserSyntaxError(reason, filename, line)
 
 
 def lex(iterable):
-    """Generates tokens from an nginx config file"""
+    """Generates tokens from a config file"""
     it = _lex_file_object(iterable)
     it = _balance_braces(it)
     for token, line, quoted in it:
         yield (token, line, quoted)
-
-
-def register_external_lexer(directives, lexer):
-    for directive in directives:
-        EXTERNAL_LEXERS[directive] = lexer

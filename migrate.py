@@ -1,5 +1,3 @@
-import sys
-
 import click
 
 from journeys.config import Config
@@ -7,8 +5,6 @@ from journeys.modifier.dependency import build_dependency_map
 from journeys.parser import build
 from journeys.parser import lex
 from journeys.parser import parse
-from journeys.parser import parse_file
-from journeys.scf_tool.SCFStateMachine import SCFStateMachine
 from journeys.utils.image import get_image_from_ucs_reader
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
@@ -67,85 +63,6 @@ def build_dependency_tree(config_filename):
 
     config = Config.from_conf(filename=config_filename)
     build_dependency_map(config)
-
-
-@cli.command()
-@click.argument("config_file")
-def parse_config_scf(config_file):
-    """ Parse config file and print its contents"""
-
-    with open(config_file, "r") as f:
-        buffer = f.read()
-
-    machine = SCFStateMachine(source=buffer)
-    output = machine.run()
-
-    for o in output:
-        print(str(o))
-        print("==============")
-
-
-# TODO: Remove once not needed
-@cli.command()
-@click.argument("config_file")
-def compare_scf_crossplane(config_file):
-    """ Parse config file with SCF and Crossplane and compare results"""
-
-    with open(config_file, "r") as f:
-        buffer = f.read()
-
-    machine = SCFStateMachine(source=buffer)
-    output_scf = machine.run()
-    list_scf = [
-        {
-            "index": idx,
-            "module": obj.objmodule,
-            "type": " ".join(obj.objtype),
-            "name": obj.objname.split('"')[1]
-            if obj.objname and obj.objname.startswith('"')
-            else obj.objname,
-        }
-        for idx, obj in enumerate(output_scf)
-    ]
-
-    kwargs = {"catch_errors": None, "ignore": [], "comments": False, "strict": False}
-
-    with open(config_file, "r") as f:
-        result_crossplane = parse_file(f, filename=config_file, **kwargs)
-    output_crossplane = result_crossplane["config"][0]["parsed"]
-    list_crossplane = [
-        {
-            "index": idx,
-            "module": obj["directive"],
-            "type": obj["type"],
-            "name": obj["name"],
-        }
-        for idx, obj in enumerate(output_crossplane)
-    ]
-
-    print(f"Number of objects: scf={len(list_scf)}, parser={len(list_crossplane)}")
-
-    idx = -1
-    failure = False
-    while True:
-        idx += 1
-        if idx + 1 > len(list_scf) or idx + 1 > len(list_crossplane):
-            break
-        scf = list_scf[idx]
-        crossplane = list_crossplane[idx]
-
-        if scf == crossplane:
-            continue
-
-        failure = True
-        print(
-            f"Found difference in object no {idx}:\n"
-            f"\tscf={scf}\n"
-            f"\tparser={crossplane}"
-        )
-
-    if failure:
-        sys.exit(1)
 
 
 if __name__ == "__main__":

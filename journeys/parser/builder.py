@@ -6,7 +6,6 @@ import re
 from .const import BLOBTYPES
 
 DELIMITERS = ("{", "}", ";")
-EXTERNAL_BUILDERS = {}
 ESCAPE_SEQUENCES_RE = re.compile(r"(\\x[0-9a-f]{2}|\\[0-7]{1,3})")
 
 
@@ -70,8 +69,8 @@ def build(payload, indent=4, tabs=False, header=False):
         head += "\n"
 
     def _build_blob(output, block):
-        # blobs will always have len = 1 and be stored in directive
-        blob = block[0]["directive"]
+        # blobs will always have len = 1 and be stored in first arg index
+        blob = block[0]["args"][0]
         output += blob
         return output
 
@@ -79,7 +78,10 @@ def build(payload, indent=4, tabs=False, header=False):
         margin = padding * depth
 
         for stmt in block:
-            directive = _enquote(stmt["directive"])
+            try:
+                directive = _enquote(stmt["args"][0])
+            except IndexError:
+                directive = ""
             line = stmt.get("line", 0)
 
             if directive == "#" and line == last_line:
@@ -87,26 +89,18 @@ def build(payload, indent=4, tabs=False, header=False):
                 continue
             elif directive == "#":
                 built = "#" + stmt["comment"]
-            elif directive in EXTERNAL_BUILDERS:
-                external_builder = EXTERNAL_BUILDERS[directive]
-                built = external_builder(stmt, padding, indent, tabs)
             else:
                 args = [_enquote(arg) for arg in stmt["args"]]
 
-                if directive == "_unnamed":
-                    built = ""
-                elif args:
-                    built = directive + " " + " ".join(args)
-                else:
-                    built = directive
+                built = " ".join(args)
 
                 if stmt.get("block") is not None:
-                    built += " {"
+                    if built:
+                        built += " "
+                    built += "{"
                     if (
-                        depth == 0
-                        and directive in BLOBTYPES
-                        and stmt["type"].split(" ") in BLOBTYPES[directive]
-                    ):
+                        depth == 0 and tuple(stmt["args"][:-1]) in BLOBTYPES
+                    ):  # ignore last arg - all blob types have a name
                         built = _build_blob(built, stmt["block"])
                     else:
                         built = _build_block(built, stmt["block"], depth + 1, line)
@@ -127,7 +121,7 @@ def build(payload, indent=4, tabs=False, header=False):
 
 def build_files(payload, dirname=None, indent=4, tabs=False, header=False):
     """
-    Uses a full nginx config payload (output of parser.parse) to build
+    Uses a full config payload (output of parser.parse) to build
     config files, then writes those files to disk.
     """
     if dirname is None:
@@ -143,14 +137,9 @@ def build_files(payload, dirname=None, indent=4, tabs=False, header=False):
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
 
-        # build then create the nginx config file using the json payload
+        # build then create the config file using the json payload
         parsed = config["parsed"]
         output = build(parsed, indent=indent, tabs=tabs, header=header)
         output = output.rstrip() + "\n"
         with codecs.open(path, "w", encoding="utf-8") as fp:
             fp.write(output)
-
-
-def register_external_builder(builder, directives):
-    for directive in directives:
-        EXTERNAL_BUILDERS[directive] = builder
