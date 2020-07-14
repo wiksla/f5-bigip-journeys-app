@@ -1,13 +1,14 @@
 import pytest
 
 from journeys.modifier.dependency import Config
-from journeys.modifier.dependency import FieldToFieldDependency
-from journeys.modifier.dependency import FieldToNameDependency
+from journeys.modifier.dependency import FieldKeyToNameDependency
+from journeys.modifier.dependency import FieldValueToFieldValueDependency
+from journeys.modifier.dependency import FieldValueToNameDependency
 from journeys.modifier.dependency import SubCollectionDependency
 from journeys.modifier.dependency import build_dependency_map
 
 
-def test_field_to_name_dependency():
+def test_field_value_to_name_dependency():
     config_string = """
 ltm monitor tcp /Common/tcp_custom {
 }
@@ -25,7 +26,7 @@ ltm pool /Common/test_pool {
 
     monitor_id = "ltm monitor tcp /Common/tcp_custom"
 
-    result = FieldToNameDependency(
+    result = FieldValueToNameDependency(
         field_name="monitor", type_matcher=("ltm", "monitor")
     ).find(objects=objects, obj=pool)
 
@@ -33,13 +34,13 @@ ltm pool /Common/test_pool {
     assert result[0] == monitor_id
 
 
-def test_field_to_field_dependency():
+def test_field_value_to_field_value_dependency():
     config_string = """
 ltm node /Common/192.168.0.100 {
     address 192.168.0.100
 }
 
-# that is a fake object (pool member does not exists as a top level object
+# that is a fake object (pool member does not exists as a top level object)
 ltm pool_member /Common/192.168.0.100:1025 {
     address 192.168.0.100
 }
@@ -53,7 +54,7 @@ ltm pool_member /Common/192.168.0.100:1025 {
 
     node_id = "ltm node /Common/192.168.0.100"
 
-    result = FieldToFieldDependency(
+    result = FieldValueToFieldValueDependency(
         field_name="address", type_matcher=("ltm", "node"), target_field_name="address",
     ).find(objects=objects, obj=pool_member)
 
@@ -86,13 +87,42 @@ ltm pool /Common/test_pool {
 
     result = SubCollectionDependency(
         field_name="members",
-        dependency=FieldToNameDependency(
+        dependency=FieldValueToNameDependency(
             field_name="monitor", type_matcher=("ltm", "monitor")
         ),
     ).find(objects=objects, obj=pool)
 
     assert len(result) == 1
     assert result[0] == monitor_id
+
+
+def test_field_key_to_name_dependency():
+    config_string = """
+net vlan /Common/virtWire_vlan_4096_1_353 {
+}
+
+net vlan-group /Common/virtWire {
+    members {
+        /Common/virtWire_vlan_4096_1_353
+    }
+}
+    """
+
+    config = Config.from_string(string=config_string)
+
+    objects = config.fields
+    vlan_group_id = "net vlan-group /Common/virtWire"
+    vlan_group = objects.get(vlan_group_id)
+
+    vlan_id = "net vlan /Common/virtWire_vlan_4096_1_353"
+
+    result = SubCollectionDependency(
+        field_name="members",
+        dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
+    ).find(objects=objects, obj=vlan_group)
+
+    assert len(result) == 1
+    assert result[0] == vlan_id
 
 
 @pytest.mark.parametrize(
@@ -122,12 +152,12 @@ ltm pool /Common/test_pool {{
 
     dependencies = {
         ("ltm", "pool"): [
-            FieldToNameDependency(
+            FieldValueToNameDependency(
                 field_name="monitor", type_matcher=("ltm", "monitor")
             ),
             SubCollectionDependency(
                 field_name="members",
-                dependency=FieldToFieldDependency(
+                dependency=FieldValueToFieldValueDependency(
                     field_name="address",
                     type_matcher=("ltm", "node"),
                     target_field_name="address",
@@ -140,7 +170,7 @@ ltm pool /Common/test_pool {{
         dependencies[("ltm", "pool")].append(
             SubCollectionDependency(
                 field_name="members",
-                dependency=FieldToNameDependency(
+                dependency=FieldValueToNameDependency(
                     field_name="monitor", type_matcher=("ltm", "monitor")
                 ),
             ),

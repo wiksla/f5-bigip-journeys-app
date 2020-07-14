@@ -8,61 +8,86 @@ from journeys.config import FieldCollection
 
 
 @dataclass
-class FieldDependency:
+class FieldDependencyMixIn:
     """Base class for all Field value related dependencies.
 
     Attributes:
-        field_name (str): Name of the field which would be used from object that is being checked.
         type_matcher (Tuple[str, ...]): Pattern to use for searching dependency candidates.
     """
 
-    field_name: str
     type_matcher: Tuple[str, ...]
 
     def find(self, objects: FieldCollection, obj: Field):
         """Finds obj dependency among objects.
 
         Dependency search is done by:
-        - retrieving a value from field named by field_name
+        - retrieving a value from an object
         - finding dependency candidates with use of type_matcher
         - finding a dependency among the candidates by comparing a value retrieved from candidate object
-        with value retrieved from obj field named field_name.
+        with value retrieved from object.
         """
         try:
-            field = obj.fields[self.field_name]
-            value = field.value
+            value = self.get_value(obj=obj)
         except KeyError:
             return []
 
         ret = []
         for candidate in objects.get_all(self.type_matcher):
 
-            if self.get_target_value(candidate) == value:
+            if self.get_target_value(obj=candidate) == value:
                 ret.append(candidate.id)
 
         return ret
 
-    def get_target_value(self, obj):
-        """ Gets a value from a dependency candidate to compare it with value of the field named by field_name."""
-        raise NotImplementedError()
+
+@dataclass
+class FromFieldValueDependencyMixIn:
+    field_name: str
+
+    def get_value(self, obj):
+        field = obj.fields[self.field_name]
+        return field.value
 
 
 @dataclass
-class FieldToNameDependency(FieldDependency):
-    """ Subclass of FieldDependency that takes a dependency candidate name as a value"""
+class FromFieldKeyDependencyMixIn:
+    def get_value(self, obj):
+        return obj.key
 
+
+@dataclass
+class ToNameDependencyMixIn:
     def get_target_value(self, obj: Field):
         return obj.name
 
 
 @dataclass
-class FieldToFieldDependency(FieldDependency):
-    """ Subclass of FieldDependency that takes a dependency candidate field named target_field_name as a value"""
-
+class ToFieldValueDependencyMixIn:
     target_field_name: str
 
     def get_target_value(self, obj):
         return obj.fields[self.target_field_name].value
+
+
+@dataclass
+class FieldValueToNameDependency(
+    FromFieldValueDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+):
+    pass
+
+
+@dataclass
+class FieldValueToFieldValueDependency(
+    FromFieldValueDependencyMixIn, ToFieldValueDependencyMixIn, FieldDependencyMixIn
+):
+    pass
+
+
+@dataclass
+class FieldKeyToNameDependency(
+    FromFieldKeyDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+):
+    pass
 
 
 @dataclass
@@ -71,11 +96,11 @@ class SubCollectionDependency:
 
     Attributes:
         field_name (str): name of the field that contains a subcollection of items
-        dependency (FieldDependency): dependency object to check the subcollection items against
+        dependency (FieldDependencyMixIn): dependency object to check the subcollection items against
     """
 
     field_name: str
-    dependency: FieldDependency
+    dependency: FieldDependencyMixIn
 
     def find(self, objects: FieldCollection, obj: Field):
         members = obj.fields[self.field_name].fields
@@ -89,7 +114,7 @@ class SubCollectionDependency:
         return ret
 
 
-monitor_dependency = FieldToNameDependency(
+monitor_dependency = FieldValueToNameDependency(
     field_name="monitor", type_matcher=("ltm", "monitor")
 )
 
@@ -99,13 +124,19 @@ DEPENDENCIES_MATRIX = {
         SubCollectionDependency(field_name="members", dependency=monitor_dependency),
         SubCollectionDependency(
             field_name="members",
-            dependency=FieldToFieldDependency(
+            dependency=FieldValueToFieldValueDependency(
                 field_name="address",
                 type_matcher=("ltm", "node"),
                 target_field_name="address",
             ),
         ),
-    ]
+    ],
+    ("net", "vlan-group"): [
+        SubCollectionDependency(
+            field_name="members",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
+        )
+    ],
 }
 
 
