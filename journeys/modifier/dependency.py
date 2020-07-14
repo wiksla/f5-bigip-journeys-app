@@ -56,6 +56,12 @@ class FromFieldKeyDependencyMixIn:
 
 
 @dataclass
+class FromNameDependencyMixIn:
+    def get_value(self, obj):
+        return obj.name
+
+
+@dataclass
 class ToNameDependencyMixIn:
     def get_target_value(self, obj: Field):
         return obj.name
@@ -86,6 +92,13 @@ class FieldValueToFieldValueDependency(
 @dataclass
 class FieldKeyToNameDependency(
     FromFieldKeyDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+):
+    pass
+
+
+@dataclass
+class NameToNameDependency(
+    FromNameDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
 ):
     pass
 
@@ -137,6 +150,7 @@ DEPENDENCIES_MATRIX = {
             dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
         )
     ],
+    ("net", "vlan"): [NameToNameDependency(type_matcher=("net", "fdb", "vlan"))],
 }
 
 

@@ -4,6 +4,7 @@ from journeys.modifier.dependency import Config
 from journeys.modifier.dependency import FieldKeyToNameDependency
 from journeys.modifier.dependency import FieldValueToFieldValueDependency
 from journeys.modifier.dependency import FieldValueToNameDependency
+from journeys.modifier.dependency import NameToNameDependency
 from journeys.modifier.dependency import SubCollectionDependency
 from journeys.modifier.dependency import build_dependency_map
 
@@ -123,6 +124,31 @@ net vlan-group /Common/virtWire {
 
     assert len(result) == 1
     assert result[0] == vlan_id
+
+
+def test_name_to_name_dependency():
+    config_string = """
+net vlan /Common/virtWire_vlan_4096_1_353 {
+}
+
+net fdb vlan /Common/virtWire_vlan_4096_1_353 {
+}
+    """
+
+    config = Config.from_string(string=config_string)
+
+    objects = config.fields
+    vlan_id = "net vlan /Common/virtWire_vlan_4096_1_353"
+    vlan = objects.get(vlan_id)
+
+    fdb_vlan_id = "net fdb vlan /Common/virtWire_vlan_4096_1_353"
+
+    result = NameToNameDependency(type_matcher=("net", "fdb", "vlan")).find(
+        objects=objects, obj=vlan
+    )
+
+    assert len(result) == 1
+    assert result[0] == fdb_vlan_id
 
 
 @pytest.mark.parametrize(
