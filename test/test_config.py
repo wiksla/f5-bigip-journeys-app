@@ -102,6 +102,8 @@ def test_add_field(conf):
     assert "fake field /Common/fake" in conf.fields
     assert conf.fields[("fake", "field", "/Common/fake")].fields is not None
 
+
+def test_add_nested_field(conf):
     node = conf.fields[("ltm", "node", "/Common/node")]
     assert "test" not in node.fields
     node.fields.add(("test", "value"))
@@ -122,6 +124,50 @@ def test_delete_block(conf):
     assert virtual.fields["vlans"].fields is not None
     virtual.fields["vlans"].delete_block()
     assert virtual.fields["vlans"].fields is None
+
+
+@pytest.mark.parametrize(
+    "item", [2, ("ltm",), ("ltm", "virtual"), "wom endpoint-discovery"],
+)
+def test_lookup_after_delete(conf, item):
+
+    conf.fields.get(item).delete()
+
+    try:
+        field_no_lookup = conf.fields.get(item, lookup=False)
+    except KeyError:
+        field_no_lookup = "exception"
+    try:
+        field_lookup = conf.fields.get(item, lookup=True)
+    except KeyError:
+        field_lookup = "exception"
+
+    assert field_no_lookup == field_lookup
+
+
+@pytest.mark.parametrize(
+    "item,id",
+    [
+        (("ltm", "rule", "testrule"), "ltm rule testrule"),
+        (("ltm", "testfield"), "ltm testfield"),
+    ],
+)
+def test_lookup_after_add(conf, item, id):
+    conf.fields.add(item, file="sample_bigip.conf")
+    assert conf.fields.get(item, lookup=True) == conf.fields.get(item, lookup=False)
+    assert conf.fields.get(id, lookup=True) == conf.fields.get(id, lookup=False)
+
+
+def test_lookup_after_update(conf):
+    virtual = conf.fields.get("ltm virtual /Common/virtual")
+    virtual.args = ("ltm", "test", "/Common/virtual")
+    with pytest.raises(KeyError):
+        conf.fields.get("ltm virtual /Common/virtual", lookup=True)
+    with pytest.raises(KeyError):
+        conf.fields.get(("ltm", "virtual", "/Common/virtual"), lookup=True)
+    assert conf.fields.get(("ltm", "test"), lookup=True) == conf.fields.get(
+        "ltm test /Common/virtual", lookup=True
+    )
 
 
 @pytest.mark.parametrize(

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import Iterable
 from typing import Optional
 from typing import Union
@@ -33,6 +35,9 @@ class Config:
     def __init__(self, config: dict):
         self.data = config
         self.combined_fields = self._combine_fields()
+        self.field_collection = FastFieldCollection(
+            self.combined_fields, self, TopLevelField
+        )
 
     def _combine_fields(self) -> list:
         out = []
@@ -67,9 +72,9 @@ class Config:
                     )
 
     @property
-    def fields(self) -> FieldCollection:
+    def fields(self) -> FastFieldCollection:
         """Return an instance of all top level fields in the config."""
-        return FieldCollection(self.combined_fields, self, TopLevelField)
+        return self.field_collection
 
     def build(self, dirname: Optional[str] = None):
         """Build the conf file using the stored data.
@@ -98,10 +103,12 @@ class Field:
     @key.setter
     def key(self, key: Union[str, None]):
         """Set the key - the first field argument."""
+        old_args = self.args
         if key is not None:
             self.data["directive"] = key
         else:
             self.data["directive"] = "_unnamed"
+        self.parent.update(self, old_args)
 
     @property
     def args(self) -> tuple:
@@ -111,12 +118,14 @@ class Field:
     @args.setter
     def args(self, args: Iterable[str]):
         """Set all arguments - key + values at once."""
+        old_args = self.args
         if not args:
             self.data["directive"] = "_unnamed"
             self.data["args"] = []
         else:
             self.data["directive"] = args[0]
             self.data["args"] = list(args[1:])
+        self.parent.update(self, old_args)
 
     @property
     def fields(self) -> Optional[FieldCollection]:
@@ -137,12 +146,14 @@ class Field:
         For convenience you can provide a string to set a single word value.
         Provide a tuple for multi-word ones.
         """
+        old_args = self.args
         if isinstance(value, str):
             self.data["args"] = [value]
         elif value is None:
             self.data["args"] = []
         else:
             self.data["args"] = list(value)
+        self.parent.update(self, old_args)
 
     @property
     def id(self) -> str:
@@ -268,7 +279,7 @@ class FieldCollection:
                 return next(self.get_all(item))
             except StopIteration:
                 pass
-        raise KeyError("Requested field not found.")
+        raise KeyError(f"Requested field {item} not found.")
 
     def get_all(self, item: tuple) -> Iterable[Field]:
         """Return a generator of all elements matching the criteria.
@@ -287,7 +298,7 @@ class FieldCollection:
             return next(self.get_all_re(regex))
         except StopIteration:
             pass
-        raise KeyError("Pattern not found.")
+        raise KeyError(f"Pattern {regex} not found.")
 
     def get_all_re(self, regex: str) -> Iterable[Field]:
         """Return a generator of all elements matching the pattern."""
@@ -351,6 +362,10 @@ class FieldCollection:
         """Remove the given field from the collection."""
         self.data.remove(field.data)
 
+    def update(self, field: Field, old_args: tuple):
+        """Perform any actions after a field update."""
+        pass
+
     def index(self, field: Field):
         """Get the index of the element 'field' in the current collection."""
         return self.data.index(field.data)
@@ -379,3 +394,122 @@ class FieldCollection:
         if idx > 1:
             fields_str += str(field)
         return f"<{self.__class__.__name__} id {id(self)}: {fields_str}>"
+
+
+class FastFieldCollection(FieldCollection):
+    """A FieldCollection, but with a lookup tree.
+    Will only work with the assumption that keys will be unique.
+    """
+
+    @dataclass
+    class _Node:
+        value: Field = None
+        tree: dict = dataclass_field(default_factory=dict)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._arg_tree = self._Node()
+        self._id_map = dict()
+
+        # initialize lookup dicts
+        # id_map - for string-based key searches
+        # arg_tree - for tuple-based argument searches
+        for field in self.all():
+            self._id_map[field.key] = field
+            self._tree_insert(field)
+
+    def _tree_insert(self, field: Field):
+        """Add a field on branches corresponding to field's args."""
+        node = self._arg_tree
+        for arg in field.args:
+            node = node.tree.setdefault(arg, self._Node())
+        node.value = field
+
+    def _tree_delete(self, args: tuple):
+        """Remove value from requested arg branch path and any stale branches."""
+        nodes = [("", self._arg_tree)]
+        # prepare the edge+node path
+        for arg in args:
+            nodes.append((arg, nodes[-1][1].tree[arg]))
+        # remove the leaf
+        nodes[-1][1].value = None
+        # clean up empty branches:
+        # starting from the removed leaf, check if we have any empty nodes
+        #  (i.e. node with no values or children)
+        # if so, remove the node and repeat with parent
+        # until root, or until a non-empty node is found.
+        for it in range(len(nodes) - 1, 0, -1):
+            child = nodes[it][1]
+            parent = nodes[it - 1][1]
+            key = nodes[it][0]
+            if not child.value and not child.tree:
+                parent.tree.pop(key)
+            else:
+                break
+
+    def get(self, item: Union[str, tuple, int], lookup=True) -> Field:
+        """Return the first found element matching the criteria.
+        Warning: if using lookup, this might not be the
+          topmost field from the config matching the query.
+
+        For examples check the parent method docstring.
+        lookup - if true, will use the new structures for a faster search.
+        """
+        try:
+            if isinstance(item, tuple):
+                return next(self.get_all(item, lookup))
+            if isinstance(item, str) and lookup:
+                return self._id_map[item]
+        except (StopIteration, KeyError):
+            raise KeyError(f"Requested key {item} not found.")
+        return super().get(item)
+
+    def get_all(self, item: tuple, lookup=True) -> Iterable[Field]:
+        """Return a generator of all elements matching the criteria.
+
+        For examples check the parent method docstring.
+        lookup - if true, will use the new structures for a faster search.
+        """
+        if lookup:
+            start_node = self._arg_tree
+            for arg in item:
+                try:
+                    start_node = start_node.tree[arg]
+                except KeyError:
+                    return
+            yield from self._get_all(start_node)
+        else:
+            yield from super().get_all(item)
+
+    def _get_all(self, node: _Node) -> Iterable[Field]:
+        """Search the tree starting at node recursively."""
+        if node.value is not None:
+            yield node.value
+        for child in node.tree.values():
+            yield from self._get_all(child)
+
+    def add(self, *args, **kwargs) -> Field:
+        """Add a new method to this collection.
+
+        Check the parent method for usage details.
+        """
+        field = super().add(*args, **kwargs)
+        self._tree_insert(field)
+        self._id_map[field.id] = field
+        return field
+
+    def remove(self, field: Field):
+        """Remove the field from the current collection."""
+        self._tree_delete(field.args)
+        self._id_map.pop(field.id)
+        super().remove(field)
+
+    def update(self, field: Field, old_args: tuple):
+        """Update internal lookup maps with the changed values."""
+        self._tree_delete(old_args)
+        self._tree_insert(field)
+        self._id_map.pop(
+            " ".join(old_args)
+        )  # Note: works correctly only for toplevelfield as of now
+        self._id_map[field.key] = field
+        super().update(field, old_args)
