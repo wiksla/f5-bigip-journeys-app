@@ -280,6 +280,8 @@ net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
 
     result = build_dependency_map(config=config)
 
+    assert len(result.forward) == 7
+
     assert result.forward["net vlan-group /Common/virtWire"] == {
         "net vlan /Common/virtWire_vlan_4096_1_353",
         "net vlan /Common/virtWire_vlan_4096_2_354",
@@ -317,6 +319,8 @@ net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
         "net trunk trunk_external",
         "net trunk trunk_internal",
     }
+
+    assert len(result.reverse) == 11
 
     assert result.reverse["net trunk trunk_internal"] == {
         "net stp /Common/cist",
