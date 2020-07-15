@@ -127,7 +127,7 @@ def lex(filename, out=False, indent=None, line_numbers=False):
         payload = [token for token, lineno, quoted in payload]
 
     if not out:
-        print(payload)
+        return payload
     else:
         o = io.open(out, "w", encoding="utf-8")
         try:

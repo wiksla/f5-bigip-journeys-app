@@ -1,0 +1,29 @@
+{
+  "status": "ok",
+  "errors": [],
+  "config": [
+    {
+      "file": "unnamed",
+      "status": "ok",
+      "errors": [],
+      "parsed": [
+        {
+          "line": 1,
+          "args": [
+            "cm",
+            "device",
+            "/Common/dev.dev"
+          ],
+          "block": [
+            {
+              "line": 2,
+              "args": [
+                "flag"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
