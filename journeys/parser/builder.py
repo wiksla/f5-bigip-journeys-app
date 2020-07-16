@@ -100,7 +100,10 @@ def build(payload, indent=4, tabs=False, header=False):
                         built = _build_blob(built, stmt["block"])
                     else:
                         built = _build_block(built, stmt["block"], depth + 1)
-                        built += "\n" + margin
+                        if not stmt.get("block"):
+                            built += " "
+                        else:
+                            built += "\n" + margin
                     built += "}"
                 if stmt.get("comment") is not None:
                     built += " #" + stmt["comment"]
