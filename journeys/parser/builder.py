@@ -74,7 +74,7 @@ def build(payload, indent=4, tabs=False, header=False):
         output += blob
         return output
 
-    def _build_block(output, block, depth, last_line):
+    def _build_block(output, block, depth):
         margin = padding * depth
 
         for stmt in block:
@@ -82,12 +82,8 @@ def build(payload, indent=4, tabs=False, header=False):
                 directive = _enquote(stmt["args"][0])
             except IndexError:
                 directive = ""
-            line = stmt.get("line", 0)
 
-            if directive == "#" and line == last_line:
-                output += " #" + stmt["comment"]
-                continue
-            elif directive == "#":
+            if directive == "#":
                 built = "#" + stmt["comment"]
             else:
                 args = [_enquote(arg) for arg in stmt["args"]]
@@ -103,19 +99,18 @@ def build(payload, indent=4, tabs=False, header=False):
                     ):  # ignore last arg - all blob types have a name
                         built = _build_blob(built, stmt["block"])
                     else:
-                        built = _build_block(built, stmt["block"], depth + 1, line)
+                        built = _build_block(built, stmt["block"], depth + 1)
                         built += "\n" + margin
                     built += "}"
                 if stmt.get("comment") is not None:
                     built += " #" + stmt["comment"]
 
             output += ("\n" if output else "") + margin + built
-            last_line = line
 
         return output
 
     body = ""
-    body = _build_block(body, payload, 0, 0)
+    body = _build_block(body, payload, 0)
     return head + body
 
 
