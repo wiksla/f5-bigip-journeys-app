@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import codecs
+import json
 import os
 import re
 
@@ -57,7 +58,7 @@ def _replace_escape_sequences(match):
 def _enquote(arg):
     if not _needs_quotes(arg):
         return arg
-    return repr(arg).replace("\\\\", "\\")
+    return json.dumps(arg).replace("\\\\", "\\")
 
 
 def build(payload, indent=4, tabs=False, header=False):

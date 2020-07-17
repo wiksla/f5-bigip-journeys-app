@@ -40,7 +40,30 @@ def test_lexer():
         ("vlans-enabled", 12),
         ("\n", 13),
         ("}", 13),
-        ("\n", 14),
+    ]
+
+
+def test_blob():
+    tokens = lex_config("blob_types/ltm_rule.conf")
+    assert tokens == [
+        ("ltm", 1),
+        ("rule", 1),
+        ("/Common/DEECD_BLOCKSYMANTEC", 1),
+        ("{", 1),
+        (
+            "\n"
+            "when HTTP_REQUEST {\n"
+            '    if { [HTTP::host] contains "ent-shasta-rrs.symantec.com"} {\n'
+            '        #log local0. "Closing Symantec connection '
+            "[IP::client_addr]:[TCP::client_port] -> [\n"
+            '        IP::local_addr]:[TCP::local_port]"\n'
+            "        HTTP::close\n"
+            "    }\n"
+            "}\n",
+            1,
+        ),
+        ("}", 9),
+        ("\n", 9),
     ]
 
 

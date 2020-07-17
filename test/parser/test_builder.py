@@ -1,7 +1,17 @@
-from .configs import build_config
-from .configs import parse_config
+import pytest
+
+from journeys.parser.builder import build
+from journeys.parser.parser import parse
+
+from .configs import list_config_files
+from .configs import raw_config
 
 
-def test_build_nested_and_multiple_args():
-    payload = build_config(config_json_file="basic/single_obj_single_flag.json")
-    assert payload == parse_config("basic/single_obj_single_flag.conf")
+@pytest.mark.parametrize("config_file", list_config_files())
+def test_builder(config_file):
+    raw_cnf = raw_config(config_file=config_file)
+
+    parsed = parse(raw_cnf)
+    built = build(payload=parsed["config"][0]["parsed"])
+
+    assert raw_cnf == built

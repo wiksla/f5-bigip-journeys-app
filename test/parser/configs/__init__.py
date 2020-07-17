@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 
@@ -23,3 +24,17 @@ def build_config(config_json_file):
     cnf = os.path.join(CONFIG_DIR, config_json_file)
     with open(cnf) as f_:
         return json.load(f_)
+
+
+def raw_config(config_file):
+    with open(config_file) as cnf_file:
+        return cnf_file.read()
+
+
+def list_config_files(ignore=("not_balanced", "with_comments")):
+    config_files = glob.glob(os.path.join(CONFIG_DIR, "*/*.conf"))
+    return [
+        config_file
+        for config_file in config_files
+        if not any(pattern in config_file for pattern in ignore)
+    ]
