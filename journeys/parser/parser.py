@@ -157,7 +157,22 @@ def parse_dir(dirname, search_glob="bigip*.conf", **kwargs):
         "config": [],
     }
 
-    for path in Path(dirname).glob(search_glob):
+    for _file in [
+        "bigip.conf",
+        "bigip_base.conf",
+        "bigip_gtm.conf",
+        "bigip_script.conf",
+        "bigip_user.conf",
+        "user_alert.conf",
+        "profile_base.conf",
+        "low_profile_base.conf",
+        "cipher.conf",
+        "daemon.conf",
+    ]:
+        path = Path(dirname).joinpath(_file)
+        if not path.exists():
+            continue
+
         with open(path, "r") as f:
             conf = parse(f, str(path.relative_to(dirname)), **kwargs)
         payload["config"].extend(conf["config"])

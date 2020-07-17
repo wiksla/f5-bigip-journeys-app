@@ -1,5 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Set
@@ -126,7 +128,12 @@ class SubCollectionDependency:
     dependency: FieldDependencyMixIn
 
     def find(self, objects: FieldCollection, obj: Field) -> List[str]:
-        members = obj.fields[self.field_name].fields
+
+        try:
+            members = obj.fields[self.field_name].fields
+        except KeyError:
+            return []
+
         ret = []
 
         for sub_obj in members:
@@ -153,6 +160,14 @@ DEPENDENCIES_MATRIX = {
                 target_field_name="address",
             ),
         ),
+    ],
+    ("ltm", "virtual"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        )
     ],
     ("net", "vlan-group"): [
         SubCollectionDependency(
@@ -193,6 +208,7 @@ DEPENDENCIES_MATRIX = {
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
         ),
     ],
+    # TODO: Add self-ip object dependencies
 }
 
 
@@ -200,6 +216,50 @@ DEPENDENCIES_MATRIX = {
 class DependencyMap:
     forward: Dict[str, Set[str]]
     reverse: Dict[str, Set[str]]
+
+    def get_dependencies(self, obj_id: str) -> Set[str]:
+        """ Build the set of id of objects that given obj uses/depends on"""
+
+        result = set()
+
+        def accumulate(parent: str, child: str):
+            result.add(child)
+
+        self.dfs(func=accumulate, _map=self.forward, obj_id=obj_id)
+
+        return result
+
+    def get_dependents(self, obj_id: str) -> Set[str]:
+        """ Build the set of id of objects that uses/depends on given obj"""
+
+        result = set()
+
+        def accumulate(parent: str, child: str):
+            result.add(child)
+
+        self.dfs(func=accumulate, _map=self.reverse, obj_id=obj_id)
+
+        return result
+
+    @staticmethod
+    def dfs(func: Callable[[str, str], Any], _map: Dict[str, Set[str]], obj_id: str):
+
+        visited = set()
+        result = set()
+
+        def visit(_id):
+            """ Implements a Depth-first search (DFS) algorithm in a graph represented as _map """
+            visited.add(_id)
+            children = _map[_id] if _id in _map else set()
+            result.update(children)
+            for child in children:
+                if child not in visited:
+                    func(parent=_id, child=child)
+                    visit(child)
+
+        visit(obj_id)
+
+        return result
 
 
 def build_dependency_map(config: Config, dependencies_matrix=None) -> DependencyMap:

@@ -1,6 +1,7 @@
 import pytest
 
 from journeys.modifier.dependency import Config
+from journeys.modifier.dependency import DependencyMap
 from journeys.modifier.dependency import FieldKeyToNameDependency
 from journeys.modifier.dependency import FieldValueToFieldValueDependency
 from journeys.modifier.dependency import FieldValueToNameDependency
@@ -213,6 +214,19 @@ ltm pool /Common/test_pool {{
     assert result.forward[pool_id] == {monitor_id, node_id}
     assert result.reverse[monitor_id] == {pool_id}
     assert result.reverse[node_id] == {pool_id}
+
+
+def test_dependency_map():
+
+    test_map = {"id1": {"id2", "id3"}, "id2": {"id3", "id4"}, "id4": {"id5", "id6"}}
+
+    dependency_map = DependencyMap(forward=test_map, reverse=test_map)
+
+    result = dependency_map.get_dependencies(obj_id="id1")
+    assert result == {"id2", "id3", "id4", "id5", "id6"}
+
+    result = dependency_map.get_dependents(obj_id="id1")
+    assert result == {"id2", "id3", "id4", "id5", "id6"}
 
 
 def test_build_dependencies_map_net_module():

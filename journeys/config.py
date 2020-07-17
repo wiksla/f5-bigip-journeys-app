@@ -77,13 +77,13 @@ class Config:
         """Return an instance of all top level fields in the config."""
         return self.field_collection
 
-    def build(self, dirname: Optional[str] = None):
+    def build(self, dirname: Optional[str] = None, files: Iterable[str] = None):
         """Build the conf file using the stored data.
 
         Filenames will be the same as in original input files.
         """
         self._rebuild_data()
-        build_files(self.data, dirname=dirname)
+        build_files(self.data, dirname=dirname, files=files)
 
 
 class Field:

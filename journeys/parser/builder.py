@@ -117,7 +117,7 @@ def build(payload, indent=4, tabs=False, header=False):
     return head + body
 
 
-def build_files(payload, dirname=None, indent=4, tabs=False, header=False):
+def build_files(payload, dirname=None, indent=4, tabs=False, header=False, files=None):
     """
     Uses a full config payload (output of parser.parse) to build
     config files, then writes those files to disk.
@@ -127,6 +127,10 @@ def build_files(payload, dirname=None, indent=4, tabs=False, header=False):
 
     for config in payload["config"]:
         path = config["file"]
+
+        if files and path not in files:
+            continue
+
         if not os.path.isabs(path):
             path = os.path.join(dirname, path)
 

@@ -1,6 +1,9 @@
+import os
+
 import click
 
 from journeys.config import Config
+from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.modifier.dependency import build_dependency_map
 from journeys.parser import build
 from journeys.parser import lex
@@ -34,6 +37,18 @@ def make_migration(ucs_filename):
 
     click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
     click.echo(ucs_reader.get_bigdb_variable(key="Cluster.MgmtIpaddr", option="type"))
+
+    config: Config = ucs_reader.get_config()
+
+    conflict_handler = ConflictHandler(config)
+    conflicts = conflict_handler.detect_conflicts()
+
+    conflicts_dir = "/tmp/conflicts"
+
+    for conflict in conflicts:
+        conflict_handler.render(
+            dirname=os.path.join(conflicts_dir, conflict.id), conflict=conflict
+        )
 
     new_ucs = tar_file(archive_file="new_example.ucs", input_dir=output_dir)
     click.echo(f"New ucs location {new_ucs}")
