@@ -1,16 +1,11 @@
 import re
-from os import path
 
-import isoparser
+from pkg_resources import parse_version
 
 
 class SetupError(Exception):
     def __init__(self, message):
         self.message = message
-
-
-def get_image_from_ucs_reader(ucs_reader):
-    return Version(**parse_version_file(ucs_reader.get_version_file()))
 
 
 class Version:
@@ -28,6 +23,14 @@ class Version:
 
         self.unclassified = version_info
         self.friendly_name = self.__repr__()
+
+    def is_velos_supported(self) -> bool:
+        """ Migration to Velos is supported from <11.5.x, 14.1.x> """
+        return (
+            parse_version("14.1.0")
+            > parse_version(self.version)
+            > parse_version("11.5.0")
+        )
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -55,25 +58,7 @@ class Version:
         return formatted
 
 
-def get_image_version_file(image_fn):
-    if not path.isfile(image_fn):
-        raise SetupError("File does not exist: {}".format(image_fn))
-
-    root = isoparser.parse(image_fn).record()
-    for record in root.children:
-        if b"BIGIP" in record.name:
-            for record in record.children:
-                if b"VERSION" in record.name:
-                    return record.content.decode("utf-8")
-        elif b"VERSION" in record.name:
-            return record.content.decode("utf-8")
-
-
-def get_image_version(image_fn):
-    return Version(**parse_version_file(get_image_version_file(image_fn=image_fn)))
-
-
-def parse_version_file(version_file):
+def parse_version_file(version_file: str) -> dict:
     version_info = {}
     for line in version_file.splitlines():
         split = line.split(":", 1)
@@ -87,7 +72,7 @@ RE_PR = re.compile(r"^Point Release (\d+)*$")
 RE_POC = re.compile(r"^POC Release (\d+)$")
 
 
-def short_edition(edition):
+def short_edition(edition: str):
     if edition is None:
         return None
     elif edition in ("Final",):

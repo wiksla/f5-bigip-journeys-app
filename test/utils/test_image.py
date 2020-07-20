@@ -1,5 +1,6 @@
 import pytest
 
+from journeys.utils.image import Version
 from journeys.utils.image import parse_version_file
 from journeys.utils.image import short_edition
 
@@ -81,3 +82,15 @@ def test_parse_version_file(version_file, expected_result):
 )
 def test_short_edition_parsing(edition, _short_edition):
     assert short_edition(edition) == _short_edition
+
+
+@pytest.mark.parametrize(
+    "version, result",
+    [
+        (Version(version="11.4.0"), False),
+        (Version(version="12.1.0"), True),
+        (Version(version="15.1.0"), False),
+    ],
+)
+def test_version_supported_on_velos(version, result):
+    assert version.is_velos_supported() == result

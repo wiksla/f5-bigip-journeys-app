@@ -3,3 +3,4 @@ flake8==3.8.3
 isort==4.3.21
 pylint==2.5.3
 pytest==5.4.3
+fabric==2.5.0

@@ -5,11 +5,8 @@ import click
 from journeys.config import Config
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.modifier.dependency import build_dependency_map
-from journeys.parser import build
-from journeys.parser import lex
 from journeys.parser import parse
-from journeys.utils.image import get_image_from_ucs_reader
-from journeys.utils.ucs_ops import tar_file
+from journeys.utils.device import Device
 from journeys.utils.ucs_ops import untar_file
 from journeys.utils.ucs_reader import UcsReader
 
@@ -30,34 +27,54 @@ def make_migration(ucs_filename):
     click.echo(f"Convert ucs to be loadable on VELOS tenant: {ucs_filename}")
     output_dir = untar_file(ucs_filename, dir="/tmp")
     click.echo(f"Ucs was unpacked in: {output_dir}")
-    click.echo("\n")
     ucs_reader = UcsReader(extracted_ucs_dir=output_dir)
-    click.echo(f"Your hardware is: {ucs_reader.get_ucs_platform()}")
-    click.echo(f"Software Version: \n{ucs_reader.get_version_file()}")
 
-    click.echo(get_image_from_ucs_reader(ucs_reader=ucs_reader))
-    click.echo(ucs_reader.get_bigdb_variable(key="Cluster.MgmtIpaddr", option="type"))
+    click.echo(f"BIGIP hardware version is: {ucs_reader.get_platform()}")
+
+    version = ucs_reader.get_version()
+    click.echo(f"BIGIP version is: {version.sequence}")
+
+    if not version.is_velos_supported():
+        click.echo(f"BIGIP {version.sequence} is not supported by VELOS.")
+        return
 
     config: Config = ucs_reader.get_config()
 
     conflict_handler = ConflictHandler(config)
     conflicts = conflict_handler.detect_conflicts()
 
-    conflicts_dir = "/tmp/conflicts"
+    conflicts_dir = os.path.join(output_dir, "conflicts")
+
+    click.echo(f"Conflicts dir {conflicts_dir}")
 
     for conflict in conflicts:
         conflict_handler.render(
             dirname=os.path.join(conflicts_dir, conflict.id), conflict=conflict
         )
 
-    new_ucs = tar_file(archive_file="new_example.ucs", input_dir=output_dir)
-    click.echo(f"New ucs location {new_ucs}")
+    click.echo("Resolve Conflict")
 
 
 @cli.command()
-@click.argument("config-filename")
-def find_lexers(config_filename):
-    click.echo(lex(filename=config_filename))
+@click.option("--host", required=True)
+@click.option("--password", required=True)
+def download_ucs(host, password):
+    device = Device(ip=host, root_password=password)
+    version = device.get_image()
+
+    click.echo(f"Version on bigip: {version}")
+
+    if version.is_velos_supported():
+        click.echo("BIGIP version is supported by VELOS.")
+        ucs_remote_dir = device.save_ucs(ucs_name="ex.ucs")
+        local_ucs_path = device.get_ucs(
+            remote=ucs_remote_dir, local_ucs_name="./ex.ucs"
+        )
+
+        device.delete_ucs(ucs_location=ucs_remote_dir)
+        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local} ")
+    else:
+        click.echo("Migration process is not available for you BIGIP version.")
 
 
 @cli.command()
@@ -67,9 +84,11 @@ def parse_config(config_filename):
 
 
 @cli.command()
-@click.argument("config-filename")
-def build_config(config_filename):
-    click.echo(build(filename=config_filename))
+@click.option("--host", required=True)
+@click.option("--password", required=True)
+def minimal_required_tenant_resources(host, password):
+    device = Device(ip=host, root_password=password)
+    click.echo(device.obtain_source_resources())
 
 
 @cli.command()
