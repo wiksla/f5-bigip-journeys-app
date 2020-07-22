@@ -8,7 +8,8 @@ from tempfile import mkdtemp
 def untar_file(archive_file, dir):
     output_dir = mkdtemp(prefix="migration_ucs_", dir=dir)
     with tarfile.open(archive_file) as tar:
-        tar.extractall(path=output_dir)
+        for member in tar.getmembers():
+            tar.extract(member=member, path=output_dir, set_attrs=False)
     return output_dir
 
 
