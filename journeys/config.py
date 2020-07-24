@@ -10,6 +10,7 @@ from typing import Union
 
 from journeys.parser import build_files
 from journeys.parser import parse_file
+from journeys.parser.builder import build
 from journeys.parser.const import NONAME
 from journeys.parser.parser import parse_dir
 
@@ -201,6 +202,19 @@ class Field:
             kwargs["file"] = self.data["file"]
 
         return self.parent.add(**kwargs)
+
+    def convert_to_comments(self):
+        """Converts self into a set of comment fields,
+        inserts them in the parent collection, them removes self from it.
+        """
+        built = build([self.data])
+        for line in built.splitlines():
+            field = self.insert_before(["#"])
+            field.data["comment"] = line
+            if "file" in self.data:
+                field.data["file"] = self.data["file"]
+
+        self.delete()
 
     def __eq__(self, other: Field):
         return other.data is self.data

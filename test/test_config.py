@@ -185,3 +185,14 @@ def test_delete_field(conf):
     assert tag in conf.fields
     conf.fields[tag].delete()
     assert tag not in conf.fields
+
+
+def test_convert_field_to_comments(conf):
+    tag = ("ltm", "node")
+    assert tag in conf.fields
+    node = conf.fields[tag]
+    index = conf.fields.index(node)
+    assert not conf.fields[index].key.startswith("#")
+    node.convert_to_comments()
+    assert tag not in conf.fields
+    assert conf.fields[index].key.startswith("#")
