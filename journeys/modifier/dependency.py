@@ -46,8 +46,11 @@ class FieldDependencyMixIn:
 
         for type_matcher in type_matcher_list:
             for candidate in objects.get_all(type_matcher):
-                if self.get_target_value(obj=candidate) == value:
-                    ret.append(candidate.id)
+                try:
+                    if self.get_target_value(obj=candidate) == value:
+                        ret.append(candidate.id)
+                except KeyError:
+                    pass
 
         return ret
 
