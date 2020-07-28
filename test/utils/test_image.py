@@ -88,7 +88,9 @@ def test_short_edition_parsing(edition, _short_edition):
     "version, result",
     [
         (Version(version="11.4.0"), False),
+        (Version(version="11.5.1"), True),
         (Version(version="12.1.0"), True),
+        (Version(version="14.1.2.2"), True),
         (Version(version="15.1.0"), False),
     ],
 )

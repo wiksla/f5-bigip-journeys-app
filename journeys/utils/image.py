@@ -27,9 +27,9 @@ class Version:
     def is_velos_supported(self) -> bool:
         """ Migration to Velos is supported from <11.5.x, 14.1.x> """
         return (
-            parse_version("14.1.0")
-            > parse_version(self.version)
-            > parse_version("11.5.0")
+            parse_version("11.5.0")
+            <= parse_version(self.version)
+            <= parse_version("14.1.9")
         )
 
     def __eq__(self, other):
