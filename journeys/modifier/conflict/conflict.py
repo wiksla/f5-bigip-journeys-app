@@ -12,6 +12,7 @@ class Conflict:
 
     Attributes:
         id (str): Code name for a conflict
+
         summary (List[str]): Brief description of a conflict
         files_to_render (Set[str]): files to be rendered for each mitigation
         mitigations (Dict[str, Callable[Config]]): name -> mitigation method mapping

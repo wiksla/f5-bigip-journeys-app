@@ -82,8 +82,10 @@ def service_provider_DAG_conflict_plugin(
     if not objects:
         return None
 
+    summary = ""
     dependencies = set()
     for obj_id in objects:
+        summary += f"\t{FIELD_VALUE_NOT_SUPPORTED.format(obj_id, 'cmp-hash')}\n"
         dependencies.update(dependency_map.get_dependents(obj_id=obj_id))
 
     summary = [
@@ -134,7 +136,7 @@ def service_provider_DAG_conflict_plugin(
         summary=summary,
         files_to_render=files_to_render,
         mitigations={
-            "base": comment_objects,
+            "comment_only": comment_objects,
             "change_value_to_default": change_value_to_default,
             "delete_objects": delete_objects,
         },
@@ -176,6 +178,16 @@ def virtual_wire_conflict_plugin(
 
     if not objects:
         return None
+    summary = ""
+
+    for obj_id in vlan_groups:
+        summary += f"\t{FIELD_VALUE_NOT_SUPPORTED.format(obj_id, 'mode')}\n"
+
+    for obj_id in vlans:
+        summary += f"\t{FIELD_VALUE_NOT_SUPPORTED.format(obj_id, 'fwd-mode')}\n"
+
+    for obj_id in interfaces:
+        summary += f"\t{FIELD_VALUE_NOT_SUPPORTED.format(obj_id, 'port-fwd-mode')}\n"
 
     summary = []
 
@@ -239,5 +251,5 @@ def virtual_wire_conflict_plugin(
         id=conflict_id,
         summary=summary,
         files_to_render=files_to_render,
-        mitigations={"base": comment_objects, "delete_objects": delete_objects},
+        mitigations={"comment_only": comment_objects, "delete_objects": delete_objects},
     )

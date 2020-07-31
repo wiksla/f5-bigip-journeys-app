@@ -1,14 +1,10 @@
-import os
-
 import click
 
 from journeys.config import Config
-from journeys.modifier.conflict.handler import ConflictHandler
+from journeys.controller import MigrationController
 from journeys.modifier.dependency import build_dependency_map
 from journeys.parser import parse
 from journeys.utils.device import Device
-from journeys.utils.ucs_ops import untar_file
-from journeys.utils.ucs_reader import UcsReader
 
 
 @click.group()
@@ -21,38 +17,20 @@ def cli():
 
 
 @cli.command()
-@click.argument("ucs-filename")
-def make_migration(ucs_filename):
-    """  Making CBIP config loadable on VELOS (tenant). """
-    click.echo(f"Convert ucs to be loadable on VELOS tenant: {ucs_filename}")
-    output_dir = untar_file(ucs_filename, dir="/tmp")
-    click.echo(f"Ucs was unpacked in: {output_dir}")
-    ucs_reader = UcsReader(extracted_ucs_dir=output_dir)
+@click.argument("ucs", default="")
+@click.option("--clear", is_flag=True)
+def migrate(ucs, clear):
+    controller = MigrationController(
+        input_ucs=ucs, working_directory="/tmp/wip", clear=clear,
+    )
+    controller.process()
 
-    click.echo(f"BIGIP hardware version is: {ucs_reader.get_platform()}")
 
-    version = ucs_reader.get_version()
-    click.echo(f"BIGIP version is: {version.sequence}")
-
-    if not version.is_velos_supported():
-        click.echo(f"BIGIP {version.sequence} is not supported by VELOS.")
-        return
-
-    config: Config = ucs_reader.get_config()
-
-    conflict_handler = ConflictHandler(config)
-    conflicts = conflict_handler.detect_conflicts()
-
-    conflicts_dir = os.path.join(output_dir, "conflicts")
-
-    click.echo(f"Conflicts dir {conflicts_dir}")
-
-    for conflict in conflicts:
-        conflict_handler.render(
-            dirname=os.path.join(conflicts_dir, conflict.id), conflict=conflict
-        )
-
-    click.echo("Resolve Conflict")
+@cli.command()
+@click.argument("conflict")
+def resolve(conflict):
+    controller = MigrationController(working_directory="/tmp/wip")
+    controller.resolve(conflict_id=conflict)
 
 
 @cli.command()

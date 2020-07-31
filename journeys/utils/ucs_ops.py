@@ -2,14 +2,13 @@ import os
 import shutil
 import tarfile
 from subprocess import call
-from tempfile import mkdtemp
 
 
-def untar_file(archive_file, dir):
-    output_dir = mkdtemp(prefix="migration_ucs_", dir=dir)
+def untar_file(archive_file, output_dir, sub_dir: str = None):
     with tarfile.open(archive_file) as tar:
+        path = os.path.join(output_dir, sub_dir) if sub_dir else output_dir
         for member in tar.getmembers():
-            tar.extract(member=member, path=output_dir, set_attrs=False)
+            tar.extract(member=member, path=path, set_attrs=False)
     return output_dir
 
 

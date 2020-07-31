@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from typing import Callable
 from typing import List
@@ -26,19 +25,18 @@ class ConflictHandler:
         ]
 
     def detect_conflicts(self):
-        conflicts = []
+        conflicts = {}
         for plugin in self.plugins:
             conflict = plugin(self.config, self.dependency_map)
             if conflict:
-                conflicts.append(conflict)
+                conflicts[conflict.id] = conflict
 
         return conflicts
 
-    def render(self, dirname: str, conflict: Conflict):
+    def render(self, dirname: str, conflict: Conflict, mitigation: str):
 
-        for name, mitigation in conflict.mitigations.items():
-            config_copy: Config = deepcopy(self.config)
-            mitigation(config_copy)
-            config_copy.build(
-                dirname=os.path.join(dirname, name), files=conflict.files_to_render
-            )
+        mitigation_func = conflict.mitigations[mitigation]
+
+        config_copy: Config = deepcopy(self.config)
+        mitigation_func(config_copy)
+        config_copy.build(dirname=dirname, files=conflict.files_to_render)

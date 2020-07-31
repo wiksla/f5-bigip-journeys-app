@@ -1,3 +1,4 @@
 click==7.1.2
 isoparser==0.3
 fabric==2.5.0
+gitpython==3.1.7
