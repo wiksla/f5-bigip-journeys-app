@@ -13,8 +13,13 @@ from journeys.config import Field
 from journeys.config import FieldCollection
 
 
+class BaseDependency:
+    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
+        raise NotImplementedError
+
+
 @dataclass
-class FieldDependencyMixIn:
+class FieldDependencyMixIn(BaseDependency):
     """Base class for all Field value related dependencies.
 
     Attributes:
@@ -119,7 +124,7 @@ class NameToNameDependency(
 
 
 @dataclass
-class SubCollectionDependency:
+class SubCollectionDependency(BaseDependency):
     """ Dependency class that allows to find dependencies of each item in a subcollection named field_name
 
     Attributes:
@@ -128,7 +133,7 @@ class SubCollectionDependency:
     """
 
     field_name: str
-    dependency: FieldDependencyMixIn
+    dependency: BaseDependency
 
     def find(self, objects: FieldCollection, obj: Field) -> List[str]:
 
@@ -147,11 +152,56 @@ class SubCollectionDependency:
         return ret
 
 
+@dataclass
+class NestedDependency(BaseDependency):
+    """Looks for dependencies in an object under a given key.
+
+    Contrary to SubcollectionDependency, it doesn't implicitly
+    iterate over members of the given key."""
+
+    field_name: str
+    dependency: BaseDependency
+
+    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
+        ret = []
+
+        try:
+            sub_obj = obj.fields[self.field_name]
+        except KeyError:
+            return ret
+
+        sub_ret = self.dependency.find(objects, sub_obj)
+        if sub_ret:
+            ret.extend(sub_ret)
+
+        return ret
+
+
 monitor_dependency = FieldValueToNameDependency(
     field_name="monitor", type_matcher=("ltm", "monitor")
 )
+sec_rules_source_vlan = SubCollectionDependency(
+    field_name="rules",
+    dependency=NestedDependency(
+        field_name="source",
+        dependency=SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        ),
+    ),
+)
 
 DEPENDENCIES_MATRIX = {
+    ("gtm", "listener"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        )
+    ],
     ("ltm", "pool"): [
         monitor_dependency,
         SubCollectionDependency(field_name="members", dependency=monitor_dependency),
@@ -164,6 +214,22 @@ DEPENDENCIES_MATRIX = {
             ),
         ),
     ],
+    ("ltm", "nat"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        )
+    ],
+    ("ltm", "snat"): [
+        SubCollectionDependency(
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        )
+    ],
     ("ltm", "virtual"): [
         SubCollectionDependency(
             field_name="vlans",
@@ -172,23 +238,37 @@ DEPENDENCIES_MATRIX = {
             ),
         )
     ],
-    ("net", "vlan-group"): [
+    ("net", "fdb", "vlan"): [
         SubCollectionDependency(
-            field_name="members",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
-        )
-    ],
-    ("net", "vlan"): [
-        NameToNameDependency(type_matcher=("net", "fdb", "vlan")),
+            field_name="records",
+            dependency=FieldValueToNameDependency(
+                field_name="trunk", type_matcher=("net", "trunk")
+            ),
+        ),
         SubCollectionDependency(
-            field_name="interfaces",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+            field_name="records",
+            dependency=FieldValueToNameDependency(
+                field_name="interface", type_matcher=("net", "interface")
+            ),
         ),
     ],
-    ("net", "trunk"): [
+    ("net", "packet-filter"): [
+        FieldValueToNameDependency(
+            field_name="vlan", type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+        )
+    ],
+    ("net", "packet-filter-trusted"): [
         SubCollectionDependency(
-            field_name="interfaces",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "interface")),
+            field_name="vlans",
+            dependency=FieldKeyToNameDependency(
+                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+            ),
+        ),
+    ],
+    ("net", "route"): [
+        FieldValueToNameDependency(
+            field_name="interface",
+            type_matcher=[("net", "vlan"), ("net", "vlan-group")],
         )
     ],
     ("net", "route-domain"): [
@@ -211,6 +291,47 @@ DEPENDENCIES_MATRIX = {
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
         ),
     ],
+    ("net", "trunk"): [
+        SubCollectionDependency(
+            field_name="interfaces",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "interface")),
+        )
+    ],
+    ("net", "vlan"): [
+        NameToNameDependency(type_matcher=("net", "fdb", "vlan")),
+        SubCollectionDependency(
+            field_name="interfaces",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+        ),
+    ],
+    ("net", "vlan-group"): [
+        SubCollectionDependency(
+            field_name="members",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
+        )
+    ],
+    ("security", "firewall", "management-ip-rules"): [sec_rules_source_vlan],
+    ("security", "firewall", "policy"): [sec_rules_source_vlan],
+    ("security", "firewall", "rule-list"): [sec_rules_source_vlan],
+    ("security", "nat", "policy"): [
+        sec_rules_source_vlan,
+        SubCollectionDependency(
+            field_name="rules",
+            dependency=NestedDependency(
+                field_name="next-hop",
+                dependency=FieldValueToNameDependency(
+                    field_name="vlan",
+                    type_matcher=[("net", "vlan"), ("net", "vlan-group")],
+                ),
+            ),
+        ),
+    ],
+    ("sys", "ha-group"): [
+        SubCollectionDependency(
+            field_name="trunks",
+            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+        ),
+    ]
     # TODO: Add self-ip object dependencies
 }
 
