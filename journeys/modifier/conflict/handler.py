@@ -5,10 +5,7 @@ from typing import Optional
 
 from journeys.config import Config
 from journeys.modifier.conflict.conflict import Conflict
-from journeys.modifier.conflict.conflict_plugin import (
-    service_provider_DAG_conflict_plugin,
-)
-from journeys.modifier.conflict.conflict_plugin import virtual_wire_conflict_plugin
+from journeys.modifier.conflict.plugins import load_plugins
 from journeys.modifier.dependency import DependencyMap
 from journeys.modifier.dependency import build_dependency_map
 
@@ -19,15 +16,13 @@ class ConflictHandler:
     def __init__(self, config: Config):
         self.config = config
         self.dependency_map = build_dependency_map(self.config)
-        self.plugins = [
-            service_provider_DAG_conflict_plugin,
-            virtual_wire_conflict_plugin,
-        ]
+        self.plugins = load_plugins()
 
     def detect_conflicts(self):
         conflicts = {}
         for plugin in self.plugins:
-            conflict = plugin(self.config, self.dependency_map)
+            conflict = plugin(self.config, self.dependency_map).get_conflicts()
+
             if conflict:
                 conflicts[conflict.id] = conflict
 
