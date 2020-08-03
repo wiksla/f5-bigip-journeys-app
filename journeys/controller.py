@@ -147,7 +147,7 @@ class MigrationController:
             untar_file(self.input_ucs, output_dir=self.repo_path)
             self.shelf["ucs"] = self.input_ucs
 
-            self.repo.git.add(u=True)
+            self.repo.git.add("*")
             self.repo.index.commit("initial")
 
             # rebuilding the config changes the formatting slightly -
