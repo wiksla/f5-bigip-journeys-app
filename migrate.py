@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import click
 
 from journeys.config import Config
@@ -20,16 +21,14 @@ def cli():
 @click.argument("ucs", default="")
 @click.option("--clear", is_flag=True)
 def migrate(ucs, clear):
-    controller = MigrationController(
-        input_ucs=ucs, working_directory="/tmp/wip", clear=clear,
-    )
+    controller = MigrationController(input_ucs=ucs, clear=clear,)
     controller.process()
 
 
 @cli.command()
 @click.argument("conflict")
 def resolve(conflict):
-    controller = MigrationController(working_directory="/tmp/wip")
+    controller = MigrationController()
     controller.resolve(conflict_id=conflict)
 
 

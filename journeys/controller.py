@@ -15,6 +15,9 @@ from journeys.utils.ucs_reader import UcsReader
 
 
 class MigrationController:
+    SHELF_FILE_NAME = ".shelf"
+    REPO_FOLDER_NAME = "wip"
+
     def __init__(
         self,
         input_ucs: Optional[str] = None,
@@ -24,14 +27,20 @@ class MigrationController:
     ):
         self.input_ucs = input_ucs
         self.working_directory = working_directory
+        if not os.path.exists(self.working_directory):
+            os.mkdir(self.working_directory)
+
+        self.repo_path = os.path.join(self.working_directory, self.REPO_FOLDER_NAME)
+        self.shelf_path = os.path.join(self.repo_path, self.SHELF_FILE_NAME)
+
         if clear:
-            self._clear_folder_content(self.working_directory)
+            shutil.rmtree(self.repo_path, ignore_errors=True)
 
-        self.repo_path = os.path.join(self.working_directory, "unpacked")
-        self.config_path = os.path.join(self.repo_path, "config")
+        if not os.path.exists(self.repo_path):
+            os.mkdir(self.repo_path)
+
         self.repo = Repo.init(self.repo_path)
-
-        self.shelf_path = os.path.join(self.working_directory, ".shelf")
+        self.config_path = os.path.join(self.repo_path, "config")
         self.shelf = shelve.open(self.shelf_path)
 
         self.output_ucs = (
@@ -145,8 +154,11 @@ class MigrationController:
                     "No ucs file has been given and there is no session to resume."
                 )
             untar_file(self.input_ucs, output_dir=self.repo_path)
+            with open(
+                file=os.path.join(self.repo_path, ".gitignore"), mode="w"
+            ) as gitignore:
+                gitignore.write(".shelf")
             self.shelf["ucs"] = self.input_ucs
-
             self.repo.git.add("*")
             self.repo.index.commit("initial")
 
@@ -164,17 +176,13 @@ class MigrationController:
             os.remove(self.output_ucs)
         except FileNotFoundError:
             pass
-        # TODO: exclude .git (and other potential garbage) from tar?
+        # TODO: exclude .git, .shelf, .gitignore (and other potential garbage) from tar?
         new_ucs = tar_file(
             archive_file=self.output_ucs, input_dir=os.path.join(self.repo_path)
         )
         shutil.move(new_ucs, self.output_ucs)
 
         return os.path.join(self.output_ucs)
-
-    def _clear_folder_content(self, folder):
-        shutil.rmtree(folder, ignore_errors=True)
-        os.mkdir(folder)
 
     def _print_conflicts_info(self, conflicts):
         click.echo("There are following conflicts waiting to be resolved:")
