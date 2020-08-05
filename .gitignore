@@ -141,3 +141,9 @@ cython_debug/
 
 # journey wip folder
 wip/
+
+# pycharm project folder
+.idea
+
+# MAC folder file
+.DS_Store
