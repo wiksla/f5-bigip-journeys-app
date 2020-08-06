@@ -33,6 +33,12 @@ def resolve(conflict):
 
 
 @cli.command()
+def prompt():
+    controller = MigrationController()
+    click.echo(controller.prompt())
+
+
+@cli.command()
 @click.option("--host", required=True)
 @click.option("--password", required=True)
 def download_ucs(host, password):

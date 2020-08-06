@@ -14,16 +14,27 @@ Available via setuptools as a standalone CLI.
 
 Example usage of tool can look like this:
 
+Preparing a temporary folder:
 1. `docker build -t journeys .`
-1. `alias journey="docker run --rm -v $(pwd):/migrate journeys"`
 1. `mkdir /tmp/journeys`
 1. `cd /tmp/journeys`
 1. `cp <ucs_file> .`
-1. `journey migrate spdag.ucs`
+
+Run command one by one starting a separate docker container (requires git tool)
+1. `alias journey.py="docker run --rm -v /tmp/journeys:/migrate journeys"`
+1. `journey.py migrate spdag.ucs`
 1. `cd wip`
-1. `journey resolve SPDAG`
+1. `journey.py resolve SPDAG`
 1. `git checkout . ; git merge SPDAG_change_value_to_default`
-1. `journey migrate`
+1. `journey.py migrate`
+
+Or use interactive container mode:
+1. `docker run -it --rm -v /tmp/journeys:/migrate journeys --shell`
+1. `journey.py migrate spdag.ucs`
+1. `cd wip`
+1. `journey.py resolve SPDAG`
+1. `git checkout . ; git merge SPDAG_change_value_to_default`
+1. `journey.py migrate`
 
 ## Contributing
 

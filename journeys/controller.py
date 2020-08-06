@@ -22,9 +22,10 @@ class MigrationController:
         self,
         input_ucs: Optional[str] = None,
         output_ucs: Optional[str] = None,
-        working_directory: str = ".",
         clear: bool = False,
     ):
+        working_directory = os.environ.get("MIGRATE_DIR", ".")
+
         self.input_ucs = input_ucs
         self.working_directory = working_directory
         if not os.path.exists(self.working_directory):
@@ -53,6 +54,20 @@ class MigrationController:
         self.config = None
         self.conflict_handler = None
 
+    def prompt(self):
+
+        current_conflict = self.shelf.get("current_conflict", None)
+        conflicts = self.shelf.get("conflicts", None)
+
+        if current_conflict:
+            prompt = f" ({current_conflict})"
+        elif conflicts:
+            prompt = f" ({len(conflicts)} conflicts left)"
+        else:
+            prompt = ""
+
+        return f"\\e[1;32mjourney{prompt}: \\e[0m"
+
     def process(self):
         if not self._check_master():
             click.echo("Please checkout to master branch.")
@@ -63,6 +78,7 @@ class MigrationController:
         if self.config is None:
             self._read_config()
         conflicts = self.conflict_handler.detect_conflicts()
+        self.shelf["conflicts"] = list(conflicts.keys())
 
         current_conflict = self.shelf.get("current_conflict", None)
         if current_conflict:
@@ -100,7 +116,7 @@ class MigrationController:
         if current_conflict and current_conflict != conflict_id:
             click.echo(
                 f"Conflict {current_conflict} resolution already in progress."
-                "Finish it by calling 'migrate.py migrate' first before starting a new one."
+                "Finish it by calling 'journey.py migrate' first before starting a new one."
             )
             return
 
@@ -180,9 +196,10 @@ class MigrationController:
         new_ucs = tar_file(
             archive_file=self.output_ucs, input_dir=os.path.join(self.repo_path)
         )
-        shutil.move(new_ucs, self.output_ucs)
+        output_path = os.path.join(self.working_directory, self.output_ucs)
+        shutil.move(new_ucs, output_path)
 
-        return os.path.join(self.output_ucs)
+        return output_path
 
     def _print_conflicts_info(self, conflicts):
         click.echo("There are following conflicts waiting to be resolved:")
@@ -191,7 +208,9 @@ class MigrationController:
             click.echo(f"{conflict.id}:")
             for line in conflict.summary:
                 click.echo(f"\t{line}")
-        click.echo("\nPlease run 'migrate.py resolve <TAG>' to apply sample fixes.")
+        click.echo("")
+        click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
+        click.echo(f"Example 'journey.py resolve {next(iter(conflicts.keys()))}'")
 
     def _print_conflict_resolution_help(self, conflict):
         click.echo(f"Workdir: {self.working_directory}")
@@ -217,10 +236,10 @@ class MigrationController:
         )
         click.echo(
             "To apply proposed changes right away, you can merge one of the branches "
-            "(e.g. 'git stash; git merge <branch_name>')"
+            "(e.g. 'git checkout . ; git merge <branch_name>')"
         )
         click.echo("  Alternatively, you can edit the files manually.")
         click.echo(
             "\nYou do not have to commit your changes - just apply them in the specified files."
         )
-        click.echo("Run 'migrate.py migrate' once you're finished.")
+        click.echo("Run 'journey.py migrate' once you're finished.")
