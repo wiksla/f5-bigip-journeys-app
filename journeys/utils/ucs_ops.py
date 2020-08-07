@@ -36,7 +36,7 @@ def tar_file(archive_file, input_dir, files_metadata):
 
         return tarinfo
 
-    with tarfile.open(archive_file, "w") as tar:
+    with tarfile.open(archive_file, "w:gz") as tar:
         for f in os.listdir("."):
             tar.add(name=f, recursive=True, filter=reset_metadata)
     tar.close()
