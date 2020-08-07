@@ -169,7 +169,8 @@ class MigrationController:
                 raise RuntimeError(
                     "No ucs file has been given and there is no session to resume."
                 )
-            untar_file(self.input_ucs, output_dir=self.repo_path)
+            _, files_metadata = untar_file(self.input_ucs, output_dir=self.repo_path)
+            self.shelf["files_metadata"] = files_metadata
             with open(
                 file=os.path.join(self.repo_path, ".gitignore"), mode="w"
             ) as gitignore:
@@ -192,13 +193,12 @@ class MigrationController:
             os.remove(self.output_ucs)
         except FileNotFoundError:
             pass
-        # TODO: exclude .git, .shelf, .gitignore (and other potential garbage) from tar?
-        new_ucs = tar_file(
-            archive_file=self.output_ucs, input_dir=os.path.join(self.repo_path)
+        output_path = os.path.join(self.repo_path, self.output_ucs)
+        tar_file(
+            archive_file=output_path,
+            input_dir=os.path.join(self.repo_path),
+            files_metadata=self.shelf["files_metadata"],
         )
-        output_path = os.path.join(self.working_directory, self.output_ucs)
-        shutil.move(new_ucs, output_path)
-
         return output_path
 
     def _print_conflicts_info(self, conflicts):
