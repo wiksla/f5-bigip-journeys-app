@@ -203,12 +203,19 @@ class SubCollectionDependency(BaseDependency):
             for resolve in collection_resolves:
                 resolve(collection_field)
 
+        def nested_with_cleanup(parent):
+            nested_all(parent)
+            collection_field = parent.fields[obj.key].fields[self.field_name]
+            if not list(collection_field.fields.all()):
+                delete(parent)
+
+        for sub_obj in self.found[(obj.key, target_id)]:
+            collection_resolves.append(self.dependency.get_resolve(sub_obj, target_id))
+
         if self.resolution == "nested":
-            for sub_obj in self.found[(obj.key, target_id)]:
-                collection_resolves.append(
-                    self.dependency.get_resolve(sub_obj, target_id)
-                )
             return nested_all
+        elif self.resolution == "nested_with_cleanup":
+            return nested_with_cleanup
         else:
             return delete
 
@@ -363,18 +370,21 @@ DEPENDENCIES_MATRIX = {
         SubCollectionDependency(
             field_name="trunks",
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+            resolution="nested_with_cleanup",
         ),
     ],
     ("net", "trunk"): [
         SubCollectionDependency(
             field_name="interfaces",
             dependency=FieldKeyToNameDependency(type_matcher=("net", "interface")),
+            resolution="nested_with_cleanup",
         )
     ],
     ("net", "vlan"): [
         SubCollectionDependency(
             field_name="interfaces",
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+            resolution="nested_with_cleanup",
         ),
     ],
     ("net", "vlan-group"): [
@@ -403,6 +413,7 @@ DEPENDENCIES_MATRIX = {
         SubCollectionDependency(
             field_name="trunks",
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+            resolution="nested_with_cleanup",
         ),
     ]
     # TODO: Add self-ip object dependencies

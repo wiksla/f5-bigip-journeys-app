@@ -36,7 +36,20 @@ ltm pool_member /Common/test_member {
 }
 net fdb vlan /Common/vlan {
 }
+net interface 1.0 {
+}
+net trunk test-trunk {
+}
 net vlan /Common/vlan {
+    interfaces {
+        1.0 { }
+        test-trunk { }
+    }
+}
+net vlan /Common/vlan2 {
+    interfaces {
+        test-trunk { }
+    }
 }
 net vlan-group /Common/vlan-group {
     members {
@@ -171,6 +184,29 @@ def test_subcollection_dependency_delete_resolution(dependency_conf):
     ](dependency_conf)
     fake_resolution.assert_not_called()
     assert "members" not in dependency_conf.fields["ltm pool /Common/test_pool2"].fields
+
+
+def test_subcollection_dependency_nested_with_cleanup_resolution(dependency_conf):
+    matrix = {
+        ("net", "vlan"): [
+            dp.SubCollectionDependency(
+                field_name="interfaces",
+                dependency=dp.FieldKeyToNameDependency(type_matcher=("net", "trunk")),
+                resolution="nested_with_cleanup",
+            ),
+        ]
+    }
+
+    deps = dp.build_dependency_map(dependency_conf, matrix)
+    assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
+    deps.resolutions[("net vlan /Common/vlan", "net trunk test-trunk")](dependency_conf)
+    assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
+
+    assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan2"].fields
+    deps.resolutions[("net vlan /Common/vlan2", "net trunk test-trunk")](
+        dependency_conf
+    )
+    assert "interfaces" not in dependency_conf.fields["net vlan /Common/vlan2"].fields
 
 
 def test_nested_dependency_nested_resolution(dependency_conf):
