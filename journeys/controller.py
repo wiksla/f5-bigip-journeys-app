@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shelve
 import shutil
@@ -12,6 +13,14 @@ from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
 from journeys.utils.ucs_reader import UcsReader
+
+
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
 
 class MigrationController:
@@ -72,6 +81,19 @@ class MigrationController:
         if not self._check_master():
             click.echo("Please checkout to master branch.")
             return
+
+        if self.input_ucs:
+            file_hash = md5(self.input_ucs)
+
+            stored_file_hash = self.shelf.get("file_hash", None)
+            if stored_file_hash and stored_file_hash != file_hash:
+                click.echo("Different ucs file received as an input.")
+                click.echo(
+                    f"In order to start processing new ucs file run journey.py migrate {self.input_ucs} --clear"
+                )
+                return
+
+            self.shelf["file_hash"] = file_hash
 
         self._ensure_repo_initialized()
 
@@ -193,7 +215,10 @@ class MigrationController:
             os.remove(self.output_ucs)
         except FileNotFoundError:
             pass
-        output_path = os.path.join(self.repo_path, self.output_ucs)
+
+        output_path = os.path.join(
+            self.working_directory, os.path.basename(self.output_ucs)
+        )
         tar_file(
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),

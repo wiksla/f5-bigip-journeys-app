@@ -19,7 +19,7 @@ def cli():
 
 @cli.command()
 @click.argument("ucs", default="")
-@click.option("--clear", is_flag=True)
+@click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 def migrate(ucs, clear):
     controller = MigrationController(input_ucs=ucs, clear=clear,)
     controller.process()
