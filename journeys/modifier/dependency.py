@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -15,7 +16,23 @@ from journeys.config import FieldCollection
 
 class BaseDependency:
     def find(self, objects: FieldCollection, obj: Field) -> List[str]:
+        """A method that should return a list of ids of dependent objects."""
         raise NotImplementedError
+
+    def get_resolve(
+        self, obj: Field, target_id: str
+    ) -> Callable[[Union[Config, Field]], None]:
+        """Get a method that should modify the given Parent (Config or Field) so that the dependency
+        to a field having the id target_id disappears.
+
+        By defaults deletes the whole Field.
+        @param obj: the Field in which the dependency is found.
+        @param target_id: id of the top level Field connected by the dependency."""
+
+        def delete(parent):
+            parent.fields[obj.key].delete()
+
+        return delete
 
 
 @dataclass
@@ -63,10 +80,25 @@ class FieldDependencyMixIn(BaseDependency):
 @dataclass
 class FromFieldValueDependencyMixIn:
     field_name: str
+    resolution: str = "delete_child"  # oneof: delete_child, delete_self
 
     def get_value(self, obj) -> str:
         field = obj.fields[self.field_name]
         return field.value
+
+    def get_resolve(
+        self, obj: Field, target_id: str
+    ) -> Callable[[Union[Config, Field]], None]:
+        def delete_self(parent):
+            parent.fields[obj.key].delete()
+
+        def delete_child(parent):
+            parent.fields[obj.key].fields[self.field_name].delete()
+
+        if self.resolution == "delete_child":
+            return delete_child
+        else:
+            return delete_self
 
 
 @dataclass
@@ -134,6 +166,10 @@ class SubCollectionDependency(BaseDependency):
 
     field_name: str
     dependency: BaseDependency
+    resolution: str = "nested"  # oneof: nested, delete
+    found: dict = field(
+        default_factory=lambda: defaultdict(list)
+    )  # {(from, to): [connecting_block1,..]}
 
     def find(self, objects: FieldCollection, obj: Field) -> List[str]:
 
@@ -143,13 +179,38 @@ class SubCollectionDependency(BaseDependency):
             return []
 
         ret = []
-
         for sub_obj in members:
             sub_ret = self.dependency.find(objects, sub_obj)
             if sub_ret:
                 ret.extend(sub_ret)
+                for item in sub_ret:
+                    self.found[(obj.key, item)].append(sub_obj)
 
         return ret
+
+    def get_resolve(
+        self, obj: Field, target_id: str
+    ) -> Callable[[Union[Config, Field]], None]:
+        collection_resolves = []
+
+        def delete(parent):
+            parent.fields[obj.key].fields[self.field_name].delete()
+
+        def nested_all(parent):
+            # handle a case where there might be multiple dependencies to the same
+            # target object in a single collection - iterate over them all
+            collection_field = parent.fields[obj.key].fields[self.field_name]
+            for resolve in collection_resolves:
+                resolve(collection_field)
+
+        if self.resolution == "nested":
+            for sub_obj in self.found[(obj.key, target_id)]:
+                collection_resolves.append(
+                    self.dependency.get_resolve(sub_obj, target_id)
+                )
+            return nested_all
+        else:
+            return delete
 
 
 @dataclass
@@ -161,6 +222,7 @@ class NestedDependency(BaseDependency):
 
     field_name: str
     dependency: BaseDependency
+    resolution: str = "nested"  # oneof: nested, delete
 
     def find(self, objects: FieldCollection, obj: Field) -> List[str]:
         ret = []
@@ -175,6 +237,17 @@ class NestedDependency(BaseDependency):
             ret.extend(sub_ret)
 
         return ret
+
+    def get_resolve(
+        self, obj: Field, target_id: str
+    ) -> Callable[[Union[Config, Field]], None]:
+        def delete(parent):
+            parent.fields[obj.key].fields[self.field_name].delete()
+
+        if self.resolution == "nested":
+            return self.dependency.get_resolve(obj.fields[self.field_name], target_id)
+        else:
+            return delete
 
 
 monitor_dependency = FieldValueToNameDependency(
@@ -239,6 +312,7 @@ DEPENDENCIES_MATRIX = {
         )
     ],
     ("net", "fdb", "vlan"): [
+        NameToNameDependency(type_matcher=("net", "vlan")),
         SubCollectionDependency(
             field_name="records",
             dependency=FieldValueToNameDependency(
@@ -298,7 +372,6 @@ DEPENDENCIES_MATRIX = {
         )
     ],
     ("net", "vlan"): [
-        NameToNameDependency(type_matcher=("net", "fdb", "vlan")),
         SubCollectionDependency(
             field_name="interfaces",
             dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
@@ -340,6 +413,7 @@ DEPENDENCIES_MATRIX = {
 class DependencyMap:
     forward: Dict[str, Set[str]]
     reverse: Dict[str, Set[str]]
+    resolutions: Dict[Tuple[str, str], Callable]
 
     def get_dependencies(self, obj_id: str) -> Set[str]:
         """ Build the set of id of objects that given obj uses/depends on"""
@@ -396,6 +470,7 @@ def build_dependency_map(config: Config, dependencies_matrix=None) -> Dependency
     objects = config.fields
     dependency_map = defaultdict(set)
     reverse_dependency_map = defaultdict(set)
+    resolutions = dict()
 
     for type_matcher, dependencies in dependencies_matrix.items():
         for obj in objects.get_all(type_matcher):
@@ -404,6 +479,11 @@ def build_dependency_map(config: Config, dependencies_matrix=None) -> Dependency
                 if result:
                     dependency_map[obj.id].update(result)
                     for dependency_id in result:
+                        resolutions[(obj.id, dependency_id)] = dependency.get_resolve(
+                            obj, dependency_id
+                        )
                         reverse_dependency_map[dependency_id].add(obj.id)
 
-    return DependencyMap(forward=dependency_map, reverse=reverse_dependency_map)
+    return DependencyMap(
+        forward=dependency_map, reverse=reverse_dependency_map, resolutions=resolutions
+    )

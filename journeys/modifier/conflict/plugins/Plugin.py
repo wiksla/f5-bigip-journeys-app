@@ -134,9 +134,11 @@ class Plugin:
         return [self.MSG_TYPE.format(obj_id, self.MSG_INFO) for obj_id in self.objects]
 
     def delete_objects(self, mutable_config: Config):
-        for obj_id in self.all_objects:
+        for obj_id in self.objects:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
+            for related_id in self.dependency_map.reverse[obj_id]:
+                self.dependency_map.resolutions[(related_id, obj_id)](mutable_config)
 
     def get_conflicts(self) -> Conflict:
         if not self.objects:
