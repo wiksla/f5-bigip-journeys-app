@@ -2,9 +2,16 @@
 
 stages:
   - test
-  - deploy
+  - build
 
 ## Disable until initial format/lint get applied
+
+variables:
+
+  DOCKER_REGISTRY: 'artifactory.pdsea.f5net.com'
+  JOURNEYS_DOCKER_BASE: f5-cxt-docker/journeys
+  JOURNEYS_TAG: $CI_COMMIT_REF_NAME
+
 
 format-and-lint:
   stage: test
@@ -25,3 +32,22 @@ test:
   script:
     - pip install -r requirements.txt -r test-requirements.txt
     - make test
+
+build:
+  image: docker
+  stage: build
+  tags:
+    - docker-executor
+  script:
+    - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
+    - docker build -t ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} .
+    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
+    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
+    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
+    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
+    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
+
+  only:
+    - master
+  retry:
+    max: 2
