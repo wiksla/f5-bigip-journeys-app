@@ -360,6 +360,13 @@ DEPENDENCIES_MATRIX = {
             ),
         ),
     ],
+    ("net", "self"): [
+        FieldValueToNameDependency(
+            field_name="vlan",
+            type_matcher=[("net", "vlan"), ("net", "vlan-group")],
+            resolution="delete_self",  # vlan property is required for self-ip, cannot remove only it
+        )
+    ],
     ("net", "stp"): [
         SubCollectionDependency(
             field_name="vlans",
