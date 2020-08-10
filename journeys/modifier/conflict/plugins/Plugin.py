@@ -107,7 +107,7 @@ class Plugin:
 
     def render_files(self):
         files_to_render = set()
-        for obj_id in self.objects:
+        for obj_id in self.all_objects:
             obj = self.config.fields.get(obj_id)
             files_to_render.add(obj.file)
         return files_to_render
