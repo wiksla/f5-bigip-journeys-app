@@ -27,9 +27,9 @@ class MgmtDhcp(Plugin):
             obj = mutable_config.fields.get(obj_id)
             field = obj.fields["mgmt-dhcp"]
             field.value = "disabled"
-    
+
     def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "disable_mgmt_dhcp": self.disable_dhcp
+            "disable_mgmt_dhcp": self.disable_dhcp,
         }
