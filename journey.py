@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import os
+
 import click
 
 from journeys.config import Config
@@ -50,8 +52,11 @@ def download_ucs(host, password):
     if version.is_velos_supported():
         click.echo("BIGIP version is supported by VELOS.")
         ucs_remote_dir = device.save_ucs(ucs_name="ex.ucs")
+
+        working_directory = os.environ.get("MIGRATE_DIR", ".")
         local_ucs_path = device.get_ucs(
-            remote=ucs_remote_dir, local_ucs_name="./ex.ucs"
+            remote=ucs_remote_dir,
+            local_ucs_name=os.path.join(working_directory, "ex.ucs"),
         )
 
         device.delete_ucs(ucs_location=ucs_remote_dir)
