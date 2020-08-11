@@ -247,14 +247,19 @@ class MigrationController:
         for filename in conflict.files_to_render:
             click.echo(f"\t{filename}")
 
-        click.echo(f"\nProposed fixes are present in branches (in {self.repo_path}):")
+        click.echo("")
+        click.echo(
+            f"Proposed fixes are present in branches (in git repository: {self.repo_path}):"
+        )
         for mitigation in conflict.mitigations:
             if mitigation == "comment_only":
                 continue
 
             click.echo(f"\t{conflict.id}_{mitigation}")
+        click.echo("")
         click.echo(
-            "\nTo view the issues found, check the diff of the current branch (e.g. 'git diff')"
+            f"To view the issues found, enter the {self.repo_path} directory and check the diff of the current branch "
+            f"(e.g. 'git diff') "
         )
         click.echo(
             "To view the proposed changes, you can use any git diff tool (e.g. 'git diff master..<branch_name>')"
@@ -264,7 +269,8 @@ class MigrationController:
             "(e.g. 'git checkout . ; git merge <branch_name>')"
         )
         click.echo("  Alternatively, you can edit the files manually.")
+        click.echo("")
         click.echo(
-            "\nYou do not have to commit your changes - just apply them in the specified files."
+            "You do not have to commit your changes - just apply them in the specified files."
         )
         click.echo("Run 'journey.py migrate' once you're finished.")
