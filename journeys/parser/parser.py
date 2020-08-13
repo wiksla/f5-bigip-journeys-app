@@ -163,7 +163,6 @@ def parse_dir(dirname, **kwargs):
         "bigip_gtm.conf",
         "bigip_script.conf",
         "bigip_user.conf",
-        "user_alert.conf",
         "profile_base.conf",
         "low_profile_base.conf",
         "cipher.conf",

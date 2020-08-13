@@ -13,16 +13,14 @@ ESCAPE_SEQUENCES_RE = re.compile(r"(\\x[0-9a-f]{2}|\\[0-7]{1,3})")
 def _escape(string):
     prev, char = "", ""
     for char in string:
-        if prev == "\\" or prev + char == "${":
+        if prev == "\\":
             prev += char
             yield prev
             continue
-        if prev == "$":
-            yield prev
-        if char not in ("\\", "$"):
+        if char != "\\":
             yield char
         prev = char
-    if char in ("\\", "$"):
+    if char == "\\":
         yield char
 
 
@@ -36,17 +34,13 @@ def _needs_quotes(string):
 
     # arguments can't start with variable expansion syntax
     char = next(chars)
-    if char.isspace() or char in ("{", "}", ";", '"', "'", "${"):
+    if char.isspace() or char in ("{", "}", ";", '"', "'"):
         return True
 
     expanding = False
     for char in chars:
         if char.isspace() or char in ("{", ";", '"', "'"):
             return True
-        elif char == ("${" if expanding else "}"):
-            return True
-        elif char == ("}" if expanding else "${"):
-            expanding = not expanding
 
     return char in ("\\", "$") or expanding
 
