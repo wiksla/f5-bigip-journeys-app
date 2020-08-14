@@ -147,15 +147,15 @@ def parse(
     return payload
 
 
-def parse_dir(dirname, search_glob="bigip*.conf", **kwargs):
-    # TODO: replace glob with an exact file list
-    # (customers love to keep backup confs with weird names)
-
+def parse_dir(dirname, **kwargs):
+    conf_path = Path(dirname)
     payload = {
         "status": "ok",
         "errors": [],
         "config": [],
     }
+
+    files_to_parse = []
 
     for _file in [
         "bigip.conf",
@@ -169,12 +169,12 @@ def parse_dir(dirname, search_glob="bigip*.conf", **kwargs):
         "cipher.conf",
         "daemon.conf",
     ]:
-        path = Path(dirname).joinpath(_file)
-        if not path.exists():
-            continue
+        files_to_parse.extend(conf_path.glob(_file))
+        files_to_parse.extend(conf_path.glob("partitions/*/" + _file))
 
+    for path in files_to_parse:
         with open(path, "r") as f:
-            conf = parse(f, str(path.relative_to(dirname)), **kwargs)
+            conf = parse(f, str(path.relative_to(conf_path)), **kwargs)
         payload["config"].extend(conf["config"])
         if conf["status"] == "failed":
             payload["status"] = "failed"
