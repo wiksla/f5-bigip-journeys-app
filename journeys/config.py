@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import configparser
 import logging
 import re
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+from pathlib import Path
 from typing import Iterable
 from typing import Optional
 from typing import Union
@@ -32,10 +34,12 @@ class Config:
     @classmethod
     def from_dir(cls, dirname: str) -> Config:
         config = parse_dir(dirname)
-        return cls(config)
+        bigdb = BigDB(dirname=dirname)
+        return cls(config, bigdb)
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, bigdb=None):
         self.data = config
+        self.bigdb = bigdb
         self.combined_fields = self._combine_fields()
         self.field_collection = FastFieldCollection(
             self.combined_fields, self, TopLevelField
@@ -83,6 +87,8 @@ class Config:
 
         Filenames will be the same as in original input files.
         """
+        if self.bigdb:
+            self.bigdb.save()
         self._rebuild_data()
         build_files(self.data, dirname=dirname, files=files)
 
@@ -523,3 +529,25 @@ class FastFieldCollection(FieldCollection):
         )  # Note: works correctly only for toplevelfield as of now
         self._id_map[field.key] = field
         super().update(field, old_args)
+
+
+class BigDB:
+    FILENAME = "BigDB.dat"
+
+    def __init__(self, dirname: str):
+        self.path = Path(dirname).joinpath(BigDB.FILENAME)
+        self.config = configparser.ConfigParser()
+        self.config.read(self.path)
+
+    def load(self):
+        self.config.read(self.path)
+
+    def save(self):
+        with open(self.path, "w") as cnf:
+            self.config.write(cnf, space_around_delimiters=False)
+
+    def set(self, section: str, option: str, value: str):
+        self.config.set(section=section, option=option, value=value)
+
+    def get(self, section: str, option: str):
+        return self.config.get(section=section, option=option)

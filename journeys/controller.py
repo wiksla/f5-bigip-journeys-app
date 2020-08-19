@@ -196,7 +196,7 @@ class MigrationController:
             with open(
                 file=os.path.join(self.repo_path, ".gitignore"), mode="w"
             ) as gitignore:
-                gitignore.write(".shelf")
+                gitignore.write(".shelf.db")
             self.shelf["ucs"] = self.input_ucs
             self.repo.git.add("*")
             self.repo.index.commit("initial")

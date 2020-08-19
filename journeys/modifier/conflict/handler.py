@@ -29,9 +29,7 @@ class ConflictHandler:
         return conflicts
 
     def render(self, dirname: str, conflict: Conflict, mitigation: str):
-
         mitigation_func = conflict.mitigations[mitigation]
-
         config_copy: Config = deepcopy(self.config)
         mitigation_func(config_copy)
         config_copy.build(dirname=dirname, files=conflict.files_to_render)

@@ -1,4 +1,3 @@
-import configparser
 import os
 from functools import partial
 
@@ -34,9 +33,3 @@ class UcsReader:
 
         with open(ucs_version_fn) as version_fd:
             return Version(**parse_version_file(version_fd.read()))
-
-    def get_bigdb_dat(self) -> configparser.ConfigParser:
-        big_db_dat_fn = self.ucs_path("config/BigDB.dat")
-
-        config = configparser.ConfigParser()
-        return config.read(big_db_dat_fn)
