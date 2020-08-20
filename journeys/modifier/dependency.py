@@ -10,14 +10,60 @@ from typing import Tuple
 from typing import Union
 
 from journeys.config import Config
+from journeys.config import TopLevelField
 from journeys.config import Field
 from journeys.config import FieldCollection
 
-
+@dataclass
 class BaseDependency:
-    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
-        """A method that should return a list of ids of dependent objects."""
+    parent_types: List[Tuple[str, ...]] = None
+    child_types: List[Tuple[str, ...]] = None
+    
+    def get_value(self, candidate: Field):
+        """Get the value that would connect the candidate with a parent for a given dependency.
+        
+        Example:
+        net vlan-group test-group {
+            vlans {
+                test-vlan
+            }
+        }
+        
+        In here test-vlan is the returned value.
+        """
         raise NotImplementedError
+    
+    def get_target_value(self, candidate: Field):
+        """Get the value that would connect the candidate with a child for a given dependency.
+        
+        Example:
+        net vlan-group test-group {
+            vlans {
+                test-vlan
+            }
+        }
+        
+        In here test-group should be the returned value.
+        """
+        raise NotImplementedError
+    
+    def match_parent(self, candidate: Field):
+        """Test if the candidate matches the 'parent' condition and return the match value.
+        
+        By 'parent' we understand a field on which other fields can depend.
+        """
+        for type_ in self.parent_types:
+            if tuple(candidate.args[:len(type_)]) == type_:
+                yield from self.get_target_value(candidate)
+
+    def match_child(self, candidate: Field):
+        """Test if the candidate matches the 'child' condition and return the match value.
+        
+        By 'child' we understand a field which depends on existence of another field.
+        """
+        for type_ in self.child_types:
+            if tuple(candidate.args[:len(type_)]) == type_:
+                yield from self.get_value(candidate)
 
     def get_resolve(
         self, obj: Field, target_id: str
@@ -34,57 +80,17 @@ class BaseDependency:
 
         return delete
 
-
-@dataclass
-class FieldDependencyMixIn(BaseDependency):
-    """Base class for all Field value related dependencies.
-
-    Attributes:
-        type_matcher (Tuple[str, ...]): Pattern to use for searching dependency candidates.
-    """
-
-    type_matcher: Union[Tuple[str, ...], List[Tuple[str, ...]]]
-
-    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
-        """Finds obj dependency among objects.
-
-        Dependency search is done by:
-        - retrieving a value from an object
-        - finding dependency candidates with use of type_matcher
-        - finding a dependency among the candidates by comparing a value retrieved from candidate object
-        with value retrieved from object.
-        """
-        try:
-            value = self.get_value(obj=obj)
-        except KeyError:
-            return []
-
-        ret = []
-
-        if isinstance(self.type_matcher, list):
-            type_matcher_list = self.type_matcher
-        else:
-            type_matcher_list = [self.type_matcher]
-
-        for type_matcher in type_matcher_list:
-            for candidate in objects.get_all(type_matcher):
-                try:
-                    if self.get_target_value(obj=candidate) == value:
-                        ret.append(candidate.id)
-                except KeyError:
-                    pass
-
-        return ret
-
-
 @dataclass
 class FromFieldValueDependencyMixIn:
-    field_name: str
+    field_name: str = None
     resolution: str = "delete_child"  # oneof: delete_child, delete_self
 
     def get_value(self, obj) -> str:
-        field = obj.fields[self.field_name]
-        return field.value
+        try:
+            field = obj.fields[self.field_name]
+            yield field.value
+        except KeyError:
+            pass
 
     def get_resolve(
         self, obj: Field, target_id: str
@@ -104,56 +110,62 @@ class FromFieldValueDependencyMixIn:
 @dataclass
 class FromFieldKeyDependencyMixIn:
     def get_value(self, obj) -> str:
-        return obj.key
+        yield obj.key
 
 
 @dataclass
 class FromNameDependencyMixIn:
     def get_value(self, obj) -> str:
-        return obj.name
+        yield obj.name
 
 
 @dataclass
 class ToNameDependencyMixIn:
     def get_target_value(self, obj: Field) -> str:
-        return obj.name
+        # a bit messy, probably should split up the 'From' and 'To' parts
+        # into different objects
+        while not isinstance(obj, TopLevelField):
+            obj = obj.parent
+        yield obj.name
 
 
 @dataclass
 class ToFieldValueDependencyMixIn:
-    target_field_name: str
+    target_field_name: str = None
 
     def get_target_value(self, obj) -> str:
-        return obj.fields[self.target_field_name].value
+        try:
+            yield obj.fields[self.target_field_name].value
+        except KeyError:
+            pass
 
 
 @dataclass
 class FieldValueToNameDependency(
-    FromFieldValueDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+    FromFieldValueDependencyMixIn, ToNameDependencyMixIn, BaseDependency
 ):
     pass
 
 
 @dataclass
 class FieldValueToFieldValueDependency(
-    FromFieldValueDependencyMixIn, ToFieldValueDependencyMixIn, FieldDependencyMixIn
+    FromFieldValueDependencyMixIn, ToFieldValueDependencyMixIn, BaseDependency
 ):
     pass
 
 
 @dataclass
 class FieldKeyToNameDependency(
-    FromFieldKeyDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+    FromFieldKeyDependencyMixIn, ToNameDependencyMixIn, BaseDependency
 ):
     pass
 
 
 @dataclass
 class NameToNameDependency(
-    FromNameDependencyMixIn, ToNameDependencyMixIn, FieldDependencyMixIn
+    FromNameDependencyMixIn, ToNameDependencyMixIn, BaseDependency
 ):
     pass
-
 
 @dataclass
 class SubCollectionDependency(BaseDependency):
@@ -161,32 +173,15 @@ class SubCollectionDependency(BaseDependency):
 
     Attributes:
         field_name (str): name of the field that contains a subcollection of items
-        dependency (FieldDependencyMixIn): dependency object to check the subcollection items against
+        dependency (BaseDependency): dependency object to check the subcollection items against
     """
 
-    field_name: str
-    dependency: BaseDependency
+    field_name: str = None
+    dependency: BaseDependency = None
     resolution: str = "nested"  # oneof: nested, delete
     found: dict = field(
         default_factory=lambda: defaultdict(list)
     )  # {(from, to): [connecting_block1,..]}
-
-    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
-
-        try:
-            members = obj.fields[self.field_name].fields
-        except KeyError:
-            return []
-
-        ret = []
-        for sub_obj in members:
-            sub_ret = self.dependency.find(objects, sub_obj)
-            if sub_ret:
-                ret.extend(sub_ret)
-                for item in sub_ret:
-                    self.found[(obj.key, item)].append(sub_obj)
-
-        return ret
 
     def get_resolve(
         self, obj: Field, target_id: str
@@ -218,6 +213,19 @@ class SubCollectionDependency(BaseDependency):
             return nested_with_cleanup
         else:
             return delete
+    
+    def get_value(self, candidate: Field):
+        try:
+            members = candidate.fields[self.field_name].fields
+        except KeyError:
+            members = []
+
+        for sub_obj in members:
+            yield from self.dependency.get_value(sub_obj)
+    
+    def get_target_value(self, candidate: Field):
+        yield from self.dependency.get_target_value(candidate)
+        
 
 
 @dataclass
@@ -227,23 +235,9 @@ class NestedDependency(BaseDependency):
     Contrary to SubcollectionDependency, it doesn't implicitly
     iterate over members of the given key."""
 
-    field_name: str
-    dependency: BaseDependency
+    field_name: str = None
+    dependency: BaseDependency = None
     resolution: str = "nested"  # oneof: nested, delete
-
-    def find(self, objects: FieldCollection, obj: Field) -> List[str]:
-        ret = []
-
-        try:
-            sub_obj = obj.fields[self.field_name]
-        except KeyError:
-            return ret
-
-        sub_ret = self.dependency.find(objects, sub_obj)
-        if sub_ret:
-            ret.extend(sub_ret)
-
-        return ret
 
     def get_resolve(
         self, obj: Field, target_id: str
@@ -255,183 +249,172 @@ class NestedDependency(BaseDependency):
             return self.dependency.get_resolve(obj.fields[self.field_name], target_id)
         else:
             return delete
+    
+    def get_value(self, candidate: Field):
+        try:
+            sub_obj = candidate.fields[self.field_name]
+        except KeyError:
+            pass
+        else:
+            yield from self.dependency.get_value(sub_obj)
+    
+    def get_target_value(self, candidate: Field):
+        yield from self.dependency.get_target_value(candidate)
 
 
-monitor_dependency = FieldValueToNameDependency(
-    field_name="monitor", type_matcher=("ltm", "monitor")
-)
-sec_rules_source_vlan = SubCollectionDependency(
-    field_name="rules",
-    dependency=NestedDependency(
-        field_name="source",
-        dependency=SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
+NEW_MATRIX = [
+    SubCollectionDependency(
+        child_types=[("gtm", "listener")],
+        field_name="vlans",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=FieldKeyToNameDependency(),
+    ),
+    FieldValueToNameDependency(
+        child_types=[("ltm", "pool")],
+        field_name="monitor",
+        parent_types=[("ltm", "monitor")]
+    ),
+    SubCollectionDependency(
+        child_types=[("ltm", "pool")],
+        field_name="members", 
+        parent_types=[("ltm", "monitor")],
+        dependency=FieldValueToNameDependency(field_name="monitor")
+    ),
+    SubCollectionDependency(
+        child_types=[("ltm", "pool")],
+        field_name="members",
+        parent_types=[("ltm", "node")],
+        dependency=FieldValueToFieldValueDependency(
+            field_name="address",
+            target_field_name="address"
+        ),
+    ),
+    SubCollectionDependency(
+        child_types=[("ltm", "nat"), ("ltm", "snat"), ("ltm", "virtual"), 
+                     ("net", "packet-filter-trusted"), ("net", "route-domain"), ("net", "stp")],
+        field_name="vlans",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=FieldKeyToNameDependency()
+    ),
+    NameToNameDependency(
+        child_types=[("net", "fdb", "vlan")],
+        parent_types=[("net", "vlan")]
+    ),
+    SubCollectionDependency(
+        child_types=[("net", "fdb", "vlan")],
+        field_name="records",
+        parent_types=[("net", "trunk")],
+        dependency=FieldValueToNameDependency(
+            field_name="trunk"
+        ),
+    ),
+    SubCollectionDependency(
+        child_types=[("net", "fdb", "vlan")],
+        field_name="records",
+        parent_types=[("net", "interface")],
+        dependency=FieldValueToNameDependency(
+            field_name="interface"
+        ),
+    ),
+    FieldValueToNameDependency(
+        child_types=[("net", "packet-filter")],
+        field_name="vlan", 
+        parent_types=[("net", "vlan"), ("net", "vlan-group")]
+    ),
+    FieldValueToNameDependency(
+        child_types=[("net", "self")],
+        field_name="vlan", 
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        resolution="delete_self"
+    ),
+    FieldValueToNameDependency(
+        child_types=[("net", "route")],
+        field_name="interface", 
+        parent_types=[("net", "vlan"), ("net", "vlan-group")]
+    ),
+    SubCollectionDependency(
+        child_types=[("net", "stp"), ("sys", "ha-group")],
+        field_name="trunks",
+        parent_types=[("net", "trunk")],
+        dependency=FieldKeyToNameDependency(),
+        resolution="nested_with_cleanup",
+    ),
+    SubCollectionDependency(
+        child_types=[("net", "vlan")],
+        field_name="interfaces",
+        parent_types=[("net", "trunk")],
+        dependency=FieldKeyToNameDependency(),
+        resolution="nested_with_cleanup",
+    ),
+    SubCollectionDependency(
+        child_types=[("net", "vlan-group")],
+        field_name="members",
+        parent_types=[("net", "vlan")],
+        dependency=FieldKeyToNameDependency(),
+    ),
+    SubCollectionDependency(
+        child_types=[("security", "firewall", "management-ip-rules"), ("security", "firewall", "policy"),
+                     ("security", "firewall", "rule-list"), ("security", "nat", "policy")],
+        field_name="rules",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=NestedDependency(
+            field_name="source",
+            dependency=SubCollectionDependency(
+                field_name="vlans",
+                dependency=FieldKeyToNameDependency(),
             ),
         ),
     ),
-)
-
-DEPENDENCIES_MATRIX = {
-    ("gtm", "listener"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        )
-    ],
-    ("ltm", "pool"): [
-        monitor_dependency,
-        SubCollectionDependency(field_name="members", dependency=monitor_dependency),
-        SubCollectionDependency(
-            field_name="members",
-            dependency=FieldValueToFieldValueDependency(
-                field_name="address",
-                type_matcher=("ltm", "node"),
-                target_field_name="address",
-            ),
-        ),
-    ],
-    ("ltm", "nat"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        )
-    ],
-    ("ltm", "snat"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        )
-    ],
-    ("ltm", "virtual"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        )
-    ],
-    ("net", "fdb", "vlan"): [
-        NameToNameDependency(type_matcher=("net", "vlan")),
-        SubCollectionDependency(
-            field_name="records",
+    SubCollectionDependency(
+        child_types=[("security", "nat", "policy")],
+        field_name="rules",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=NestedDependency(
+            field_name="next-hop",
             dependency=FieldValueToNameDependency(
-                field_name="trunk", type_matcher=("net", "trunk")
+                field_name="vlan",
             ),
         ),
-        SubCollectionDependency(
-            field_name="records",
-            dependency=FieldValueToNameDependency(
-                field_name="interface", type_matcher=("net", "interface")
-            ),
-        ),
-    ],
-    ("net", "packet-filter"): [
-        FieldValueToNameDependency(
-            field_name="vlan", type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-        )
-    ],
-    ("net", "packet-filter-trusted"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        ),
-    ],
-    ("net", "route"): [
-        FieldValueToNameDependency(
-            field_name="interface",
-            type_matcher=[("net", "vlan"), ("net", "vlan-group")],
-        )
-    ],
-    ("net", "route-domain"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        ),
-    ],
-    ("net", "self"): [
-        FieldValueToNameDependency(
-            field_name="vlan",
-            type_matcher=[("net", "vlan"), ("net", "vlan-group")],
-            resolution="delete_self",  # vlan property is required for self-ip, cannot remove only it
-        )
-    ],
-    ("net", "stp"): [
-        SubCollectionDependency(
-            field_name="vlans",
-            dependency=FieldKeyToNameDependency(
-                type_matcher=[("net", "vlan"), ("net", "vlan-group")]
-            ),
-        ),
-        SubCollectionDependency(
-            field_name="trunks",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
-            resolution="nested_with_cleanup",
-        ),
-    ],
-    ("net", "trunk"): [
-        SubCollectionDependency(
-            field_name="interfaces",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "interface")),
-            resolution="nested_with_cleanup",
-        )
-    ],
-    ("net", "vlan"): [
-        SubCollectionDependency(
-            field_name="interfaces",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
-            resolution="nested_with_cleanup",
-        ),
-    ],
-    ("net", "vlan-group"): [
-        SubCollectionDependency(
-            field_name="members",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
-        )
-    ],
-    ("security", "firewall", "management-ip-rules"): [sec_rules_source_vlan],
-    ("security", "firewall", "policy"): [sec_rules_source_vlan],
-    ("security", "firewall", "rule-list"): [sec_rules_source_vlan],
-    ("security", "nat", "policy"): [
-        sec_rules_source_vlan,
-        SubCollectionDependency(
-            field_name="rules",
-            dependency=NestedDependency(
-                field_name="next-hop",
-                dependency=FieldValueToNameDependency(
-                    field_name="vlan",
-                    type_matcher=[("net", "vlan"), ("net", "vlan-group")],
-                ),
-            ),
-        ),
-    ],
-    ("sys", "ha-group"): [
-        SubCollectionDependency(
-            field_name="trunks",
-            dependency=FieldKeyToNameDependency(type_matcher=("net", "trunk")),
-            resolution="nested_with_cleanup",
-        ),
-    ]
-    # TODO: Add self-ip object dependencies
-}
+    ),
+    
+]
 
-
-@dataclass(frozen=True)
 class DependencyMap:
-    forward: Dict[str, Set[str]]
-    reverse: Dict[str, Set[str]]
-    resolutions: Dict[Tuple[str, str], Callable]
+    def __init__(self, config):
+        children = defaultdict(lambda: defaultdict(set)) # {dependency: {match_value: {field_id}}}
+        parents = defaultdict(dict) # no set - there can be only one parent for each dependency+value
+        resolutions = dict()
+        dependencies = dict()
+        for field in config.fields.all():
+            for dependency in NEW_MATRIX:
+                dependencies[id(dependency)] = dependency
+                for value in dependency.match_child(field):
+                    children[id(dependency)][value].add(field.id)
+                for value in dependency.match_parent(field):
+                    parents[id(dependency)][value] = field.id
+        
+        map_ = defaultdict(set)
+        
+        for dependency_id, match in children.items():
+            for value, child_ids in match.items():
+                if value in parents[dependency_id]:
+                    parent_id = parents[dependency_id][value]
+                    map_[parent_id] |= child_ids
+                    for child_id in child_ids:
+                        resolutions[(child_id, parent_id)] = dependency.get_resolve(
+                            config.fields[child_id], parent_id
+                        )
+        
+        self.resolutions = resolutions
+        self.reverse = dict(map_)
+        self.forward = self._reverse_graph(self.reverse)
+
+    def _reverse_graph(self, graph):
+        reverse = defaultdict(set)
+        for edge_start, ends in graph.items():
+            for edge_end in ends:
+                reverse[edge_end].add(edge_start)
+        return dict(reverse)
 
     def get_dependencies(self, obj_id: str) -> Set[str]:
         """ Build the set of id of objects that given obj uses/depends on"""
@@ -476,32 +459,3 @@ class DependencyMap:
         visit(obj_id)
 
         return result
-
-
-def build_dependency_map(config: Config, dependencies_matrix=None) -> DependencyMap:
-    """
-    Builds a full dependency map (id -> set(id)) for given config object
-    """
-    if dependencies_matrix is None:
-        dependencies_matrix = DEPENDENCIES_MATRIX
-
-    objects = config.fields
-    dependency_map = defaultdict(set)
-    reverse_dependency_map = defaultdict(set)
-    resolutions = dict()
-
-    for type_matcher, dependencies in dependencies_matrix.items():
-        for obj in objects.get_all(type_matcher):
-            for dependency in dependencies:
-                result = dependency.find(objects, obj)
-                if result:
-                    dependency_map[obj.id].update(result)
-                    for dependency_id in result:
-                        resolutions[(obj.id, dependency_id)] = dependency.get_resolve(
-                            obj, dependency_id
-                        )
-                        reverse_dependency_map[dependency_id].add(obj.id)
-
-    return DependencyMap(
-        forward=dependency_map, reverse=reverse_dependency_map, resolutions=resolutions
-    )
