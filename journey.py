@@ -66,10 +66,16 @@ def prompt():
 
 
 @cli.command()
-@click.option("--host", required=True)
-@click.option("--username", default="root")
-@click.option("--password", required=True)
-def download_ucs(host, username, password):
+@click.option("--host", required=True, help="Host to fetch ucs from.")
+@click.option(
+    "--username", default="root", help="Username to use when connecting host."
+)
+@click.option("--password", required=True, help="Password to use when connecting host.")
+@click.option(
+    "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
+)
+@click.option("--output", default="ex.ucs", help="Output filename.")
+def download_ucs(host, username, password, ucs_passphrase, output):
     device = Device(ip=host, username=username, password=password)
     version = device.get_image()
 
@@ -77,12 +83,12 @@ def download_ucs(host, username, password):
 
     if version.is_velos_supported():
         click.echo("BIGIP version is supported by VELOS.")
-        ucs_remote_dir = device.save_ucs(ucs_name="ex.ucs")
+        ucs_remote_dir = device.save_ucs(ucs_name=output, ucs_passphrase=ucs_passphrase)
 
         working_directory = os.environ.get("MIGRATE_DIR", ".")
         local_ucs_path = device.get_ucs(
             remote=ucs_remote_dir,
-            local_ucs_name=os.path.join(working_directory, "ex.ucs"),
+            local_ucs_name=os.path.join(working_directory, output),
         )
 
         device.delete_ucs(ucs_location=ucs_remote_dir)

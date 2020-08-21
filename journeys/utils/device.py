@@ -50,9 +50,12 @@ class Device:
             result = c.get(remote, local_ucs_name)
         return result
 
-    def save_ucs(self, ucs_name: str):
+    def save_ucs(self, ucs_name: str, ucs_passphrase: str = None):
         ucs_remote_dirname = "/var/local/ucs/"
-        self.run_ssh_cmd(f"tmsh save sys ucs {ucs_name}")
+        cmd = f"tmsh save sys ucs {ucs_name}"
+        if ucs_passphrase:
+            cmd += f" passphrase {ucs_passphrase}"
+        self.run_ssh_cmd(cmd=cmd)
         return os.path.join(ucs_remote_dirname, ucs_name)
 
     def delete_ucs(self, ucs_location):
