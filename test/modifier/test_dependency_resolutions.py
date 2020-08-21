@@ -65,7 +65,7 @@ security nat policy /Common/policy {
 
 
 def test_resolution_created_for_all_dependencies(dependency_conf):
-    deps = dp.build_dependency_map(dependency_conf)
+    deps = dp.DependencyMap(dependency_conf)
     for id_from, list_to in deps.reverse.items():
         for id_to in list_to:
             assert (id_to, id_from) in deps.resolutions
@@ -73,15 +73,15 @@ def test_resolution_created_for_all_dependencies(dependency_conf):
 
 def test_field_value_to_name_dependency_resolution(dependency_conf):
 
-    matrix = {
-        ("ltm", "pool"): [
-            dp.FieldValueToNameDependency(
-                field_name="monitor", type_matcher=("ltm", "monitor")
-            )
-        ]
-    }
+    matrix = [
+        dp.FieldValueToNameDependency(
+            child_types=[("ltm", "pool")],
+            field_name="monitor",
+            parent_types=[("ltm", "monitor")],
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "monitor" in dependency_conf.fields["ltm pool /Common/test_pool"].fields
     deps.resolutions[
@@ -92,17 +92,16 @@ def test_field_value_to_name_dependency_resolution(dependency_conf):
 
 def test_field_value_to_field_value_dependency_delete_child_resolution(dependency_conf):
 
-    matrix = {
-        ("ltm", "pool_member"): [
-            dp.FieldValueToFieldValueDependency(
-                field_name="address",
-                type_matcher=("ltm", "node"),
-                target_field_name="address",
-            )
-        ]
-    }
+    matrix = [
+        dp.FieldValueToFieldValueDependency(
+            child_types=[("ltm", "pool_member")],
+            field_name="address",
+            parent_types=[("ltm", "node")],
+            target_field_name="address",
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert (
         "address"
@@ -119,18 +118,17 @@ def test_field_value_to_field_value_dependency_delete_child_resolution(dependenc
 
 def test_field_value_to_field_value_dependency_delete_self_resolution(dependency_conf):
 
-    matrix = {
-        ("ltm", "pool_member"): [
-            dp.FieldValueToFieldValueDependency(
-                field_name="address",
-                type_matcher=("ltm", "node"),
-                target_field_name="address",
-                resolution="delete_self",
-            )
-        ]
-    }
+    matrix = [
+        dp.FieldValueToFieldValueDependency(
+            child_types=[("ltm", "pool_member")],
+            field_name="address",
+            parent_types=[("ltm", "node")],
+            target_field_name="address",
+            resolution="delete_self",
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "ltm pool_member /Common/test_member" in dependency_conf.fields
     deps.resolutions[
@@ -143,17 +141,21 @@ def test_subcollection_dependency_nested_resolution(dependency_conf):
 
     fake_resolution = MagicMock()
     fake_dependency = MagicMock()
-    fake_dependency.find.return_value = ["ltm monitor tcp /Common/tcp_custom"]
     fake_dependency.get_resolve.return_value = fake_resolution
-    matrix = {
-        ("ltm", "pool"): [
-            dp.SubCollectionDependency(
-                field_name="members", dependency=fake_dependency,
-            )
-        ]
-    }
+    fake_dependency.get_value.side_effect = lambda x: iter(["/Common/tcp_custom"])
+    fake_dependency.get_target_value.side_effect = lambda x: iter(
+        ["/Common/tcp_custom"]
+    )
+    matrix = [
+        dp.SubCollectionDependency(
+            child_types=[("ltm", "pool")],
+            field_name="members",
+            parent_types=[("ltm", "monitor")],
+            dependency=fake_dependency,
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     deps.resolutions[
         ("ltm pool /Common/test_pool2", "ltm monitor tcp /Common/tcp_custom")
@@ -166,17 +168,20 @@ def test_subcollection_dependency_nested_resolution(dependency_conf):
 def test_subcollection_dependency_delete_resolution(dependency_conf):
     fake_resolution = MagicMock()
     fake_dependency = MagicMock()
-    fake_dependency.find.return_value = ["ltm monitor tcp /Common/tcp_custom"]
     fake_dependency.get_resolve.return_value = fake_resolution
-    matrix = {
-        ("ltm", "pool"): [
-            dp.SubCollectionDependency(
-                field_name="members", dependency=fake_dependency, resolution="delete"
-            )
-        ]
-    }
+    fake_dependency.get_value.return_value = iter(["/Common/tcp_custom"])
+    fake_dependency.get_target_value.return_value = iter(["/Common/tcp_custom"])
+    matrix = [
+        dp.SubCollectionDependency(
+            child_types=[("ltm", "pool")],
+            field_name="members",
+            parent_types=[("ltm", "monitor")],
+            dependency=fake_dependency,
+            resolution="delete",
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "members" in dependency_conf.fields["ltm pool /Common/test_pool2"].fields
     deps.resolutions[
@@ -187,17 +192,17 @@ def test_subcollection_dependency_delete_resolution(dependency_conf):
 
 
 def test_subcollection_dependency_nested_with_cleanup_resolution(dependency_conf):
-    matrix = {
-        ("net", "vlan"): [
-            dp.SubCollectionDependency(
-                field_name="interfaces",
-                dependency=dp.FieldKeyToNameDependency(type_matcher=("net", "trunk")),
-                resolution="nested_with_cleanup",
-            ),
-        ]
-    }
+    matrix = [
+        dp.SubCollectionDependency(
+            child_types=[("net", "vlan")],
+            field_name="interfaces",
+            dependency=dp.FieldKeyToNameDependency(),
+            parent_types=[("net", "trunk")],
+            resolution="nested_with_cleanup",
+        ),
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
     assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
     deps.resolutions[("net vlan /Common/vlan", "net trunk test-trunk")](dependency_conf)
     assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
@@ -213,15 +218,19 @@ def test_nested_dependency_nested_resolution(dependency_conf):
 
     fake_resolution = MagicMock()
     fake_dependency = MagicMock()
-    fake_dependency.find.return_value = ["net vlan /Common/vlan"]
     fake_dependency.get_resolve.return_value = fake_resolution
-    matrix = {
-        ("security", "nat", "policy"): [
-            dp.NestedDependency(field_name="next-hop", dependency=fake_dependency,)
-        ]
-    }
+    fake_dependency.get_value.return_value = iter(["/Common/vlan"])
+    fake_dependency.get_target_value.return_value = iter(["/Common/vlan"])
+    matrix = [
+        dp.NestedDependency(
+            child_types=[("security", "nat", "policy")],
+            field_name="next-hop",
+            dependency=fake_dependency,
+            parent_types=[("net", "vlan")],
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
     deps.resolutions[("security nat policy /Common/policy", "net vlan /Common/vlan")](
         dependency_conf
     )
@@ -233,17 +242,20 @@ def test_nested_dependency_nested_resolution(dependency_conf):
 def test_nested_dependency_delete_resolution(dependency_conf):
     fake_resolution = MagicMock()
     fake_dependency = MagicMock()
-    fake_dependency.find.return_value = ["net vlan /Common/vlan"]
     fake_dependency.get_resolve.return_value = fake_resolution
-    matrix = {
-        ("security", "nat", "policy"): [
-            dp.NestedDependency(
-                field_name="next-hop", dependency=fake_dependency, resolution="delete"
-            )
-        ]
-    }
+    fake_dependency.get_value.return_value = iter(["/Common/vlan"])
+    fake_dependency.get_target_value.return_value = iter(["/Common/vlan"])
+    matrix = [
+        dp.NestedDependency(
+            child_types=[("security", "nat", "policy")],
+            field_name="next-hop",
+            dependency=fake_dependency,
+            parent_types=[("net", "vlan")],
+            resolution="delete",
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert (
         "next-hop"
@@ -261,11 +273,13 @@ def test_nested_dependency_delete_resolution(dependency_conf):
 
 def test_name_to_name_dependency_resolution(dependency_conf):
 
-    matrix = {
-        ("net", "fdb", "vlan"): [dp.NameToNameDependency(type_matcher=("net", "vlan"))]
-    }
+    matrix = [
+        dp.NameToNameDependency(
+            child_types=[("net", "fdb", "vlan")], parent_types=[("net", "vlan")]
+        )
+    ]
 
-    deps = dp.build_dependency_map(dependency_conf, matrix)
+    deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "net fdb vlan /Common/vlan" in dependency_conf.fields
     deps.resolutions[("net fdb vlan /Common/vlan", "net vlan /Common/vlan")](

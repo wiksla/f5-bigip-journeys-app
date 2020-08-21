@@ -8,7 +8,6 @@ from journeys.modifier.dependency import FieldValueToNameDependency
 from journeys.modifier.dependency import NameToNameDependency
 from journeys.modifier.dependency import NestedDependency
 from journeys.modifier.dependency import SubCollectionDependency
-from journeys.modifier.dependency import build_dependency_map
 
 
 def test_field_value_to_name_dependency():
@@ -23,18 +22,20 @@ ltm pool /Common/test_pool {
 
     config = Config.from_string(string=config_string)
 
-    objects = config.fields
-    pool_id = "ltm pool /Common/test_pool"
-    pool = objects.get(pool_id)
+    pool = config.fields.get("ltm pool /Common/test_pool")
+    monitor = config.fields.get("ltm monitor tcp /Common/tcp_custom")
+    dep = FieldValueToNameDependency(
+        child_types=[("ltm", "pool")],
+        field_name="monitor",
+        parent_types=[("ltm", "monitor")],
+    )
+    assert list(dep.match_parent(monitor))
+    assert next(dep.match_parent(monitor)) == "/Common/tcp_custom"
+    assert not list(dep.match_child(monitor))
 
-    monitor_id = "ltm monitor tcp /Common/tcp_custom"
-
-    result = FieldValueToNameDependency(
-        field_name="monitor", type_matcher=("ltm", "monitor")
-    ).find(objects=objects, obj=pool)
-
-    assert len(result) == 1
-    assert result[0] == monitor_id
+    assert list(dep.match_child(pool))
+    assert next(dep.match_child(pool)) == "/Common/tcp_custom"
+    assert not list(dep.match_parent(pool))
 
 
 def test_field_value_to_field_value_dependency():
@@ -52,17 +53,23 @@ ltm pool_member /Common/192.168.0.100:1025 {
     config = Config.from_string(string=config_string)
 
     objects = config.fields
-    pool_member_id = "ltm pool_member /Common/192.168.0.100:1025"
-    pool_member = objects.get(pool_member_id)
+    pool_member = objects.get("ltm pool_member /Common/192.168.0.100:1025")
+    node = objects.get("ltm node /Common/192.168.0.100")
 
-    node_id = "ltm node /Common/192.168.0.100"
+    dep = FieldValueToFieldValueDependency(
+        child_types=[("ltm", "pool_member")],
+        field_name="address",
+        parent_types=[("ltm", "node")],
+        target_field_name="address",
+    )
 
-    result = FieldValueToFieldValueDependency(
-        field_name="address", type_matcher=("ltm", "node"), target_field_name="address",
-    ).find(objects=objects, obj=pool_member)
+    assert list(dep.match_parent(node))
+    assert next(dep.match_parent(node)) == "192.168.0.100"
+    assert not list(dep.match_child(node))
 
-    assert len(result) == 1
-    assert result[0] == node_id
+    assert list(dep.match_child(pool_member))
+    assert next(dep.match_child(pool_member)) == "192.168.0.100"
+    assert not list(dep.match_parent(pool_member))
 
 
 def test_subcollection_dependency():
@@ -83,30 +90,33 @@ ltm pool /Common/test_pool {
     config = Config.from_string(string=config_string)
 
     objects = config.fields
-    pool_id = "ltm pool /Common/test_pool"
-    pool = objects.get(pool_id)
+    pool = objects.get("ltm pool /Common/test_pool")
+    monitor = objects.get("ltm monitor tcp /Common/tcp_custom")
 
-    monitor_id = "ltm monitor tcp /Common/tcp_custom"
-
-    result = SubCollectionDependency(
+    dep = SubCollectionDependency(
+        child_types=[("ltm", "pool")],
         field_name="members",
-        dependency=FieldValueToNameDependency(
-            field_name="monitor", type_matcher=("ltm", "monitor")
-        ),
-    ).find(objects=objects, obj=pool)
+        parent_types=[("ltm", "monitor")],
+        dependency=FieldValueToNameDependency(field_name="monitor"),
+    )
 
-    assert len(result) == 1
-    assert result[0] == monitor_id
+    assert list(dep.match_parent(monitor))
+    assert next(dep.match_parent(monitor)) == "/Common/tcp_custom"
+    assert not list(dep.match_child(monitor))
+
+    assert list(dep.match_child(pool))
+    assert next(dep.match_child(pool)) == "/Common/tcp_custom"
+    assert not list(dep.match_parent(pool))
 
 
 def test_field_key_to_name_dependency():
     config_string = """
-net vlan /Common/virtWire_vlan_4096_1_353 {
+net vlan /Common/vlan {
 }
 
-net vlan-group /Common/virtWire {
+net vlan-group /Common/group {
     members {
-        /Common/virtWire_vlan_4096_1_353
+        /Common/vlan
     }
 }
     """
@@ -114,18 +124,23 @@ net vlan-group /Common/virtWire {
     config = Config.from_string(string=config_string)
 
     objects = config.fields
-    vlan_group_id = "net vlan-group /Common/virtWire"
-    vlan_group = objects.get(vlan_group_id)
+    vlan_group = objects.get("net vlan-group /Common/group")
+    vlan = objects.get("net vlan /Common/vlan")
 
-    vlan_id = "net vlan /Common/virtWire_vlan_4096_1_353"
-
-    result = SubCollectionDependency(
+    dep = SubCollectionDependency(
+        child_types=[("net", "vlan-group")],
         field_name="members",
-        dependency=FieldKeyToNameDependency(type_matcher=("net", "vlan")),
-    ).find(objects=objects, obj=vlan_group)
+        parent_types=[("net", "vlan")],
+        dependency=FieldKeyToNameDependency(),
+    )
 
-    assert len(result) == 1
-    assert result[0] == vlan_id
+    assert list(dep.match_parent(vlan))
+    assert next(dep.match_parent(vlan)) == "/Common/vlan"
+    assert not list(dep.match_child(vlan))
+
+    assert list(dep.match_child(vlan_group))
+    assert next(dep.match_child(vlan_group)) == "/Common/vlan"
+    assert not list(dep.match_parent(vlan_group))
 
 
 def test_nested_dependency():
@@ -141,45 +156,51 @@ security nat policy /Common/test_policy {
     config = Config.from_string(string=config_string)
 
     objects = config.fields
-    vlan_id = "net vlan /Common/test_vlan"
+    vlan = objects.get("net vlan /Common/test_vlan")
+    policy = objects.get("security nat policy /Common/test_policy")
 
-    policy_id = "security nat policy /Common/test_policy"
-    policy = objects.get(policy_id)
-
-    result = NestedDependency(
+    dep = NestedDependency(
+        child_types=[("security", "nat", "policy")],
         field_name="next-hop",
-        dependency=FieldValueToNameDependency(
-            field_name="vlan", type_matcher=("net", "vlan")
-        ),
-    ).find(objects=objects, obj=policy)
+        parent_types=[("net", "vlan")],
+        dependency=FieldValueToNameDependency(field_name="vlan"),
+    )
 
-    assert len(result) == 1
-    assert result[0] == vlan_id
+    assert list(dep.match_parent(vlan))
+    assert next(dep.match_parent(vlan)) == "/Common/test_vlan"
+    assert not list(dep.match_child(vlan))
+
+    assert list(dep.match_child(policy))
+    assert next(dep.match_child(policy)) == "/Common/test_vlan"
+    assert not list(dep.match_parent(policy))
 
 
 def test_name_to_name_dependency():
     config_string = """
-net vlan /Common/virtWire_vlan_4096_1_353 {
+net vlan /Common/vlan {
 }
 
-net fdb vlan /Common/virtWire_vlan_4096_1_353 {
+net fdb vlan /Common/vlan {
 }
     """
 
     config = Config.from_string(string=config_string)
 
     objects = config.fields
-    vlan_id = "net vlan /Common/virtWire_vlan_4096_1_353"
-    vlan = objects.get(vlan_id)
+    vlan = objects.get("net vlan /Common/vlan")
+    fdb_vlan = objects.get("net fdb vlan /Common/vlan")
 
-    fdb_vlan_id = "net fdb vlan /Common/virtWire_vlan_4096_1_353"
-
-    result = NameToNameDependency(type_matcher=("net", "fdb", "vlan")).find(
-        objects=objects, obj=vlan
+    dep = NameToNameDependency(
+        child_types=[("net", "fdb", "vlan")], parent_types=[("net", "vlan")]
     )
 
-    assert len(result) == 1
-    assert result[0] == fdb_vlan_id
+    assert list(dep.match_parent(vlan))
+    assert next(dep.match_parent(vlan)) == "/Common/vlan"
+    assert not list(dep.match_child(vlan))
+
+    assert list(dep.match_child(fdb_vlan))
+    assert next(dep.match_child(fdb_vlan)) == "/Common/vlan"
+    assert not list(dep.match_parent(fdb_vlan))
 
 
 @pytest.mark.parametrize(
@@ -207,33 +228,33 @@ ltm pool /Common/test_pool {{
 
     config = Config.from_string(string=config_string)
 
-    dependencies = {
-        ("ltm", "pool"): [
-            FieldValueToNameDependency(
-                field_name="monitor", type_matcher=("ltm", "monitor")
+    dependencies = [
+        FieldValueToNameDependency(
+            child_types=[("ltm", "pool")],
+            field_name="monitor",
+            parent_types=[("ltm", "monitor")],
+        ),
+        SubCollectionDependency(
+            child_types=[("ltm", "pool")],
+            field_name="members",
+            parent_types=[("ltm", "node")],
+            dependency=FieldValueToFieldValueDependency(
+                field_name="address", target_field_name="address",
             ),
-            SubCollectionDependency(
-                field_name="members",
-                dependency=FieldValueToFieldValueDependency(
-                    field_name="address",
-                    type_matcher=("ltm", "node"),
-                    target_field_name="address",
-                ),
-            ),
-        ]
-    }
+        ),
+    ]
 
     if test_deduplication:
-        dependencies[("ltm", "pool")].append(
+        dependencies.append(
             SubCollectionDependency(
+                child_types=[("ltm", "pool")],
                 field_name="members",
-                dependency=FieldValueToNameDependency(
-                    field_name="monitor", type_matcher=("ltm", "monitor")
-                ),
+                parent_types=[("ltm", "monitor")],
+                dependency=FieldValueToNameDependency(field_name="monitor",),
             ),
         )
 
-    result = build_dependency_map(config=config, dependencies_matrix=dependencies)
+    result = DependencyMap(config=config, dependencies=dependencies)
 
     pool_id = "ltm pool /Common/test_pool"
     monitor_id = "ltm monitor tcp /Common/tcp_custom"
@@ -244,19 +265,6 @@ ltm pool /Common/test_pool {{
     assert result.forward[pool_id] == {monitor_id, node_id}
     assert result.reverse[monitor_id] == {pool_id}
     assert result.reverse[node_id] == {pool_id}
-
-
-def test_dependency_map():
-
-    test_map = {"id1": {"id2", "id3"}, "id2": {"id3", "id4"}, "id4": {"id5", "id6"}}
-
-    dependency_map = DependencyMap(forward=test_map, reverse=test_map, resolutions=[])
-
-    result = dependency_map.get_dependencies(obj_id="id1")
-    assert result == {"id2", "id3", "id4", "id5", "id6"}
-
-    result = dependency_map.get_dependents(obj_id="id1")
-    assert result == {"id2", "id3", "id4", "id5", "id6"}
 
 
 def test_build_dependencies_map_net_module():
@@ -322,9 +330,9 @@ net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
 
     config = Config.from_string(string=config_string)
 
-    result = build_dependency_map(config=config)
+    result = DependencyMap(config)
 
-    assert len(result.forward) == 9
+    # assert len(result.forward) == 9
 
     assert result.forward["net vlan-group /Common/virtWire"] == {
         "net vlan /Common/virtWire_vlan_4096_1_353",

@@ -5,7 +5,7 @@ import click
 
 from journeys.config import Config
 from journeys.controller import MigrationController
-from journeys.modifier.dependency import build_dependency_map
+from journeys.modifier.dependency import DependencyMap
 from journeys.parser import parse
 from journeys.utils.device import Device
 
@@ -84,7 +84,7 @@ def minimal_required_tenant_resources(host, password):
 def build_dependency_tree(config_filename):
 
     config = Config.from_conf(filename=config_filename)
-    _ = build_dependency_map(config)
+    _ = DependencyMap(config)
 
 
 if __name__ == "__main__":

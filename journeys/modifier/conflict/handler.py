@@ -7,7 +7,6 @@ from journeys.config import Config
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.plugins import load_plugins
 from journeys.modifier.dependency import DependencyMap
-from journeys.modifier.dependency import build_dependency_map
 
 
 class ConflictHandler:
@@ -15,7 +14,7 @@ class ConflictHandler:
 
     def __init__(self, config: Config):
         self.config = config
-        self.dependency_map = build_dependency_map(self.config)
+        self.dependency_map = DependencyMap(self.config)
         self.plugins = load_plugins()
 
     def detect_conflicts(self):
