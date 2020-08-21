@@ -67,9 +67,10 @@ def prompt():
 
 @cli.command()
 @click.option("--host", required=True)
+@click.option("--username", default="root")
 @click.option("--password", required=True)
-def download_ucs(host, password):
-    device = Device(ip=host, root_password=password)
+def download_ucs(host, username, password):
+    device = Device(ip=host, username=username, password=password)
     version = device.get_image()
 
     click.echo(f"Version on bigip: {version}")
@@ -98,9 +99,10 @@ def parse_config(config_filename):
 
 @cli.command()
 @click.option("--host", required=True)
+@click.option("--username", default="root")
 @click.option("--password", required=True)
-def minimal_required_tenant_resources(host, password):
-    device = Device(ip=host, root_password=password)
+def minimal_required_tenant_resources(host, username, password):
+    device = Device(ip=host, username=username, password=password)
     click.echo(device.obtain_source_resources())
 
 

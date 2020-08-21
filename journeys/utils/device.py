@@ -9,13 +9,14 @@ from journeys.utils.image import parse_version_file
 class Device:
     """ Class representing DUT credentials. """
 
-    def __init__(self, ip: str, root_password: str):
+    def __init__(self, ip: str, username: str, password: str):
         self.ip = ip
-        self.root_password = root_password
+        self.username = username
+        self.password = password
 
     @property
     def fabric(self):
-        return {"user": "root", "connect_kwargs": {"password": self.root_password}}
+        return {"user": self.username, "connect_kwargs": {"password": self.password}}
 
     def run_ssh_cmd(self, cmd: str):
         with Connection(host=self.ip, **self.fabric) as c:
