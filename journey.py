@@ -5,6 +5,8 @@ import click
 
 from journeys.config import Config
 from journeys.controller import MigrationController
+from journeys.errors import ArchiveDecryptError
+from journeys.errors import ArchiveOpenError
 from journeys.modifier.dependency import DependencyMap
 from journeys.parser import parse
 from journeys.utils.device import Device
@@ -22,9 +24,24 @@ def cli():
 @cli.command()
 @click.argument("ucs", default="")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
-def migrate(ucs, clear):
-    controller = MigrationController(input_ucs=ucs, clear=clear,)
-    controller.process()
+@click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
+def migrate(ucs, clear, ucs_passphrase):
+
+    controller = MigrationController(
+        input_ucs=ucs, clear=clear, ucs_passphrase=ucs_passphrase
+    )
+    try:
+        controller.process()
+    except ArchiveOpenError:
+        click.echo("Failed to open the archive.")
+        click.echo("")
+        click.echo(
+            "If the archive is encrypted rerun with --ucs-passphrase <passphrase> parameter."
+        )
+    except ArchiveDecryptError:
+        click.echo("Failed to decrypt the archive.")
+        click.echo("")
+        click.echo("Make sure that appropriate passphrase was passed.")
 
 
 @cli.command()
@@ -32,6 +49,14 @@ def migrate(ucs, clear):
 def resolve(conflict):
     controller = MigrationController()
     controller.resolve(conflict_id=conflict)
+
+
+@cli.command()
+@click.option("--output", default="", help="Use given filename instead of default.")
+@click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
+def generate(output, ucs_passphrase):
+    controller = MigrationController(output_ucs=output, ucs_passphrase=ucs_passphrase)
+    controller.generate()
 
 
 @cli.command()

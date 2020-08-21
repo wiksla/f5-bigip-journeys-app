@@ -2,6 +2,7 @@ import hashlib
 import os
 import shelve
 import shutil
+from tarfile import ReadError
 from typing import Optional
 
 import click
@@ -9,6 +10,8 @@ from git import Repo
 from gitdb.exc import BadName
 
 from journeys.config import Config
+from journeys.errors import ArchiveDecryptError
+from journeys.errors import ArchiveOpenError
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
@@ -32,6 +35,7 @@ class MigrationController:
         input_ucs: Optional[str] = None,
         output_ucs: Optional[str] = None,
         clear: bool = False,
+        ucs_passphrase: Optional[str] = None,
     ):
         working_directory = os.environ.get("MIGRATE_DIR", ".")
 
@@ -58,6 +62,8 @@ class MigrationController:
             or self.shelf.get("ucs", "").replace(".ucs", ".modified.ucs")
             or "journeys.ucs"
         )
+
+        self.ucs_passphrase = ucs_passphrase
 
         self.ucs_reader = None
         self.config = None
@@ -127,10 +133,11 @@ class MigrationController:
         if not self.repo.heads.initial.commit == self.repo.heads.master.commit:
             click.echo("All conflicts have been resolved.")
 
-            output_ucs = self._create_output_ucs()
-            click.echo(f"Output ucs has been stored as {output_ucs}.")
         else:
             click.echo("No known issues found in the given ucs.")
+
+        click.echo("")
+        click.echo("In order to generate output ucs run journey.py generate")
 
     def resolve(self, conflict_id):
 
@@ -174,6 +181,23 @@ class MigrationController:
         )
         self._print_conflict_resolution_help(conflict)
 
+    def generate(self):
+        if not self._check_master():
+            click.echo("Please checkout to master branch.")
+            return
+
+        if self.config is None:
+            self._read_config()
+        conflicts = self.conflict_handler.detect_conflicts()
+        if conflicts:
+            click.echo("There still are some unresolved conflicts.")
+            click.echo("")
+            click.echo("In order to handle them run journey.py migrate")
+            return
+
+        output_ucs = self._create_output_ucs()
+        click.echo(f"Output ucs has been stored as {output_ucs}.")
+
     def _read_config(self):
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
@@ -186,29 +210,42 @@ class MigrationController:
 
         try:
             self.repo.commit("initial")
+            return
         except BadName:
-            if not self.input_ucs:
-                raise RuntimeError(
-                    "No ucs file has been given and there is no session to resume."
-                )
-            _, files_metadata = untar_file(self.input_ucs, output_dir=self.repo_path)
-            self.shelf["files_metadata"] = files_metadata
-            with open(
-                file=os.path.join(self.repo_path, ".gitignore"), mode="w"
-            ) as gitignore:
-                gitignore.write(".shelf.db")
-            self.shelf["ucs"] = self.input_ucs
-            self.repo.git.add("*")
-            self.repo.index.commit("initial")
+            pass
 
-            # rebuilding the config changes the formatting slightly -
-            # do it here so that later diffs are clean
-            ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
-            config: Config = ucs_reader.get_config()
-            config.build(dirname=self.config_path)
-            self.repo.git.add(u=True)
-            self.repo.index.commit("reformat")
-            self.repo.create_head("initial")
+        if not self.input_ucs:
+            raise RuntimeError(
+                "No ucs file has been given and there is no session to resume."
+            )
+        try:
+            _, files_metadata = untar_file(
+                self.input_ucs,
+                output_dir=self.repo_path,
+                archive_passphrase=self.ucs_passphrase,
+            )
+        except ReadError:
+            raise ArchiveOpenError()
+        except RuntimeError:
+            raise ArchiveDecryptError()
+
+        self.shelf["files_metadata"] = files_metadata
+        with open(
+            file=os.path.join(self.repo_path, ".gitignore"), mode="w"
+        ) as gitignore:
+            gitignore.write(self.SHELF_FILE_NAME)
+        self.shelf["ucs"] = self.input_ucs
+        self.repo.git.add("*")
+        self.repo.index.commit("initial")
+
+        # rebuilding the config changes the formatting slightly -
+        # do it here so that later diffs are clean
+        ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
+        config: Config = ucs_reader.get_config()
+        config.build(dirname=self.config_path)
+        self.repo.git.add(u=True)
+        self.repo.index.commit("reformat")
+        self.repo.create_head("initial")
 
     def _create_output_ucs(self):
         try:
@@ -223,6 +260,7 @@ class MigrationController:
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),
             files_metadata=self.shelf["files_metadata"],
+            archive_passphrase=self.ucs_passphrase,
         )
         return output_path
 
