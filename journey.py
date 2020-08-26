@@ -7,6 +7,12 @@ from journeys.config import Config
 from journeys.controller import MigrationController
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
+from journeys.errors import ConflictNotResolvedError
+from journeys.errors import DifferentConflictError
+from journeys.errors import DifferentUcsError
+from journeys.errors import NotAllConflictResolvedError
+from journeys.errors import NotMasterBranchError
+from journeys.errors import UnknownConflictError
 from journeys.modifier.dependency import DependencyMap
 from journeys.parser import parse
 from journeys.utils.device import Device
@@ -21,6 +27,57 @@ def cli():
     pass
 
 
+def print_conflicts_info(conflicts):
+    click.echo("There are following conflicts waiting to be resolved:")
+    for _id, conflict in conflicts.items():
+        click.echo("")
+        click.echo(f"{conflict.id}:")
+        for line in conflict.summary:
+            click.echo(f"\t{line}")
+    click.echo("")
+    click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
+    click.echo(f"Example 'journey.py resolve {next(iter(conflicts.keys()))}'")
+
+
+def print_conflict_resolution_help(controller, conflict):
+    click.echo(f"Workdir: {controller.working_directory}")
+    click.echo(f"Config path: {controller.config_path}\n")
+    click.echo(f"Resolving conflict {conflict.id}\n")
+    click.echo(
+        f"Resolve the issues on objects commented with '{conflict.id}' in the following files:"
+    )
+    for filename in conflict.files_to_render:
+        click.echo(f"\t{filename}")
+
+    click.echo("")
+    click.echo(
+        f"Proposed fixes are present in branches (in git repository: {controller.repo_path}):"
+    )
+    for mitigation in conflict.mitigations:
+        if mitigation == "comment_only":
+            continue
+
+        click.echo(f"\t{conflict.id}_{mitigation}")
+    click.echo("")
+    click.echo(
+        f"To view the issues found, enter the {controller.repo_path} directory and check the diff of the current branch"
+        f" (e.g. 'git diff')"
+    )
+    click.echo(
+        "To view the proposed changes, you can use any git diff tool (e.g. 'git diff master..<branch_name>')"
+    )
+    click.echo(
+        "To apply proposed changes right away, you can merge one of the branches "
+        "(e.g. 'git checkout . ; git merge <branch_name>')"
+    )
+    click.echo("  Alternatively, you can edit the files manually.")
+    click.echo("")
+    click.echo(
+        "You do not have to commit your changes - just apply them in the specified files."
+    )
+    click.echo("Run 'journey.py migrate' once you're finished.")
+
+
 @cli.command()
 @click.argument("ucs", default="")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
@@ -31,7 +88,14 @@ def migrate(ucs, clear, ucs_passphrase):
         input_ucs=ucs, clear=clear, ucs_passphrase=ucs_passphrase
     )
     try:
-        controller.process()
+        conflicts = controller.process()
+        if conflicts:
+            print_conflicts_info(conflicts)
+        else:
+            click.echo("No conflicts has been found in the given ucs.")
+            click.echo("")
+            click.echo("In order to generate output ucs run journey.py generate")
+
     except ArchiveOpenError:
         click.echo("Failed to open the archive.")
         click.echo("")
@@ -43,20 +107,58 @@ def migrate(ucs, clear, ucs_passphrase):
         click.echo("")
         click.echo("Make sure that appropriate passphrase was passed.")
 
+    except NotMasterBranchError:
+        click.echo("Please checkout to master branch.")
+
+    except DifferentUcsError:
+        click.echo("Different ucs file received as an input.")
+        click.echo(
+            f"In order to start processing new ucs file run journey.py migrate {ucs} --clear"
+        )
+    except ConflictNotResolvedError as e:
+        click.echo(f"ERROR: Current conflict {e.conflict_id} is not yet resolved.")
+        click.echo("")
+        print_conflict_resolution_help(controller, e.conflict_info)
+
 
 @cli.command()
 @click.argument("conflict")
 def resolve(conflict):
     controller = MigrationController()
-    controller.resolve(conflict_id=conflict)
+    try:
+        conflict_info = controller.resolve(conflict_id=conflict)
+        print_conflict_resolution_help(controller, conflict_info)
+    except DifferentConflictError as e:
+        click.echo(
+            f"Conflict {e.conflict_id} resolution already in progress."
+            "Finish it first and call 'journey.py migrate' before starting a new one."
+        )
+    except UnknownConflictError:
+        click.echo(
+            f"Invalid conflict ID ({conflict})- given conflict not found in the config."
+        )
 
 
 @cli.command()
 @click.option("--output", default="", help="Use given filename instead of default.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
-def generate(output, ucs_passphrase):
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Generate output ucs even if not all conflict has been resolved.",
+)
+def generate(output, ucs_passphrase, force):
     controller = MigrationController(output_ucs=output, ucs_passphrase=ucs_passphrase)
-    controller.generate()
+
+    try:
+        output_ucs = controller.generate(force=force)
+        click.echo(f"Output ucs has been stored as {output_ucs}.")
+    except NotMasterBranchError:
+        click.echo("Please checkout to master branch.")
+    except NotAllConflictResolvedError:
+        click.echo("There still are some unresolved conflicts.")
+        click.echo("")
+        click.echo("In order to handle them run journey.py migrate")
 
 
 @cli.command()

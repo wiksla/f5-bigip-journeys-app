@@ -5,13 +5,18 @@ import shutil
 from tarfile import ReadError
 from typing import Optional
 
-import click
 from git import Repo
 from gitdb.exc import BadName
 
 from journeys.config import Config
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
+from journeys.errors import ConflictNotResolvedError
+from journeys.errors import DifferentConflictError
+from journeys.errors import DifferentUcsError
+from journeys.errors import NotAllConflictResolvedError
+from journeys.errors import NotMasterBranchError
+from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
@@ -85,19 +90,14 @@ class MigrationController:
 
     def process(self):
         if not self._check_master():
-            click.echo("Please checkout to master branch.")
-            return
+            raise NotMasterBranchError()
 
         if self.input_ucs:
             file_hash = md5(self.input_ucs)
 
             stored_file_hash = self.shelf.get("file_hash", None)
             if stored_file_hash and stored_file_hash != file_hash:
-                click.echo("Different ucs file received as an input.")
-                click.echo(
-                    f"In order to start processing new ucs file run journey.py migrate {self.input_ucs} --clear"
-                )
-                return
+                raise DifferentUcsError()
 
             self.shelf["file_hash"] = file_hash
 
@@ -116,51 +116,34 @@ class MigrationController:
                     self.repo.index.commit(message=current_conflict)
                 self.shelf["current_conflict"] = ""
             else:
-                click.echo(
-                    f"ERROR: Current conflict {current_conflict} is not yet resolved.\n"
+                raise ConflictNotResolvedError(
+                    conflict_id=current_conflict,
+                    conflict_info=conflicts[current_conflict],
                 )
-                self._print_conflict_resolution_help(conflicts[current_conflict])
-                return
 
         for head in self.repo.heads:
             if head not in [self.repo.heads.master, self.repo.heads.initial]:
                 head.delete(self.repo, head, force=True)
 
-        if conflicts:
-            self._print_conflicts_info(conflicts)
-            return
-
-        if not self.repo.heads.initial.commit == self.repo.heads.master.commit:
-            click.echo("All conflicts have been resolved.")
-
-        else:
-            click.echo("No known issues found in the given ucs.")
-
-        click.echo("")
-        click.echo("In order to generate output ucs run journey.py generate")
+        return conflicts
 
     def resolve(self, conflict_id):
 
         current_conflict = self.shelf.get("current_conflict", None)
         if current_conflict and current_conflict != conflict_id:
-            click.echo(
-                f"Conflict {current_conflict} resolution already in progress."
-                "Finish it by calling 'journey.py migrate' first before starting a new one."
-            )
-            return
+            raise DifferentConflictError(conflict_id=current_conflict)
 
         if self.config is None:
             self._read_config()
         conflicts = self.conflict_handler.detect_conflicts()
 
         if conflict_id not in conflicts:
-            click.echo("Invalid conflict ID - given conflict not found in the config.")
-            return
+            raise UnknownConflictError()
 
-        conflict = conflicts[conflict_id]
+        conflict_info = conflicts[conflict_id]
         self.shelf["current_conflict"] = conflict_id
 
-        for mitigation in conflict.mitigations:
+        for mitigation in conflict_info.mitigations:
             if mitigation == "comment_only":
                 # leave "comment" solution for the end - we want to keep it on master,
                 # and we want to branch off from non-commented files
@@ -170,33 +153,32 @@ class MigrationController:
             if branch_name not in self.repo.heads:
                 self.repo.create_head(f"{conflict_id}_{mitigation}").checkout()
                 self.conflict_handler.render(
-                    dirname=self.config_path, conflict=conflict, mitigation=mitigation,
+                    dirname=self.config_path,
+                    conflict=conflict_info,
+                    mitigation=mitigation,
                 )
                 self.repo.git.add(u=True)
                 self.repo.index.commit(mitigation)
 
         self.repo.heads.master.checkout()
         self.conflict_handler.render(
-            dirname=self.config_path, conflict=conflict, mitigation="comment_only",
+            dirname=self.config_path, conflict=conflict_info, mitigation="comment_only",
         )
-        self._print_conflict_resolution_help(conflict)
+        return conflict_info
 
-    def generate(self):
+    def generate(self, force):
         if not self._check_master():
-            click.echo("Please checkout to master branch.")
-            return
+            raise NotMasterBranchError()
 
         if self.config is None:
             self._read_config()
-        conflicts = self.conflict_handler.detect_conflicts()
-        if conflicts:
-            click.echo("There still are some unresolved conflicts.")
-            click.echo("")
-            click.echo("In order to handle them run journey.py migrate")
-            return
+
+        if not force:
+            if self.conflict_handler.detect_conflicts():
+                raise NotAllConflictResolvedError()
 
         output_ucs = self._create_output_ucs()
-        click.echo(f"Output ucs has been stored as {output_ucs}.")
+        return output_ucs
 
     def _read_config(self):
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
@@ -263,52 +245,3 @@ class MigrationController:
             archive_passphrase=self.ucs_passphrase,
         )
         return output_path
-
-    def _print_conflicts_info(self, conflicts):
-        click.echo("There are following conflicts waiting to be resolved:")
-        for _id, conflict in conflicts.items():
-            click.echo("")
-            click.echo(f"{conflict.id}:")
-            for line in conflict.summary:
-                click.echo(f"\t{line}")
-        click.echo("")
-        click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
-        click.echo(f"Example 'journey.py resolve {next(iter(conflicts.keys()))}'")
-
-    def _print_conflict_resolution_help(self, conflict):
-        click.echo(f"Workdir: {self.working_directory}")
-        click.echo(f"Config path: {self.config_path}\n")
-        click.echo(f"Resolving conflict {conflict.id}\n")
-        click.echo(
-            f"Resolve the issues on objects commented with '{conflict.id}' in the following files:"
-        )
-        for filename in conflict.files_to_render:
-            click.echo(f"\t{filename}")
-
-        click.echo("")
-        click.echo(
-            f"Proposed fixes are present in branches (in git repository: {self.repo_path}):"
-        )
-        for mitigation in conflict.mitigations:
-            if mitigation == "comment_only":
-                continue
-
-            click.echo(f"\t{conflict.id}_{mitigation}")
-        click.echo("")
-        click.echo(
-            f"To view the issues found, enter the {self.repo_path} directory and check the diff of the current branch "
-            f"(e.g. 'git diff') "
-        )
-        click.echo(
-            "To view the proposed changes, you can use any git diff tool (e.g. 'git diff master..<branch_name>')"
-        )
-        click.echo(
-            "To apply proposed changes right away, you can merge one of the branches "
-            "(e.g. 'git checkout . ; git merge <branch_name>')"
-        )
-        click.echo("  Alternatively, you can edit the files manually.")
-        click.echo("")
-        click.echo(
-            "You do not have to commit your changes - just apply them in the specified files."
-        )
-        click.echo("Run 'journey.py migrate' once you're finished.")
