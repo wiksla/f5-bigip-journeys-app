@@ -172,7 +172,12 @@ def prompt():
 @click.option(
     "--username", default="root", help="Username to use when connecting host."
 )
-@click.option("--password", required=True, help="Password to use when connecting host.")
+@click.option(
+    "--password",
+    prompt=True,
+    hide_input=True,
+    help="Password to use when connecting host.",
+)
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
 )
@@ -208,7 +213,12 @@ def parse_config(config_filename):
 @cli.command()
 @click.option("--host", required=True)
 @click.option("--username", default="root")
-@click.option("--password", required=True)
+@click.option(
+    "--password",
+    prompt=True,
+    hide_input=True,
+    help="Password to use when connecting host.",
+)
 def minimal_required_tenant_resources(host, username, password):
     device = Device(ip=host, username=username, password=password)
     click.echo(device.obtain_source_resources())
