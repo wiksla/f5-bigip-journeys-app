@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import os
+import random
+import string
 
 import click
 
@@ -183,6 +185,11 @@ def prompt():
 )
 @click.option("--output", default="ex.ucs", help="Output filename.")
 def download_ucs(host, username, password, ucs_passphrase, output):
+    if not ucs_passphrase:
+        ucs_passphrase = "".join(
+            random.choice(string.ascii_letters + string.digits) for i in range(10)
+        )
+
     device = Device(ip=host, username=username, password=password)
     version = device.get_image()
 
@@ -199,7 +206,8 @@ def download_ucs(host, username, password, ucs_passphrase, output):
         )
 
         device.delete_ucs(ucs_location=ucs_remote_dir)
-        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local} ")
+        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
+        click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
         click.echo("Migration process is not available for you BIGIP version.")
 
