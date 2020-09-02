@@ -51,3 +51,20 @@ build:
     - master
   retry:
     max: 2
+
+pages:
+  image: node
+  stage: build
+  tags:
+    - docker-executor
+  script:
+    - npm install @openapitools/openapi-generator-cli -g
+    - apt update
+    - apt install -y default-jre
+    - npx @openapitools/openapi-generator-cli generate -i journeys/backend/api-schema.yaml -g html -o public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
+

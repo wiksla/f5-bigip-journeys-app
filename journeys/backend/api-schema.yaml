@@ -1,0 +1,905 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: Journey app backend
+servers:
+  - url: 'localhost'
+paths:
+  '/sessions':
+    get:
+      summary: Information about existing sessions
+      operationId: get_sessions
+      tags:
+        - 'Start/Resume'
+      responses:
+        '200':
+          description: Sessions list
+          content:
+            'application/json':
+              schema:
+                type: object
+                required:
+                  - items
+                  - total_count
+                properties:
+                  total_count:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionReference'
+    post:
+      summary: Create a new session
+      operationId: create_session
+      tags:
+        - 'Start/Resume'
+      responses:
+        '200':
+          description: Session details
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Session'
+  '/session/{session_id}':
+    summary: Information about given session
+    get:
+      summary: Get information about existing session
+      operationId: get_session_details
+      tags:
+        - 'Start/Resume'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Session details
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: No session exists
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    delete:
+      summary: Delete existing session
+      operationId: delete_session
+      tags:
+        - 'Start/Resume'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Session details
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: No session exists
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/source/ucs':
+    post:
+      summary: Upload UCS
+      operationId: upload_ucs
+      tags:
+        - 'Source BIG-IP System'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: UCS and Optional passphrase
+        required: true
+        content:
+          'multipart/form-data':
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                passphrase:
+                  type: string
+      responses:
+        '200':
+          description: File uploaded
+        '400':
+          description: Cannot process uploaded file
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/source/as3':
+    post:
+      summary: Upload AS3
+      operationId: upload_as3
+      tags:
+        - 'Source BIG-IP System'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: AS3 declaration
+        required: true
+        content:
+          'multipart/form-data':
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: File uploaded
+        '400':
+          description: Cannot process uploaded file
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/source/live':
+    post:
+      summary: Fetch UCS from Source BIG-IP System
+      description: ''
+      operationId: fetch_ucs_from_source
+      tags:
+        - 'Source BIG-IP System'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: System Credentials
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/SystemCredentials'
+      responses:
+        '200':
+          description: UCS file downloaded from given system.
+        '404':
+          description: Given system does not exists
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Given credentials are not valid
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/supported_destinations':
+    get:
+      summary: Get list of supported destination platforms and versions
+      operationId: list_supported_destinations
+      tags:
+        - 'Destination BIG-IP System'
+      responses:
+        '200':
+          description: Sorted list of supported destination platforms and versions (descending order)
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/SupportedDestinations'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/destination':
+    post:
+      summary: Set destination platform and version
+      operationId: set_destination
+      tags:
+       - 'Destination BIG-IP System'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: Destination platform and version
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Destination'
+      responses:
+        '200':
+          description: Destination selected
+        '400':
+          description: Destination not valid
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/conflicts_report':
+    get:
+      summary: Get conflicts report
+      operationId: generate_conflicts_report
+      tags:
+        - 'Configuration Analysis'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Report about conflicts found in the configration
+          content:
+            'application/pdf':
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/conflicts/{conflict_id}':
+    get:
+      summary: Get a conflict details
+      operationId: get_conflict_details
+      tags:
+        - 'Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conflict details
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ConflictDetails'
+        '404':
+          description: Given conflict does not exist
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/conflicts/{conflict_id}/resolution':
+    post:
+      summary: Provide conflict resolution
+      operationId: resolve_conflict
+      tags:
+        - 'Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Conflict resolution
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Mitigation'
+      responses:
+        '200':
+          $ref: '#/components/responses/ConflictList'
+        '404':
+          description: Given conflict does not exist
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Provided solution did not resolve the conflict
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ConflictDetails'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    get:
+      summary: Get the conflict resolution details
+      operationId: Get_conflict_resolution_details
+      tags:
+        - 'Resolution Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/schemas/Resolution'
+    delete:
+      summary: Revert conflict resolution
+      operationId: revert_resolved_conflict
+      tags:
+        - 'Resolution Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/ConflictList'
+  '/session/{session_id}/resolve_automatically':
+    post:
+      summary: Resolve all remaining conflicts automatically using recommended solutions
+      operationId: resolve_conflicts_automatically
+      tags:
+        - 'Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          $ref: '#/components/responses/Resolutions'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/resolutions_report':
+    get:
+      summary: Get resolutions report
+      operationId: generate_resolutions_report
+      tags:
+        - 'Resolution Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Report about resolutions of conflicts found in the configration
+          content:
+            'application/pdf':
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/deployment/output':
+    get:
+      summary: Get output UCS/AS3
+      operationId: generate_output
+      tags:
+        - 'Journey Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Output UCS
+          content:
+            'application/octet-stream':
+              schema:
+                type: string
+                format: binary
+  '/session/{session_id}/deployment/test_connection':
+    post:
+      summary: Test connection using credentials
+      operationId: test_connection
+      tags:
+        - 'Deployment'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: System Credentials
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/SystemCredentials'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Given system does not exists
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Given credentials are not valid
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/supported_validators':
+    get:
+      summary: Get list of supported destination validators
+      operationId: list_supported_validators
+      tags:
+        - 'Deployment'
+      responses:
+        '200':
+          description: List of supported deployment validators with the descriptions
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/SupportedValidators'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/deployment':
+    post:
+      summary: Deploy configuration to given system and validate the results
+      operationId: start_deployment_operation
+      tags:
+        - 'Deployment'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: Deployment configuration
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/Deployment'
+      responses:
+        '202':
+          description: Deployment operation has started
+          content:
+            'application/json':
+              schema:
+                type: object
+                properties:
+                  operation_id:
+                    type: integer
+                    minimum: 1
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/deployment/{operation_id}':
+    get:
+      summary: Get status of deployment operation
+      operationId: get_deployment_operation_status
+      tags:
+        - 'Deployment Results'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: operation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deployment operation status
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/DeploymentStatus'
+        '404':
+          description: Given deployment operation does not exist
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/session/{session_id}/deployment/{operation_id}/log':
+    get:
+      summary: Get deployment operation's log file
+      operationId: get_deployment_operation_log_file
+      tags:
+        - 'Deployment Results'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: operation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deployment operation log file
+          content:
+            'text/plain':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Given deployment operation does not exist
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Given deployment operation did not finish yet
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/session/{session_id}/deployment/{operation_id}/report':
+    get:
+      summary: Get resolutions report
+      operationId: generate_deployment_report
+      tags:
+        - 'Deployment Results'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: operation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deployment report
+          content:
+            'application/pdf':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Given deployment operation does not exist
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Given deployment operation did not finish yet
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+components:
+  responses:
+    ConflictList:
+      description: List of (Remaining) Conflicts to resolve
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ConflictReference'
+    Resolutions:
+      description: List of conflicts and their resolutions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Resolutions'
+    UnexpectedError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    SystemCredentials:
+      type: object
+      required:
+        - username
+        - password
+        - host
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+          writeOnly: true
+        host:
+          type: string
+    File:
+      type: object
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+      example:
+        path: 'config/bigip.conf'
+        content: >
+          #TMSH-VERSION: 14.1.2.4
+          apm oauth db-instance /Common/oauthdb {
+            description "Default OAuth DB."
+          }
+          ...
+    Mitigation:
+      type: object
+      required:
+        - name
+        - files
+      properties:
+        name:
+          type: string
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
+    ConflictReference:
+      type: object
+      required:
+        - id
+        - summary
+        - url
+      properties:
+        id:
+          type: string
+          example: 'SPDAG'
+        summary:
+          type: string
+          example: 'net vlan example_vlan: Value of field cmp hash is not supported on target platform'
+        url:
+          type: string
+          example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}'
+
+    ConflictDetails:
+      allOf:
+        - $ref: '#/components/schemas/ConflictReference'
+        - type: object
+          required:
+            - mitigations
+          properties:
+            mitigations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Mitigation'
+    Diff:
+      type: object
+      required:
+        - path
+        - diff
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+      example:
+        path: 'config/bigip.conf'
+        content: >
+          diff --git a/journeys/backend/api-schema.yaml b/journeys/backend/api-schema.yaml
+          index 98b8bbf..d298f8d 100644
+          --- a/journeys/backend/api-schema.yaml
+          +++ b/journeys/backend/api-schema.yaml
+    ResolutionReference:
+      type: object
+      required:
+        - conflict_id
+        - url
+      properties:
+        conflict_id:
+          type: string
+        url:
+          type: string
+          example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}/resolution'
+    Resolution:
+      allOf:
+        - $ref: '#/components/schemas/ResolutionReference'
+        - type: object
+          required:
+            - diffs
+          properties:
+            diffs:
+              type: array
+              items:
+                $ref: '#/components/schemas/Diff'
+    SupportedDestinations:
+      type: object
+      required:
+        - platforms
+      properties:
+        platforms:
+          type: array
+          items:
+            type: object
+            required:
+              - name
+              - versions
+            properties:
+              name:
+                type: string
+              versions:
+                type: array
+                items:
+                  type: string
+    SupportedValidators:
+      type: object
+      required:
+        - validators
+      properties:
+        validators:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+    Source:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ['ucs', 'as3', 'live']
+        data:
+          type: object
+          additionalProperties: true
+    Destination:
+      type: object
+      properties:
+        platform:
+          type: string
+        version:
+          type: string
+    Conflicts:
+      type: array
+      items:
+        $ref: '#/components/schemas/ConflictReference'
+    Resolutions:
+      type: array
+      items:
+        $ref: '#/components/schemas/ResolutionReference'
+    Deployment:
+      type: object
+      required:
+        - destination
+        - validators
+      properties:
+        source:
+          $ref: '#/components/schemas/SystemCredentials'
+        destination:
+          $ref: '#/components/schemas/SystemCredentials'
+        validators:
+          type: object
+          additionalProperties: true
+          example:
+            'validator1': true
+            'validator2': false
+        deployment_id:
+          type: integer
+          readOnly: true
+    DeploymentStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ['in_progress', 'finished']
+        details:
+          type: array
+          items:
+            type: string
+    SessionReference:
+      type: object
+      required:
+        - last_update_time
+        - session_id
+        - url
+      properties:
+        last_update_time:
+          type: integer
+        session_id:
+          type: integer
+        url:
+          type: string
+          example: 'http://localhost/sessions/{session_id}'
+    Session:
+      allOf:
+        - $ref: '#/components/schemas/SessionReference'
+        - type: object
+          required:
+            - source
+            - destination
+            - conflicts
+            - resolutions
+          properties:
+            source:
+              $ref: '#/components/schemas/Source'
+            destination:
+              $ref: '#/components/schemas/Destination'
+            conflicts:
+              $ref: '#/components/schemas/Conflicts'
+            resolutions:
+              $ref: '#/components/schemas/Resolutions'
+            instructions:
+              type: object
+              properties:
+                message:
+                  type: string
+            deployment:
+              $ref: '#/components/schemas/Deployment'
+
+    Error:
+      type: object
+      required:
+        - status
+        - description
+      properties:
+        status:
+          type: integer
+        description:
+          type: string
