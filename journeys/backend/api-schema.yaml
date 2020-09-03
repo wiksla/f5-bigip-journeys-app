@@ -94,10 +94,10 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/source/ucs':
+  '/session/{session_id}/source':
     post:
-      summary: Upload UCS
-      operationId: upload_ucs
+      summary: Provide configuration_source
+      operationId: provide_source
       tags:
         - 'Source BIG-IP System'
       parameters:
@@ -113,84 +113,27 @@ paths:
           'multipart/form-data':
             schema:
               type: object
-              required:
-                - file
               properties:
-                file:
+                ucs_file:
                   type: string
                   format: binary
-                passphrase:
+                ucs_passphrase:
                   type: string
-      responses:
-        '200':
-          description: File uploaded
-        '400':
-          description: Cannot process uploaded file
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/Error'
-        default:
-          $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/source/as3':
-    post:
-      summary: Upload AS3
-      operationId: upload_as3
-      tags:
-        - 'Source BIG-IP System'
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        description: AS3 declaration
-        required: true
-        content:
-          'multipart/form-data':
-            schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
+                as3_file:
                   type: string
                   format: binary
-      responses:
-        '200':
-          description: File uploaded
-        '400':
-          description: Cannot process uploaded file
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/Error'
-        default:
-          $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/source/live':
-    post:
-      summary: Fetch UCS from Source BIG-IP System
-      description: ''
-      operationId: fetch_ucs_from_source
-      tags:
-        - 'Source BIG-IP System'
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        description: System Credentials
-        required: true
-        content:
           'application/json':
             schema:
               $ref: '#/components/schemas/SystemCredentials'
       responses:
         '200':
-          description: UCS file downloaded from given system.
+          description: Success
+        '400':
+          description: Cannot process uploaded file
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Given system does not exists
           content:
