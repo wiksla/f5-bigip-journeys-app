@@ -3,6 +3,7 @@
 stages:
   - test
   - build
+  - release
 
 ## Disable until initial format/lint get applied
 
@@ -34,8 +35,8 @@ test:
     - make test
 
 build:
-  image: docker
   stage: build
+  image: docker
   tags:
     - docker-executor
   script:
@@ -68,3 +69,20 @@ pages:
   only:
   - master
 
+release:
+  stage: release
+  image: docker
+  tags:
+    - docker-executor
+  script:
+    - export RELEASE_TAG=`echo $CI_BUILD_REF_NAME | sed 's/v//g'`
+    - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
+    - docker pull ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
+    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
+    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
+  dependencies:
+    - build
+  only:
+    - /^v\d{1,}\.\d{1,}.*/i # v1.1 or v1.2beta etc
+  retry:
+    max: 2
