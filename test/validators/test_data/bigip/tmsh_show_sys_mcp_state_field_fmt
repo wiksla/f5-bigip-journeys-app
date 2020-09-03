@@ -1,0 +1,5 @@
+sys mcpd-state {
+    end-platform-id-received true
+    last-load full-config-load-succeed
+    phase running
+}

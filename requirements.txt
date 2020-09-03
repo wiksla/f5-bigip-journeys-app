@@ -3,3 +3,10 @@ isoparser==0.3
 fabric==2.5.0
 gitpython==3.1.7
 python-gnupg==0.4.6
+
+
+f5-sdk==3.0.21
+deepdiff==5.0.1
+f5-sdk-python==0.9.2
+pyparsing==2.4.7
+requests~=2.24.0

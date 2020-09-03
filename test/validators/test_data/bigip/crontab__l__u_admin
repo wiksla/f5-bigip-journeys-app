@@ -1,0 +1,1 @@
+51 * * * * /usr/bin/copy_rrd save

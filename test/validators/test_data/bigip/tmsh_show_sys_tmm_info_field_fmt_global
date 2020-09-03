@@ -1,0 +1,8 @@
+sys tmm-info {
+    five-min-avg-usage-ratio 1
+    five-sec-avg-usage-ratio 1
+    memory-total 6.1G
+    memory-used 293.1M
+    npus 2
+    one-min-avg-usage-ratio 1
+}

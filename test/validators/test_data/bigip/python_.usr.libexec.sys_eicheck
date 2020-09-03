@@ -1,0 +1,46 @@
+
+BIG-IP Integrity Check Report
+- Non-critical file modifications do not result in failure.
+- Critical file modifications result in failure.
+
+=======================================================
+
+0 non-critical files(s) missing
+
+=======================================================
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/aci.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/ae.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/diff2_appwl.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/diff2_ash.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/ice.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/mide.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/rtcc.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/rtssad.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/scanflow.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/sps_ide.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/sps_vdb.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/threatnames.cfg
+S.5....T.  c /var/antserver/wsgsdk/config/ddscomm/updatables.cfg
+SM5....T.  c /config/bigip/auth/pam.d/httpd
+SM5....T.  c /etc/ssmtp/ssmtp.conf
+SM5......  c /config/bigip/auth/pam.d/local/system-auth
+S.5......  c /etc/security/limits.conf
+SM5......  c /config/bigip/auth/pam.d/local/system-auth
+S.5......  c /etc/security/limits.conf
+SM5....T.  c /etc/hosts
+S.5....T.  c /var/dnscached/config/named.conf
+
+21 non-critical files(s) modified
+
+=======================================================
+
+0 critical file(s) missing
+
+=======================================================
+
+0 critical file(s) modified
+
+=======================================================
+
+Integrity Test Result: [ PASS ]
+

@@ -1,0 +1,345 @@
+{
+  "eolInfo": {
+    "expired": [
+      {
+        "label": "",
+        "msg": "Software End of Technical Support (EoTS)",
+        "date": "May 22 2019",
+        "timestamp": 1558483200,
+        "class": ""
+      },
+      {
+        "label": "",
+        "msg": "Software End of Attack Signature Development (EoASD)",
+        "date": "May 22 2018",
+        "timestamp": 1526947200,
+        "class": "even"
+      },
+      {
+        "label": "",
+        "msg": "Software End of Software Development (EoSD)",
+        "date": "May 22 2018",
+        "timestamp": 1526947200,
+        "class": ""
+      }
+    ],
+    "pending": null
+  },
+  "diagnosticOverview": {
+    "status": "No new potential issues identified since last update.",
+    "recommendation": "Fix critical issues immediately!",
+    "upgOptHotfix": "13.0.0.HF3",
+    "upgOptLine": "13.0.1",
+    "upgOptLatest": "16.0.0",
+    "running": null,
+    "allPassed": null,
+    "critical": "1 Critical",
+    "high": "59 High",
+    "medium": "103 Medium",
+    "low": "70 Low",
+    "info": null,
+    "type": "diagnostics"
+  },
+  "viprionCluster": null,
+  "deviceGroups": null,
+  "entitlementData": null,
+  "supportCaseDisabledMssg": "This field is only available for users with an active F5 support contract.  Please refer to <a href='http://support.f5.com/kb/en-us/solutions/public/2000/600/sol2633.html' target='_blank'>SOL2633</a> for more information",
+  "maintenanceMode": null,
+  "softwareInfo": {
+    "product": "BIG-IP",
+    "version": "13.0.0",
+    "latestVersion": "16.0.0",
+    "atCurrentVersion": null,
+    "lessThanV11": null,
+    "build": "0.0.1645",
+    "built": "170131165950",
+    "changelist": "2100458",
+    "edition": "Final",
+    "date": "Tue Jan 31 16:59:50 PST 2017",
+    "ssloVersion": "[No data available]",
+    "ssloRelease": "[No data available]",
+    "hotfixCRs": null,
+    "engHotfixCRs": null,
+    "hostVersion": null,
+    "installedVersion": "13.0.0",
+    "installedBuild": "0.0.1645-Final",
+    "installedReleaseDate": "22-Feb-2017",
+    "installedReleaseNotesUrl": "https://techdocs.f5.com/kb/en-us/products/big-ip_ltm/releasenotes/product/relnote-ltm-13-0-0.html",
+    "installedEosd": "22-May-2018",
+    "installedHfVersion": null,
+    "installedHfBuild": null,
+    "installedHfReleaseDate": null,
+    "installedHfReleaseNotesUrl": null,
+    "installedHfEosd": null,
+    "installedLatestHfVersion": "13.0.0",
+    "installedLatestHfBuild": "3.0.1679-Hotfix HF3",
+    "installedLatestHfReleaseDate": "17-Nov-2017",
+    "installedLatestHfReleaseNotesUrl": "&sw=BIG-IP&pro=big-ip_v13.x&ver=13.0.0&container=Hotfix-BIGIP-13.0.0.3.0.1679-HF3&file=Hotfix-BIGIP-13.0.0.3.0.1679-HF3.html",
+    "installedLatestHfEosd": "22-May-2018",
+    "latestBuild": "0.0.12-Final",
+    "latestReleaseDate": "07-Jul-2020",
+    "latestReleaseNotesUrl": "https://techdocs.f5.com/kb/en-us/products/big-ip_ltm/releasenotes/related/relnote-supplement-bigip-16-0-0.html",
+    "latestEosd": "07-Oct-2021",
+    "latestHfVersion": null,
+    "latestHfBuild": null,
+    "latestHfReleaseDate": null,
+    "latestHfReleaseNotesUrl": null,
+    "latestHfEosd": null,
+    "em": false,
+    "gtm": false
+  },
+  "productInfo": [
+    {
+      "name": "AFM",
+      "fullName": "Advanced Firewall (AFM)",
+      "provisionLevel": "None",
+      "displayName": "Advanced Firewall (AFM)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "AM",
+      "fullName": "Application Acceleration Manager (AAM)",
+      "provisionLevel": "None",
+      "displayName": "Application Acceleration Manager (AAM)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "APM",
+      "fullName": "Access Policy (APM)",
+      "provisionLevel": "None",
+      "displayName": "Access Policy (APM)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "APML",
+      "fullName": "Access Policy Lite (APML)",
+      "provisionLevel": "None",
+      "displayName": "Access Policy Lite (APML)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "ASM",
+      "fullName": "Application Security (ASM)",
+      "provisionLevel": "None",
+      "displayName": "Application Security (ASM)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "AVR",
+      "fullName": "Application Visibility and Reporting (AVR)",
+      "provisionLevel": "None",
+      "displayName": "Application Visibility and Reporting (AVR)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "CGNAT",
+      "fullName": "Carrier Grade NAT (CGNAT)",
+      "provisionLevel": "None",
+      "displayName": "Carrier Grade NAT (CGNAT)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "DOS",
+      "fullName": "DDOS Protection (DOS)",
+      "provisionLevel": "None",
+      "displayName": "DDOS Protection (DOS)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "EM",
+      "fullName": "Enterprise Manager (EM)",
+      "provisionLevel": "None",
+      "displayName": "Enterprise Manager (EM)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "FPS",
+      "fullName": "Fraud Protection Service (FPS)",
+      "provisionLevel": "None",
+      "displayName": "Fraud Protection Service (FPS)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "GTM",
+      "fullName": "Global Traffic (DNS)",
+      "provisionLevel": "None",
+      "displayName": "Global Traffic (DNS)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "ILX",
+      "fullName": "iRules Language Extensions (iRulesLX)",
+      "provisionLevel": "None",
+      "displayName": "iRules Language Extensions (iRulesLX)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "LC",
+      "fullName": "Link Controller (LC)",
+      "provisionLevel": "None",
+      "displayName": "Link Controller (LC)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "LTM",
+      "fullName": "Local Traffic (LTM)",
+      "provisionLevel": "Nominal",
+      "displayName": "Local Traffic (LTM)",
+      "provisioned": true,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "Nominal"
+    },
+    {
+      "name": "PEM",
+      "fullName": "Policy Enforcement (PEM)",
+      "provisionLevel": "None",
+      "displayName": "Policy Enforcement (PEM)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "SWG",
+      "fullName": "Secure Web Gateway (SWG)",
+      "provisionLevel": "None",
+      "displayName": "Secure Web Gateway (SWG)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "TAM",
+      "fullName": "Traffic Accelerator Module (TAM)",
+      "provisionLevel": "None",
+      "displayName": "Traffic Accelerator Module (TAM)",
+      "provisioned": false,
+      "licensed": true,
+      "licenseLevel": "Licensed",
+      "displayLicenseLevel": "X",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "URLDB",
+      "fullName": "URLDB Minimal (URLDB)",
+      "provisionLevel": "None",
+      "displayName": "URLDB Minimal (URLDB)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    },
+    {
+      "name": "VCMP",
+      "fullName": "Virtual CMP (vCMP)",
+      "provisionLevel": "None",
+      "displayName": "Virtual CMP (vCMP)",
+      "provisioned": false,
+      "licensed": false,
+      "licenseLevel": "Unlicensed",
+      "displayLicenseLevel": "",
+      "displayProvisionLevel": "None"
+    }
+  ],
+  "systemInfo": {
+    "bigiqUUID": null,
+    "bigiqProvisioning": null,
+    "chassis": false,
+    "chassisSn": "5616110",
+    "cpusCores": null,
+    "bladesCpusCores": "1 Blade(s) / 1 CPU(s) / 2 Cores",
+    "bladeSn": "[No data available]",
+    "hostname": "test.f5net.com",
+    "loadAverage": "0.23, 0.10, 0.06",
+    "marketingName": "BIG-IP Virtual Edition - ESX",
+    "offsetFromPreferred": null,
+    "physicalMemory": "7.8 GB",
+    "status": "STANDALONE forced_offline",
+    "uptime": "55 days, 23 hours",
+    "timeZone": "America/Los_Angeles"
+  },
+  "configTotals": {
+    "virtuals": 0,
+    "nodes": 0,
+    "pools": 0,
+    "snats": 0,
+    "nats": 0,
+    "monitors": 7184,
+    "monitorCounts": [
+      {
+        "bigip_link": 1
+      },
+      {
+        "gateway_icmp": 189
+      },
+      {
+        "http": 55
+      },
+      {
+        "tcp_half_open": 6939
+      }
+    ],
+    "accessProfiles": 0,
+    "irules": 14
+  },
+  "integrityCheck": null,
+  "qkviewId": 14218494
+}

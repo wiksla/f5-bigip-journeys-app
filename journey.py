@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import json
 import os
 import random
 import string
@@ -18,6 +19,19 @@ from journeys.errors import UnknownConflictError
 from journeys.modifier.dependency import DependencyMap
 from journeys.parser import parse
 from journeys.utils.device import Device
+from journeys.utils.device import delete_ucs
+from journeys.utils.device import get_image
+from journeys.utils.device import get_ucs
+from journeys.utils.device import obtain_source_resources
+from journeys.utils.device import save_ucs
+from journeys.validators.comparers import compare_db
+from journeys.validators.comparers import compare_memory_footprint
+from journeys.validators.comparers import tmsh_compare
+from journeys.validators.core_watcher import list_cores
+from journeys.validators.deployment import get_mcp_status
+from journeys.validators.deployment import get_tmm_global_status
+from journeys.validators.deployment import wait_for_prompt_state
+from journeys.validators.ltm_checks import get_ltm_vs_status
 
 
 @click.group()
@@ -180,6 +194,8 @@ def prompt():
     hide_input=True,
     help="Password to use when connecting host.",
 )
+@click.option("--username", help="Username")
+@click.option("--password", required=True, help="Password to use when connecting host.")
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
 )
@@ -190,22 +206,27 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             random.choice(string.ascii_letters + string.digits) for i in range(10)
         )
 
-    device = Device(ip=host, username=username, password=password)
-    version = device.get_image()
+    device = Device(host=host, ssh_username=username, ssh_password=password)
+    version = get_image(device=device)
 
     click.echo(f"Version on bigip: {version}")
 
     if version.is_velos_supported():
         click.echo("BIGIP version is supported by VELOS.")
-        ucs_remote_dir = device.save_ucs(ucs_name=output, ucs_passphrase=ucs_passphrase)
+        ucs_remote_dir = save_ucs(
+            device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
+        )
 
         working_directory = os.environ.get("MIGRATE_DIR", ".")
-        local_ucs_path = device.get_ucs(
+        local_ucs_path = get_ucs(
+            device=device,
             remote=ucs_remote_dir,
             local_ucs_name=os.path.join(working_directory, output),
         )
 
-        device.delete_ucs(ucs_location=ucs_remote_dir)
+        delete_ucs(device=device, ucs_location=ucs_remote_dir)
+        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local} ")
+        delete_ucs(device=device, ucs_location=ucs_remote_dir)
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
@@ -228,8 +249,8 @@ def parse_config(config_filename):
     help="Password to use when connecting host.",
 )
 def minimal_required_tenant_resources(host, username, password):
-    device = Device(ip=host, username=username, password=password)
-    click.echo(device.obtain_source_resources())
+    device = Device(host=host, ssh_username=username, ssh_password=password)
+    click.echo(obtain_source_resources(device=device))
 
 
 @cli.command()
@@ -238,6 +259,72 @@ def build_dependency_tree(config_filename):
 
     config = Config.from_conf(filename=config_filename)
     _ = DependencyMap(config)
+
+
+@cli.command()
+@click.option("--bigip-host", required=True)
+@click.option("--bigip-username", default="root")
+@click.option("--bigip-password", required=True)
+@click.option("--bigip-admin-username", default="admin")
+@click.option("--bigip-admin-password", required=True)
+@click.option("--tenant-host", required=True)
+@click.option("--tenant-username", default="root")
+@click.option("--tenant-password", required=True)
+@click.option("--tenant-admin-username", default="admin")
+@click.option("--tenant-admin-password", required=True)
+def diagnose(
+    bigip_host,
+    bigip_username,
+    bigip_password,
+    bigip_admin_username,
+    bigip_admin_password,
+    tenant_host,
+    tenant_username,
+    tenant_password,
+    tenant_admin_username,
+    tenant_admin_password,
+):
+
+    bigip = Device(
+        host=bigip_host,
+        ssh_username=bigip_username,
+        ssh_password=bigip_password,
+        api_username=bigip_admin_username,
+        api_password=bigip_admin_password,
+    )
+    tenant = Device(
+        host=tenant_host,
+        ssh_username=tenant_username,
+        ssh_password=tenant_password,
+        api_username=tenant_admin_username,
+        api_password=tenant_admin_password,
+    )
+
+    mcp_status = get_mcp_status(tenant)
+    click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}")
+    if (
+        not mcp_status["last-load"] == "full-config-load-succeed"
+        and mcp_status["phase"] == "running"
+    ):
+        click.echo("MCP down")
+
+    tmm_status = get_tmm_global_status(tenant)
+    click.echo(f"TMM status:\n{json.dumps(tmm_status, indent=4)}")
+    if not wait_for_prompt_state(tenant):
+        click.echo("Prompt is not active/standby")
+
+    click.echo(list_cores(tenant, raise_exception=True))
+
+    db_diff = compare_db(bigip, tenant)
+    click.echo(f"Sys DB diff:\n{db_diff.pretty()}")
+
+    module_diff = compare_memory_footprint(bigip, tenant)
+    click.echo(f"Memory footprint diff:\n{module_diff.pretty()}")
+
+    sample_tmsh_diff = tmsh_compare("tmsh show sys version", bigip, tenant)
+    click.echo(f"tmsh show sys version diff:\n{sample_tmsh_diff}")
+
+    click.echo(get_ltm_vs_status(device=bigip))
 
 
 if __name__ == "__main__":
