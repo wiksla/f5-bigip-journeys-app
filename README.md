@@ -45,5 +45,5 @@ Before opening a merge request, make sure to run the following commands, and ens
 ```
 make format
 make lint
-(TBD) make test
+make test
 ```

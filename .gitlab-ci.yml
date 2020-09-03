@@ -76,10 +76,11 @@ release:
     - docker-executor
   script:
     - export RELEASE_TAG=`echo $CI_BUILD_REF_NAME | sed 's/v//g'`
+    - export RELEASE_CONTAINER=latest
     - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
-    - docker pull ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
-    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
-    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
+    - docker pull ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_CONTAINER}
+    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_CONTAINER} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
+    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
   dependencies:
     - build
   only:
