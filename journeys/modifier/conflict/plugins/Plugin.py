@@ -137,8 +137,11 @@ class Plugin:
         for obj_id in self.objects:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
-            for related_id in self.dependency_map.reverse[obj_id]:
-                self.dependency_map.resolutions[(related_id, obj_id)](mutable_config)
+            if obj_id in self.dependency_map.reverse:
+                for related_id in self.dependency_map.reverse[obj_id]:
+                    self.dependency_map.resolutions[(related_id, obj_id)](
+                        mutable_config
+                    )
 
     def get_conflicts(self) -> Conflict:
         if not self.objects:
