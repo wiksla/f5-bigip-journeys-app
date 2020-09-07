@@ -112,18 +112,19 @@ class Plugin:
             files_to_render.add(obj.file)
         return files_to_render
 
-    def comment_objects(self, mutable_config: Config):
+    def comment_objects(self, mutable_config: Config, dependency=True):
         comments = defaultdict(list)
 
         for obj_id in self.objects:
             comments[obj_id].append(self.MSG_TYPE.format(self.ID, self.MSG_INFO))
 
-        generate_dependency_comments(
-            conflict_id=self.ID,
-            dependency_map=self.dependency_map,
-            obj_id=self.objects,
-            comments=comments,
-        )
+        if dependency:
+            generate_dependency_comments(
+                conflict_id=self.ID,
+                dependency_map=self.dependency_map,
+                obj_id=self.objects,
+                comments=comments,
+            )
 
         for obj_id, comment_list in comments.items():
             obj = mutable_config.fields.get(obj_id)
