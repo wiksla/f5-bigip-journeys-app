@@ -96,10 +96,16 @@ class FromFieldValueDependencyMixIn:
         self, obj: Field, value: str
     ) -> Callable[[Union[Config, Field]], None]:
         def delete_self(parent):
-            parent.fields[obj.key].delete()
+            try:
+                parent.fields[obj.key].delete()
+            except KeyError:
+                pass  # given object was already deleted
 
         def delete_child(parent):
-            parent.fields[obj.key].fields[self.field_name].delete()
+            try:
+                parent.fields[obj.key].fields[self.field_name].delete()
+            except KeyError:
+                pass  # given child was already deleted
 
         if self.resolution == "delete_child":
             return delete_child
@@ -382,6 +388,16 @@ DEFAULT_DEPENDENCIES = [
             dependency=FieldValueToNameDependency(field_name="vlan",),
         ),
     ),
+    FieldValueToNameDependency(
+        child_types=[("security", "dos", "network-whitelist")],
+        field_name="address-list",
+        parent_types=[
+            ("net", "address-list"),
+            ("security", "firewall", "address-list"),
+            ("security", "shared-objects", "address-list"),
+        ],
+        resolution="delete_self",
+    ),
 ]
 
 
@@ -390,9 +406,7 @@ class DependencyMap:
         children = defaultdict(
             lambda: defaultdict(set)
         )  # {dependency: {match_value: {field_id}}}
-        parents = defaultdict(
-            dict
-        )  # no set - there can be only one parent for each dependency+value
+        parents = defaultdict(lambda: defaultdict(set))
         resolutions = dict()
         dependency_id_map = dict()
         for field in config.fields.all():
@@ -401,20 +415,20 @@ class DependencyMap:
                 for value in dependency.match_child(field):
                     children[id(dependency)][value].add(field.id)
                 for value in dependency.match_parent(field):
-                    parents[id(dependency)][value] = field.id
+                    parents[id(dependency)][value].add(field.id)
 
         map_ = defaultdict(set)
 
         for dependency_id, match in children.items():
             for value, child_ids in match.items():
                 if value in parents[dependency_id]:
-                    parent_id = parents[dependency_id][value]
-                    map_[parent_id] |= child_ids
-                    for child_id in child_ids:
-                        dependency = dependency_id_map[dependency_id]
-                        resolutions[(child_id, parent_id)] = dependency.get_resolve(
-                            config.fields[child_id], value
-                        )
+                    for parent_id in parents[dependency_id][value]:
+                        map_[parent_id] |= child_ids
+                        for child_id in child_ids:
+                            dependency = dependency_id_map[dependency_id]
+                            resolutions[(child_id, parent_id)] = dependency.get_resolve(
+                                config.fields[child_id], value
+                            )
 
         self.resolutions = resolutions
         self.reverse = dict(map_)
