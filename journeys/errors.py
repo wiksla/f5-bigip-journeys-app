@@ -2,6 +2,10 @@ class ControllerError(RuntimeError):
     pass
 
 
+class AlreadyInitializedError(ControllerError):
+    pass
+
+
 class ArchiveOpenError(ControllerError):
     pass
 
@@ -10,11 +14,11 @@ class ArchiveDecryptError(ControllerError):
     pass
 
 
-class NotMasterBranchError(ControllerError):
+class NotInitializedError(ControllerError):
     pass
 
 
-class DifferentUcsError(ControllerError):
+class NotMasterBranchError(ControllerError):
     pass
 
 

@@ -3,18 +3,18 @@ import os
 import shelve
 import shutil
 from tarfile import ReadError
-from typing import Optional
 
 from git import Repo
 from gitdb.exc import BadName
 
 from journeys.config import Config
+from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
-from journeys.errors import DifferentUcsError
 from journeys.errors import NotAllConflictResolvedError
+from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.handler import ConflictHandler
@@ -35,44 +35,59 @@ class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
 
-    def __init__(
-        self,
-        input_ucs: Optional[str] = None,
-        output_ucs: Optional[str] = None,
-        clear: bool = False,
-        ucs_passphrase: Optional[str] = None,
-    ):
+    def __init__(self, clear=False):
         working_directory = os.environ.get("MIGRATE_DIR", ".")
-
-        self.input_ucs = input_ucs
         self.working_directory = working_directory
+
         if not os.path.exists(self.working_directory):
             os.mkdir(self.working_directory)
 
         self.repo_path = os.path.join(self.working_directory, self.REPO_FOLDER_NAME)
-        self.shelf_path = os.path.join(self.repo_path, self.SHELF_FILE_NAME)
-
         if clear:
             shutil.rmtree(self.repo_path, ignore_errors=True)
-
         if not os.path.exists(self.repo_path):
             os.mkdir(self.repo_path)
-
         self.repo = Repo.init(self.repo_path)
+
         self.config_path = os.path.join(self.repo_path, "config")
+
+        self.shelf_path = os.path.join(self.repo_path, self.SHELF_FILE_NAME)
         self.shelf = shelve.open(self.shelf_path)
-
-        self.output_ucs = (
-            output_ucs
-            or self.shelf.get("ucs", "").replace(".ucs", ".modified.ucs")
-            or "journeys.ucs"
-        )
-
-        self.ucs_passphrase = ucs_passphrase
 
         self.ucs_reader = None
         self.config = None
         self.conflict_handler = None
+
+    def initialize(self, input_ucs, ucs_passphrase):
+
+        if self._is_repo_initialized():
+            raise AlreadyInitializedError()
+
+        try:
+            _, files_metadata = untar_file(
+                input_ucs, output_dir=self.repo_path, archive_passphrase=ucs_passphrase,
+            )
+        except ReadError:
+            raise ArchiveOpenError()
+        except RuntimeError:
+            raise ArchiveDecryptError()
+
+        self.shelf["files_metadata"] = files_metadata
+        with open(
+            file=os.path.join(self.repo_path, ".gitignore"), mode="w"
+        ) as gitignore:
+            gitignore.write(self.SHELF_FILE_NAME)
+        self.repo.git.add("*")
+        self.repo.index.commit("initial")
+
+        # rebuilding the config changes the formatting slightly -
+        # do it here so that later diffs are clean
+        ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
+        config: Config = ucs_reader.get_config()
+        config.build(dirname=self.config_path)
+        self.repo.git.add(u=True)
+        self.repo.index.commit("reformat")
+        self.repo.create_head("initial")
 
     def prompt(self):
 
@@ -92,16 +107,8 @@ class MigrationController:
         if not self._check_master():
             raise NotMasterBranchError()
 
-        if self.input_ucs:
-            file_hash = md5(self.input_ucs)
-
-            stored_file_hash = self.shelf.get("file_hash", None)
-            if stored_file_hash and stored_file_hash != file_hash:
-                raise DifferentUcsError()
-
-            self.shelf["file_hash"] = file_hash
-
-        self._ensure_repo_initialized()
+        if not self._is_repo_initialized():
+            raise NotInitializedError()
 
         if self.config is None:
             self._read_config()
@@ -166,7 +173,7 @@ class MigrationController:
         )
         return conflict_info
 
-    def generate(self, force):
+    def generate(self, output, force, ucs_passphrase):
         if not self._check_master():
             raise NotMasterBranchError()
 
@@ -177,7 +184,9 @@ class MigrationController:
             if self.conflict_handler.detect_conflicts():
                 raise NotAllConflictResolvedError()
 
-        output_ucs = self._create_output_ucs()
+        output_ucs = self._create_output_ucs(
+            output=output, ucs_passphrase=ucs_passphrase
+        )
         return output_ucs
 
     def _read_config(self):
@@ -188,60 +197,25 @@ class MigrationController:
     def _check_master(self):
         return self.repo.active_branch.name == "master"
 
-    def _ensure_repo_initialized(self):
-
+    def _is_repo_initialized(self):
         try:
             self.repo.commit("initial")
-            return
         except BadName:
-            pass
+            return False
 
-        if not self.input_ucs:
-            raise RuntimeError(
-                "No ucs file has been given and there is no session to resume."
-            )
+        return True
+
+    def _create_output_ucs(self, output, ucs_passphrase):
         try:
-            _, files_metadata = untar_file(
-                self.input_ucs,
-                output_dir=self.repo_path,
-                archive_passphrase=self.ucs_passphrase,
-            )
-        except ReadError:
-            raise ArchiveOpenError()
-        except RuntimeError:
-            raise ArchiveDecryptError()
-
-        self.shelf["files_metadata"] = files_metadata
-        with open(
-            file=os.path.join(self.repo_path, ".gitignore"), mode="w"
-        ) as gitignore:
-            gitignore.write(self.SHELF_FILE_NAME)
-        self.shelf["ucs"] = self.input_ucs
-        self.repo.git.add("*")
-        self.repo.index.commit("initial")
-
-        # rebuilding the config changes the formatting slightly -
-        # do it here so that later diffs are clean
-        ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
-        config: Config = ucs_reader.get_config()
-        config.build(dirname=self.config_path)
-        self.repo.git.add(u=True)
-        self.repo.index.commit("reformat")
-        self.repo.create_head("initial")
-
-    def _create_output_ucs(self):
-        try:
-            os.remove(self.output_ucs)
+            os.remove(output)
         except FileNotFoundError:
             pass
 
-        output_path = os.path.join(
-            self.working_directory, os.path.basename(self.output_ucs)
-        )
+        output_path = os.path.join(self.working_directory, os.path.basename(output))
         tar_file(
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),
             files_metadata=self.shelf["files_metadata"],
-            archive_passphrase=self.ucs_passphrase,
+            archive_passphrase=ucs_passphrase,
         )
         return output_path

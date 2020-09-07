@@ -8,12 +8,13 @@ import click
 
 from journeys.config import Config
 from journeys.controller import MigrationController
+from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
-from journeys.errors import DifferentUcsError
 from journeys.errors import NotAllConflictResolvedError
+from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.dependency import DependencyMap
@@ -53,6 +54,12 @@ def print_conflicts_info(conflicts):
     click.echo("")
     click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
     click.echo(f"Example 'journey.py resolve {next(iter(conflicts.keys()))}'")
+
+
+def print_no_conflict_info():
+    click.echo("No conflicts has been found.")
+    click.echo("")
+    click.echo("In order to generate output ucs run journey.py generate")
 
 
 def print_conflict_resolution_help(controller, conflict):
@@ -98,20 +105,21 @@ def print_conflict_resolution_help(controller, conflict):
 @click.argument("ucs", default="")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
-def migrate(ucs, clear, ucs_passphrase):
-
-    controller = MigrationController(
-        input_ucs=ucs, clear=clear, ucs_passphrase=ucs_passphrase
-    )
+def start(ucs, clear, ucs_passphrase):
+    controller = MigrationController(clear=clear)
     try:
+        controller.initialize(input_ucs=ucs, ucs_passphrase=ucs_passphrase)
         conflicts = controller.process()
         if conflicts:
             print_conflicts_info(conflicts)
         else:
-            click.echo("No conflicts has been found in the given ucs.")
-            click.echo("")
-            click.echo("In order to generate output ucs run journey.py generate")
+            print_no_conflict_info()
 
+    except AlreadyInitializedError:
+        click.echo("Migration process has already been started.")
+        click.echo(
+            f"In order to start processing new ucs file run journey.py start {ucs} --clear"
+        )
     except ArchiveOpenError:
         click.echo("Failed to open the archive.")
         click.echo("")
@@ -123,14 +131,32 @@ def migrate(ucs, clear, ucs_passphrase):
         click.echo("")
         click.echo("Make sure that appropriate passphrase was passed.")
 
+
+@cli.command()
+@click.argument("ucs", default="")
+def migrate(ucs):
+
+    # TODO: remove after release
+    if ucs:
+        click.echo("Ucs argument is deprecated.")
+        click.echo("In order to start new Migration process run journey.py start")
+
+    controller = MigrationController()
+
+    try:
+        conflicts = controller.process()
+        if conflicts:
+            print_conflicts_info(conflicts)
+        else:
+            print_no_conflict_info()
+
     except NotMasterBranchError:
         click.echo("Please checkout to master branch.")
 
-    except DifferentUcsError:
-        click.echo("Different ucs file received as an input.")
-        click.echo(
-            f"In order to start processing new ucs file run journey.py migrate {ucs} --clear"
-        )
+    except NotInitializedError:
+        click.echo("The migration process has not been started yet.")
+        click.echo("In order to start new Migration process run journey.py start")
+
     except ConflictNotResolvedError as e:
         click.echo(f"ERROR: Current conflict {e.conflict_id} is not yet resolved.")
         click.echo("")
@@ -147,7 +173,7 @@ def resolve(conflict):
     except DifferentConflictError as e:
         click.echo(
             f"Conflict {e.conflict_id} resolution already in progress."
-            "Finish it first and call 'journey.py migrate' before starting a new one."
+            "Finish it by calling 'journey.py migrate' first before starting a new one."
         )
     except UnknownConflictError:
         click.echo(
@@ -156,7 +182,9 @@ def resolve(conflict):
 
 
 @cli.command()
-@click.option("--output", default="", help="Use given filename instead of default.")
+@click.option(
+    "--output", default="output.ucs", help="Use given filename instead of default."
+)
 @click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
 @click.option(
     "--force",
@@ -164,10 +192,12 @@ def resolve(conflict):
     help="Generate output ucs even if not all conflict has been resolved.",
 )
 def generate(output, ucs_passphrase, force):
-    controller = MigrationController(output_ucs=output, ucs_passphrase=ucs_passphrase)
+    controller = MigrationController()
 
     try:
-        output_ucs = controller.generate(force=force)
+        output_ucs = controller.generate(
+            force=force, output=output, ucs_passphrase=ucs_passphrase
+        )
         click.echo(f"Output ucs has been stored as {output_ucs}.")
     except NotMasterBranchError:
         click.echo("Please checkout to master branch.")
