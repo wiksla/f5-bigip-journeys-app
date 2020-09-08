@@ -285,45 +285,45 @@ def build_dependency_tree(config_filename):
 
 
 @cli.command()
-@click.option("--bigip-host", required=True)
-@click.option("--bigip-username", default="root")
-@click.option("--bigip-password", required=True)
-@click.option("--bigip-admin-username", default="admin")
-@click.option("--bigip-admin-password", required=True)
-@click.option("--tenant-host", required=True)
-@click.option("--tenant-username", default="root")
-@click.option("--tenant-password", required=True)
-@click.option("--tenant-admin-username", default="admin")
-@click.option("--tenant-admin-password", required=True)
+@click.option("--source-host", required=True)
+@click.option("--source-username", default="root")
+@click.option("--source-password", required=True)
+@click.option("--source-admin-username", default="admin")
+@click.option("--source-admin-password", required=True)
+@click.option("--destination-host", required=True)
+@click.option("--destination-username", default="root")
+@click.option("--destination-password", required=True)
+@click.option("--destination-admin-username", default="admin")
+@click.option("--destination-admin-password", required=True)
 def diagnose(
-    bigip_host,
-    bigip_username,
-    bigip_password,
-    bigip_admin_username,
-    bigip_admin_password,
-    tenant_host,
-    tenant_username,
-    tenant_password,
-    tenant_admin_username,
-    tenant_admin_password,
+    source_host,
+    source_username,
+    source_password,
+    source_admin_username,
+    source_admin_password,
+    destination_host,
+    destination_username,
+    destination_password,
+    destination_admin_username,
+    destination_admin_password,
 ):
 
-    bigip = Device(
-        host=bigip_host,
-        ssh_username=bigip_username,
-        ssh_password=bigip_password,
-        api_username=bigip_admin_username,
-        api_password=bigip_admin_password,
+    source = Device(
+        host=source_host,
+        ssh_username=source_username,
+        ssh_password=source_password,
+        api_username=source_admin_username,
+        api_password=source_admin_password,
     )
-    tenant = Device(
-        host=tenant_host,
-        ssh_username=tenant_username,
-        ssh_password=tenant_password,
-        api_username=tenant_admin_username,
-        api_password=tenant_admin_password,
+    destination = Device(
+        host=destination_host,
+        ssh_username=destination_username,
+        ssh_password=destination_password,
+        api_username=destination_admin_username,
+        api_password=destination_admin_password,
     )
 
-    mcp_status = get_mcp_status(tenant)
+    mcp_status = get_mcp_status(bigip=destination)
     click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}")
     if (
         not mcp_status["last-load"] == "full-config-load-succeed"
@@ -331,23 +331,25 @@ def diagnose(
     ):
         click.echo("MCP down")
 
-    tmm_status = get_tmm_global_status(tenant)
+    tmm_status = get_tmm_global_status(bigip=destination)
     click.echo(f"TMM status:\n{json.dumps(tmm_status, indent=4)}")
-    if not wait_for_prompt_state(tenant):
+    if not wait_for_prompt_state(device=destination):
         click.echo("Prompt is not active/standby")
 
-    click.echo(list_cores(tenant, raise_exception=True))
+    click.echo(list_cores(device=destination, raise_exception=True))
 
-    db_diff = compare_db(bigip, tenant)
+    db_diff = compare_db(first=source, second=destination)
     click.echo(f"Sys DB diff:\n{db_diff.pretty()}")
 
-    module_diff = compare_memory_footprint(bigip, tenant)
+    module_diff = compare_memory_footprint(first=source, second=destination)
     click.echo(f"Memory footprint diff:\n{module_diff.pretty()}")
 
-    sample_tmsh_diff = tmsh_compare("tmsh show sys version", bigip, tenant)
+    sample_tmsh_diff = tmsh_compare(
+        cmd="tmsh show sys version", first=source, second=destination
+    )
     click.echo(f"tmsh show sys version diff:\n{sample_tmsh_diff}")
 
-    click.echo(get_ltm_vs_status(device=bigip))
+    click.echo(get_ltm_vs_status(device=source))
 
 
 if __name__ == "__main__":
