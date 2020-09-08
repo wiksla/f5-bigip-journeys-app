@@ -35,7 +35,7 @@ class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
 
-    def __init__(self, clear=False):
+    def __init__(self, clear=False, allow_empty=False):
         working_directory = os.environ.get("MIGRATE_DIR", ".")
         self.working_directory = working_directory
 
@@ -58,10 +58,15 @@ class MigrationController:
         self.config = None
         self.conflict_handler = None
 
+        self._ensure_master()
+
+        if not allow_empty:
+            self._ensure_initialized()
+
     def initialize(self, input_ucs, ucs_passphrase):
 
         if self._is_repo_initialized():
-            raise AlreadyInitializedError()
+            raise AlreadyInitializedError(input=input_ucs)
 
         try:
             _, files_metadata = untar_file(
@@ -89,8 +94,11 @@ class MigrationController:
         self.repo.index.commit("reformat")
         self.repo.create_head("initial")
 
-    def prompt(self):
+    @property
+    def current_conflict(self):
+        return self.shelf.get("current_conflict", None)
 
+    def prompt(self):
         current_conflict = self.shelf.get("current_conflict", None)
         conflicts = self.shelf.get("conflicts", None)
 
@@ -104,11 +112,6 @@ class MigrationController:
         return f"\\e[1;32mjourney{prompt}: \\e[0m"
 
     def process(self):
-        if not self._check_master():
-            raise NotMasterBranchError()
-
-        if not self._is_repo_initialized():
-            raise NotInitializedError()
 
         if self.config is None:
             self._read_config()
@@ -126,6 +129,8 @@ class MigrationController:
                 raise ConflictNotResolvedError(
                     conflict_id=current_conflict,
                     conflict_info=conflicts[current_conflict],
+                    working_directory=self.working_directory,
+                    config_path=self.config_path,
                 )
 
         for head in self.repo.heads:
@@ -145,7 +150,7 @@ class MigrationController:
         conflicts = self.conflict_handler.detect_conflicts()
 
         if conflict_id not in conflicts:
-            raise UnknownConflictError()
+            raise UnknownConflictError(conflict_id=conflict_id)
 
         conflict_info = conflicts[conflict_id]
         self.shelf["current_conflict"] = conflict_id
@@ -166,17 +171,15 @@ class MigrationController:
                     mitigation=mitigation,
                 )
                 self.repo.git.add(u=True)
-                self.repo.index.commit(mitigation)
+                self.repo.index.commit(branch_name)
 
         self.repo.heads.master.checkout()
         self.conflict_handler.render(
             dirname=self.config_path, conflict=conflict_info, mitigation="comment_only",
         )
-        return conflict_info
+        return conflict_info, self.working_directory, self.config_path
 
     def generate(self, output, force, ucs_passphrase):
-        if not self._check_master():
-            raise NotMasterBranchError()
 
         if self.config is None:
             self._read_config()
@@ -190,13 +193,18 @@ class MigrationController:
         )
         return output_ucs
 
+    def _ensure_master(self):
+        if self.repo.active_branch.name != "master":
+            raise NotMasterBranchError()
+
+    def _ensure_initialized(self):
+        if not self._is_repo_initialized():
+            raise NotInitializedError()
+
     def _read_config(self):
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
         self.conflict_handler = ConflictHandler(self.config)
-
-    def _check_master(self):
-        return self.repo.active_branch.name == "master"
 
     def _is_repo_initialized(self):
         try:

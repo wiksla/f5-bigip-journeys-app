@@ -3,7 +3,8 @@ class ControllerError(RuntimeError):
 
 
 class AlreadyInitializedError(ControllerError):
-    pass
+    def __init__(self, input):
+        self.input = input
 
 
 class ArchiveOpenError(ControllerError):
@@ -28,13 +29,16 @@ class DifferentConflictError(ControllerError):
 
 
 class UnknownConflictError(ControllerError):
-    pass
+    def __init__(self, conflict_id):
+        self.conflict_id = conflict_id
 
 
 class ConflictNotResolvedError(ControllerError):
-    def __init__(self, conflict_id, conflict_info):
+    def __init__(self, conflict_id, conflict_info, working_directory, config_path):
         self.conflict_id = conflict_id
         self.conflict_info = conflict_info
+        self.working_directory = working_directory
+        self.config_path = config_path
 
 
 class NotAllConflictResolvedError(ControllerError):
