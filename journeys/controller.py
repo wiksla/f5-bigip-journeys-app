@@ -158,7 +158,8 @@ class MigrationController:
 
             branch_name = f"{conflict_id}_{mitigation}"
             if branch_name not in self.repo.heads:
-                self.repo.create_head(f"{conflict_id}_{mitigation}").checkout()
+                self.repo.heads.master.checkout()
+                self.repo.create_head(branch_name).checkout()
                 self.conflict_handler.render(
                     dirname=self.config_path,
                     conflict=conflict_info,
