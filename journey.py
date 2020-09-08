@@ -218,13 +218,6 @@ def prompt():
 @click.option(
     "--username", default="root", help="Username to use when connecting host."
 )
-@click.option(
-    "--password",
-    prompt=True,
-    hide_input=True,
-    help="Password to use when connecting host.",
-)
-@click.option("--username", help="Username")
 @click.option("--password", required=True, help="Password to use when connecting host.")
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
