@@ -173,7 +173,7 @@ def process_and_print_output(controller: MigrationController):
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
 def start(ucs, clear, ucs_passphrase):
-
+    """ Start migration process. """
     with error_handler():
         controller = MigrationController(clear=clear, allow_empty=True)
         controller.initialize(input_ucs=ucs, ucs_passphrase=ucs_passphrase)
@@ -183,7 +183,7 @@ def start(ucs, clear, ucs_passphrase):
 @cli.command()
 @click.argument("ucs", default="")
 def migrate(ucs):
-
+    """ Continue or resume migration process. """
     # TODO: remove after release
     if ucs:
         click.echo("Ucs argument is deprecated.")
@@ -197,6 +197,7 @@ def migrate(ucs):
 @cli.command()
 @click.argument("conflict_id")
 def resolve(conflict_id):
+    """ Start single conflict resolution process. """
     with error_handler():
         controller = MigrationController()
         conflict_info, working_directory, config_path = controller.resolve(
@@ -212,6 +213,7 @@ def resolve(conflict_id):
 @cli.command()
 @click.argument("mitigation")
 def show(mitigation):
+    """ Show proposed mitigation for a conflict. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -230,6 +232,7 @@ def show(mitigation):
 
 @cli.command()
 def diff():
+    """ Show changes made or conflict highlights. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -239,6 +242,7 @@ def diff():
 @cli.command()
 @click.argument("mitigation")
 def use(mitigation):
+    """ Apply proposed mitigation. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -265,6 +269,7 @@ def use(mitigation):
 
 @cli.command()
 def cleanup():
+    """ Clean local changes. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -274,6 +279,7 @@ def cleanup():
 @cli.command()
 @click.option("--details", is_flag=True, help="Print details of a conflict resolution.")
 def history(details):
+    """ Show conflict resolution history. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -302,6 +308,7 @@ def history(details):
 @cli.command()
 @click.argument("step")
 def revert(step):
+    """ Revert conflict resolution. """
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
@@ -331,6 +338,7 @@ def revert(step):
     help="Generate output ucs even if not all conflict_info has been resolved.",
 )
 def generate(output, ucs_passphrase, force):
+    """ Generate output. """
     with error_handler():
         controller = MigrationController()
         output_ucs = controller.generate(
@@ -339,7 +347,7 @@ def generate(output, ucs_passphrase, force):
         click.echo(f"Output ucs has been stored as {output_ucs}.")
 
 
-@cli.command()
+@cli.command(hidden=True)
 def prompt():
     with error_handler():
         controller = MigrationController()
@@ -376,6 +384,7 @@ def resources(host, username, password):
 )
 @click.option("--output", default="ex.ucs", help="Output filename.")
 def download_ucs(host, username, password, ucs_passphrase, output):
+    """ Download ucs from live system. """
     if not ucs_passphrase:
         ucs_passphrase = "".join(
             random.choice(string.ascii_letters + string.digits) for i in range(10)
