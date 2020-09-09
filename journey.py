@@ -151,7 +151,7 @@ def error_handler():
 
 
 @cli.command()
-@click.argument("ucs", default="")
+@click.argument("ucs")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
 def start(ucs, clear, ucs_passphrase):
