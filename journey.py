@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+import logging
 import os
 import random
 import string
+import sys
 from contextlib import contextmanager
 from time import gmtime
 from time import strftime
@@ -10,7 +12,9 @@ import click
 from git.exc import GitError
 
 from journeys import __version__ as journey_version
+from journeys.controller import WORKDIR
 from journeys.controller import MigrationController
+from journeys.controller import setup_logging
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
@@ -36,6 +40,8 @@ from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import run_backup
 from journeys.validators.exceptions import JourneysError
 
+log = logging.getLogger(__name__)
+
 
 @click.group()
 @click.version_option(
@@ -46,6 +52,8 @@ def cli():
     Tool useful in config migration process: \n
         * CBIP to VELOS(tenant).
     """
+    setup_logging()
+    log.info(f"Processing command: {sys.argv}")
 
 
 def print_conflicts_info(conflicts):
@@ -412,11 +420,8 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
         )
 
-        working_directory = os.environ.get("MIGRATE_DIR", ".")
         local_ucs_path = get_file(
-            device=device,
-            remote=ucs_remote_dir,
-            local=os.path.join(working_directory, output),
+            device=device, remote=ucs_remote_dir, local=os.path.join(WORKDIR, output),
         )
 
         delete_file(device=device, location=ucs_remote_dir)
@@ -586,4 +591,8 @@ def diagnose(
 
 
 if __name__ == "__main__":
-    cli()
+    try:
+        cli()  # pylint: disable=E1120
+    except Exception as e:
+        log.exception(e, exc_info=True)
+        raise

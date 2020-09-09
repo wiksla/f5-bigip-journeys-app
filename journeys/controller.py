@@ -1,3 +1,4 @@
+import logging
 import os
 import shelve
 import shutil
@@ -20,20 +21,35 @@ from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
 from journeys.utils.ucs_reader import UcsReader
 
+log = logging.getLogger(__name__)
+
+WORKDIR = os.environ.get("MIGRATE_DIR", ".")
+
+
+def setup_logging(level=logging.DEBUG):
+    log_file = os.path.join(WORKDIR, "journeys.log")
+
+    format_string = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
+    formatter = logging.Formatter(format_string)
+
+    handler = logging.FileHandler(log_file)
+    handler.setLevel(level)
+    handler.setFormatter(formatter)
+
+    log = logging.getLogger()
+    log.setLevel(level)
+    log.addHandler(handler)
+
 
 class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
 
     def __init__(self, clear=False, allow_empty=False):
-        working_directory = os.environ.get("MIGRATE_DIR", ".")
-        self.working_directory = working_directory
 
-        if not os.path.exists(self.working_directory):
-            os.mkdir(self.working_directory)
-
-        self.repo_path = os.path.join(self.working_directory, self.REPO_FOLDER_NAME)
+        self.repo_path = os.path.join(WORKDIR, self.REPO_FOLDER_NAME)
         if clear:
+            log.info(f"Clear enabled - removing {self.repo_path}.")
             shutil.rmtree(self.repo_path, ignore_errors=True)
         if not os.path.exists(self.repo_path):
             os.mkdir(self.repo_path)
@@ -57,7 +73,10 @@ class MigrationController:
         if self._is_repo_initialized():
             raise AlreadyInitializedError(input=input_ucs)
 
+        log.info("Initializing the git repository.")
+
         try:
+            log.info(f"Unpacking the provided file {input_ucs} into {self.repo_path}.")
             _, files_metadata = untar_file(
                 input_ucs, output_dir=self.repo_path, archive_passphrase=ucs_passphrase,
             )
@@ -68,14 +87,15 @@ class MigrationController:
 
         self.shelf["files_metadata"] = files_metadata
         self._add_shelf_file_to_gitignore()
+        log.info("Preparing the initial commit.")
         self.repo.git.add("*")
         self.repo.index.commit("initial")
 
         # rebuilding the config changes the formatting slightly -
         # do it here so that later diffs are clean
-        self.ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
-        config: Config = self.ucs_reader.get_config()
-        config.build(dirname=self.config_path)
+        self._read_config()
+        log.info("Preparing the reformat commit.")
+        self.config.build(dirname=self.config_path)
         self.repo.git.add(u=True)
         self.repo.index.commit("reformat")
         self.repo.create_head("initial")
@@ -98,16 +118,24 @@ class MigrationController:
         return f"\\e[1;32mjourney{prompt}: \\e[0m"
 
     def process(self) -> dict:
+        log.info("Initiating conflict search.")
 
         if self.config is None:
             self._read_config()
         conflicts = self.conflict_handler.get_conflicts()
+        log.info(f"Conflicts found: {', '.join(conflicts.keys())}")
         self.shelf["conflicts"] = list(conflicts.keys())
 
         current_conflict = self.current_conflict
         if current_conflict:
+            log.info(f"Conflict {current_conflict} is currently being resolved.")
             if current_conflict not in conflicts:
+                log.info(f"Conflict {current_conflict} appears resolved. Continuing.")
                 if self.repo.is_dirty():
+                    uncommited = [diff.a_path for diff in self.repo.index.diff(None)]
+                    log.info(
+                        f"Uncommited changes found: {uncommited}. Creating a new commit."
+                    )
                     self.repo.git.add(u=True)
                     self.repo.index.commit(message=current_conflict)
                 self.shelf["current_conflict"] = ""
@@ -115,13 +143,19 @@ class MigrationController:
                 raise ConflictNotResolvedError(
                     conflict_id=current_conflict,
                     conflict_info=conflicts[current_conflict],
-                    working_directory=self.working_directory,
+                    working_directory=WORKDIR,
                     config_path=self.config_path,
                 )
 
-        for head in self.repo.heads:
-            if head not in [self.repo.heads.master, self.repo.heads.initial]:
-                head.delete(self.repo, head, force=True)
+        to_remove = [
+            head
+            for head in self.repo.heads
+            if head not in [self.repo.heads.master, self.repo.heads.initial]
+        ]
+        if to_remove:
+            log.info(f"Removing stale branches: {to_remove}")
+        for head in to_remove:
+            head.delete(self.repo, head, force=True)
 
         return conflicts
 
@@ -139,6 +173,7 @@ class MigrationController:
         if self.config is None:
             self._read_config()
 
+        log.info(f"Initiating resolution for conflict {conflict_id}.")
         conflict_info = self.conflict_handler.get_conflict(conflict_id=conflict_id)
         self.shelf["current_conflict"] = conflict_id
 
@@ -149,6 +184,7 @@ class MigrationController:
                 continue
 
             branch_name = f"{conflict_id}_{mitigation}"
+            log.info(f'Creating resolution branch "{branch_name}".')
             if branch_name not in self.repo.heads:
                 self.repo.heads.master.checkout()
                 self.repo.create_head(branch_name).checkout()
@@ -161,10 +197,11 @@ class MigrationController:
                 self.repo.index.commit(branch_name)
 
         self.repo.heads.master.checkout()
+        log.info('Creating resolution branch "comment_only".')
         self.conflict_handler.render(
             dirname=self.config_path, conflict=conflict_info, mitigation="comment_only",
         )
-        return conflict_info, self.working_directory, self.config_path
+        return conflict_info, WORKDIR, self.config_path
 
     def generate(self, output, force, ucs_passphrase):
 
@@ -189,6 +226,7 @@ class MigrationController:
             raise NotInitializedError()
 
     def _read_config(self):
+        log.info(f"Reading and parsing the configuration from {self.repo_path}.")
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
         self.conflict_handler = ConflictHandler(self.config)
@@ -204,10 +242,13 @@ class MigrationController:
     def _create_output_ucs(self, output, ucs_passphrase):
         try:
             os.remove(output)
+            log.info(f"Old version of {output} found and removed.")
         except FileNotFoundError:
             pass
 
-        output_path = os.path.join(self.working_directory, os.path.basename(output))
+        log.info(f"Creating output ucs {output}.")
+
+        output_path = os.path.join(WORKDIR, os.path.basename(output))
         tar_file(
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),
