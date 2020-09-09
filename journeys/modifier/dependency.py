@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -249,8 +250,14 @@ class NestedDependency(BaseDependency):
         def delete(parent):
             parent.fields[obj.key].fields[self.field_name].delete()
 
+        def nested(parent, resolution):
+            resolution(parent.fields[obj.key])
+
         if self.resolution == "nested":
-            return self.dependency.get_resolve(obj.fields[self.field_name], value)
+            nested_resolution = self.dependency.get_resolve(
+                obj.fields[self.field_name], value
+            )
+            return partial(nested, resolution=nested_resolution)
         else:
             return delete
 
