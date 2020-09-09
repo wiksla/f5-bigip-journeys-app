@@ -139,6 +139,10 @@ class MigrationController:
 
         return conflicts
 
+    def history(self):
+        commits = [commit for commit in self.repo.iter_commits(rev="initial...master")]
+        return [commit for commit in reversed(commits)]
+
     def resolve(self, conflict_id):
 
         current_conflict = self.shelf.get("current_conflict", None)

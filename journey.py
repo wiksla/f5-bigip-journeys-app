@@ -58,10 +58,18 @@ def print_conflicts_info(conflicts):
     click.echo(f"Example 'journey.py resolve {conflict_name}'")
 
 
-def print_no_conflict_info():
+def print_no_conflict_info(history):
     click.echo("No conflicts has been found.")
     click.echo("")
     click.echo("In order to generate output ucs run 'journey.py generate'")
+
+    if not history:
+        return
+
+    click.echo("")
+    click.echo(
+        "In order to review the changes history run 'journey.py history' or 'journey.py history --details'"
+    )
 
 
 def print_conflict_resolution_help(conflict_info, working_directory, config_path):
@@ -152,6 +160,14 @@ def error_handler():
         click.echo("In order to handle them run 'journey.py migrate'")
 
 
+def process_and_print_output(controller: MigrationController):
+    current_conflicts = controller.process()
+    if current_conflicts:
+        print_conflicts_info(conflicts=current_conflicts)
+    else:
+        print_no_conflict_info(history=controller.history)
+
+
 @cli.command()
 @click.argument("ucs")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
@@ -161,11 +177,7 @@ def start(ucs, clear, ucs_passphrase):
     with error_handler():
         controller = MigrationController(clear=clear, allow_empty=True)
         controller.initialize(input_ucs=ucs, ucs_passphrase=ucs_passphrase)
-        conflicts = controller.process()
-        if conflicts:
-            print_conflicts_info(conflicts)
-        else:
-            print_no_conflict_info()
+        process_and_print_output(controller=controller)
 
 
 @cli.command()
@@ -179,11 +191,7 @@ def migrate(ucs):
 
     with error_handler():
         controller = MigrationController()
-        conflicts = controller.process()
-        if conflicts:
-            print_conflicts_info(conflicts)
-        else:
-            print_no_conflict_info()
+        process_and_print_output(controller=controller)
 
 
 @cli.command()
@@ -250,11 +258,7 @@ def use(mitigation):
             return
         try:
             repo.git.merge(mitigation)
-            conflicts = controller.process()
-            if conflicts:
-                print_conflicts_info(conflicts)
-            else:
-                print_no_conflict_info()
+            process_and_print_output(controller=controller)
         except GitError:
             click.echo("Given mitigation is not valid")
 
@@ -268,20 +272,22 @@ def cleanup():
 
 
 @cli.command()
-def history():
+@click.option("--details", is_flag=True, help="Print details of a conflict resolution.")
+def history(details):
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
-        commits = reversed(
-            [commit for commit in repo.iter_commits(rev="initial...master")]
-        )
-        if not commits:
+        commits_history = controller.history()
+
+        if not commits_history:
             click.echo("No steps has been done so far.")
             return
 
         click.echo("So far, following steps was made:")
-        for idx, commit in enumerate(commits):
+        for idx, commit in enumerate(commits_history):
             click.echo(f"\t{idx + 1}: {commit.summary}")
+            if details:
+                click.echo(repo.git.show(commit.hexsha))
 
         click.echo("")
         click.echo(
@@ -299,29 +305,19 @@ def revert(step):
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
+        commits_history = controller.history()
         try:
-            commits = reversed(
-                [commit for commit in repo.iter_commits(rev="initial...master")]
-            )
-            commit = [commit for commit in commits if commit.summary == step][0]
-
-            repo.git.reset(commit.parents[0])
-            repo.git.checkout(".")
-            conflicts = controller.process()
-            if conflicts:
-                print_conflicts_info(conflicts)
-            else:
-                print_no_conflict_info()
-        except GitError:
-            click.echo("Given step was not found.")
-            click.echo(
-                "In order to list steps performed so far run 'journey.py history'"
-            )
+            commit = [commit for commit in commits_history if commit.summary == step][0]
         except IndexError:
             click.echo("Given step was not found.")
             click.echo(
                 "In order to list steps performed so far run 'journey.py history'"
             )
+            return
+
+        repo.git.reset(commit.parents[0])
+        repo.git.checkout(".")
+        process_and_print_output(controller=controller)
 
 
 @cli.command()
