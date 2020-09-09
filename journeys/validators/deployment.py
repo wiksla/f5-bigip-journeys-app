@@ -1,37 +1,20 @@
 import logging
-import os
 import re
 import time
 
-from icontrol.exceptions import iControlUnexpectedHTTPError
-
 from journeys.utils.device import Device
-from journeys.validators.exceptions import ConfigurationError
+from journeys.utils.device import save_ucs
 from journeys.validators.exceptions import JourneysError
 
 log = logging.getLogger(__name__)
 
 
-def load_ucs(device: Device, file_path: str):
-    """
-    Upload UCS into BIG-IP and load it using iControl REST.
-    @param device: object representing bigip or velocity
-    @param file_path: Path to UCS file
-    """
-    try:
-        device.icontrol.mgmt.shared.file_transfer.ucs_uploads.upload_file(file_path)
-        """
-        Loading UCS will result in ICRD restarting, therefore due to ID476518
-        502 Bad Gateway is generated, this is working as intended, at least until
-        some architecture changes have been made.
-        """
-        device.icontrol.mgmt.tm.sys.ucs.exec_cmd(
-            command="load",
-            name=os.path.basename(file_path),
-            options=[{"no-license": True, "platform-migrate": True}],
-        )
-    except iControlUnexpectedHTTPError as e:
-        raise ConfigurationError(e.response.json().get("message"))
+def run_backup(bigip: Device, ucs_passphrase: str, is_user_triggered=False) -> str:
+    prefix = "user" if is_user_triggered else "auto"
+    timestamp = time.strftime("%Y%m%d%H%M%S", time.gmtime())
+    ucs_name = f"{prefix}_backup_from_{timestamp}.ucs"
+    save_ucs(bigip, ucs_name, ucs_passphrase)
+    return ucs_name
 
 
 def get_mcp_status(bigip: Device) -> dict:

@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-import json
 import os
 import random
 import string
 from contextlib import contextmanager
+from time import gmtime
+from time import strftime
 
 import click
 from git.exc import GitError
@@ -18,22 +19,21 @@ from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import UnknownConflictError
+from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
 from journeys.utils.device import delete_file
+from journeys.utils.device import get_file
 from journeys.utils.device import get_image
-from journeys.utils.device import get_ucs
+from journeys.utils.device import load_ucs
+from journeys.utils.device import put_file
 from journeys.utils.device import save_ucs
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
-from journeys.validators.comparers import compare_db
-from journeys.validators.comparers import compare_memory_footprint
-from journeys.validators.comparers import tmsh_compare
-from journeys.validators.core_watcher import list_cores
-from journeys.validators.deployment import get_mcp_status
-from journeys.validators.deployment import get_tmm_global_status
-from journeys.validators.deployment import wait_for_prompt_state
-from journeys.validators.ltm_checks import get_ltm_vs_status
+from journeys.validators.checks_for_cli import auto_checks
+from journeys.validators.checks_for_cli import run_diagnose
+from journeys.validators.deployment import run_backup
+from journeys.validators.exceptions import JourneysError
 
 
 @click.group()
@@ -338,7 +338,7 @@ def revert(step):
     help="Generate output ucs even if not all conflict_info has been resolved.",
 )
 def generate(output, ucs_passphrase, force):
-    """ Generate output. """
+    """ Generate output UCS. """
     with error_handler():
         controller = MigrationController()
         output_ucs = controller.generate(
@@ -402,10 +402,10 @@ def download_ucs(host, username, password, ucs_passphrase, output):
         )
 
         working_directory = os.environ.get("MIGRATE_DIR", ".")
-        local_ucs_path = get_ucs(
+        local_ucs_path = get_file(
             device=device,
             remote=ucs_remote_dir,
-            local_ucs_name=os.path.join(working_directory, output),
+            local=os.path.join(working_directory, output),
         )
 
         delete_file(device=device, location=ucs_remote_dir)
@@ -414,7 +414,116 @@ def download_ucs(host, username, password, ucs_passphrase, output):
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
-        click.echo("Migration process is not available for you BIGIP version.")
+        click.echo("Migration process is not available for your BIGIP version.")
+
+
+@cli.command()
+@click.option(
+    "--ucs-passphrase", default=None, help="Passphrase to decrypt ucs archive."
+)
+@click.option("--destination-host", required=True)
+@click.option("--destination-username", default="root")
+@click.option("--destination-password", required=True)
+def backup(
+    ucs_passphrase, destination_username, destination_host, destination_password
+):
+    """ Do a system backup. As Always. """
+    destination = Device(
+        host=destination_host,
+        ssh_username=destination_username,
+        ssh_password=destination_password,
+    )
+    try:
+        backed_up = run_backup(destination, ucs_passphrase, is_user_triggered=True)
+    except JourneysError as err:
+        click.echo("\nBackup NOT created!!!\n")
+        click.echo(err)  # TODO: replace with logger
+        return
+    restore_command = f"tmsh load sys ucs {backed_up}"
+    if ucs_passphrase:
+        restore_command += f" passphrase {ucs_passphrase}"
+    click.echo(
+        "Backup created.\n In case of emergency you can restore it on Destination System "
+        "platform by running: \n "
+        f"{restore_command}"
+    )
+
+
+@cli.command()
+@click.option(
+    "--input-ucs", default="output.ucs", help="Use given filename instead of default."
+)
+@click.option(
+    "--ucs-passphrase", default=None, help="Passphrase to decrypt ucs archive."
+)
+@click.option("--autocheck", default=False, help="Run diagnose option after deployment")
+@click.option("--destination-host", required=True)
+@click.option("--destination-username", default="root")
+@click.option("--destination-password", required=True)
+@click.option("--destination-admin-username", default="admin")
+@click.option("--destination-admin-password", required=True)
+@click.option("--no-backup", is_flag=True, default=False, help="Skip auto backup.")
+def deploy(
+    input_ucs,
+    ucs_passphrase,
+    autocheck,
+    destination_host,
+    destination_username,
+    destination_password,
+    destination_admin_username,
+    destination_admin_password,
+    no_backup,
+):
+    """ Deploy UCS on Destination Platform. """
+    if not ucs_passphrase:
+        click.echo(
+            "This tool generates only passphrase encrypted UCS files.\n"
+            "Please enter password for given UCS file.\n"
+            "If you didn't store password for your ucs, "
+            "you can generate the UCS again.\n"
+        )
+        return
+
+    destination = Device(
+        host=destination_host,
+        ssh_username=destination_username,
+        ssh_password=destination_password,
+        api_username=destination_admin_username,
+        api_password=destination_admin_password,
+    )
+
+    if no_backup:
+        click.echo("Auto backup skipped by user.")
+    else:
+        try:
+            backed_up = run_backup(
+                destination, ucs_passphrase="", is_user_triggered=False
+            )
+            restore_command = f"tmsh load sys ucs {backed_up}"
+            click.echo(
+                "Backup created.\n In case of emergency you can restore it on "
+                "Destination Platform platform by running: \n"
+                f"{restore_command}\n"
+            )
+        except JourneysError as err:
+            click.echo("\nBackup NOT created!!!\n")
+            click.echo(err)  # TODO: push it through logger
+
+    try:
+        put_file(destination, input_ucs, REMOTE_UCS_DIRECTORY)
+        load_ucs(destination, input_ucs, ucs_passphrase)
+    except JourneysError as c_err:
+        click.echo(f"Failed to deploy ucs file! Encountered problem:\n" f"{c_err}")
+        return
+
+    if autocheck:
+        prefix = "autocheck_diagnose_output"
+        timestamp = strftime("%Y%m%d%H%M%S", gmtime())
+        output_log = f"{prefix}_{timestamp}.log"
+        output_json = f"{prefix}_{timestamp}.json"
+        with open(output_log, "w") as logfile:
+            kwargs = {"destination": destination, "output": logfile}
+            run_diagnose(auto_checks, kwargs, output_json)
 
 
 @cli.command()
@@ -440,7 +549,7 @@ def diagnose(
     destination_admin_username,
     destination_admin_password,
 ):
-
+    """ Run diagnosis and comparison checks for Source and Destination Platforms. """
     source = Device(
         host=source_host,
         ssh_username=source_username,
@@ -455,34 +564,14 @@ def diagnose(
         api_username=destination_admin_username,
         api_password=destination_admin_password,
     )
-
-    mcp_status = get_mcp_status(bigip=destination)
-    click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}")
-    if (
-        not mcp_status["last-load"] == "full-config-load-succeed"
-        and mcp_status["phase"] == "running"
-    ):
-        click.echo("MCP down")
-
-    tmm_status = get_tmm_global_status(bigip=destination)
-    click.echo(f"TMM status:\n{json.dumps(tmm_status, indent=4)}")
-    if not wait_for_prompt_state(device=destination):
-        click.echo("Prompt is not active/standby")
-
-    click.echo(list_cores(device=destination, raise_exception=True))
-
-    db_diff = compare_db(first=source, second=destination)
-    click.echo(f"Sys DB diff:\n{db_diff.pretty()}")
-
-    module_diff = compare_memory_footprint(first=source, second=destination)
-    click.echo(f"Memory footprint diff:\n{module_diff.pretty()}")
-
-    sample_tmsh_diff = tmsh_compare(
-        cmd="tmsh show sys version", first=source, second=destination
-    )
-    click.echo(f"tmsh show sys version diff:\n{sample_tmsh_diff}")
-
-    click.echo(get_ltm_vs_status(device=source))
+    prefix = "diagnose_output"
+    timestamp = strftime("%Y%m%d%H%M%S", gmtime())
+    output_log = f"{prefix}_{timestamp}.log"
+    output_json = f"{prefix}_{timestamp}.json"
+    with open(output_log, "w") as logfile:
+        kwargs = {"destination": destination, "source": source, "output": logfile}
+        run_diagnose(auto_checks, kwargs, output_json)
+    click.echo(f"Finished. Check {output_log} and {output_json} for details.")
 
 
 if __name__ == "__main__":
