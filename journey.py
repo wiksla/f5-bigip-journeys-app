@@ -19,11 +19,13 @@ from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import UnknownConflictError
 from journeys.utils.device import Device
-from journeys.utils.device import delete_ucs
+from journeys.utils.device import delete_file
 from journeys.utils.device import get_image
 from journeys.utils.device import get_ucs
-from journeys.utils.device import obtain_source_resources
 from journeys.utils.device import save_ucs
+from journeys.utils.resource_check import (
+    ensure_if_minimum_resources_are_met_on_destination,
+)
 from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
 from journeys.validators.comparers import tmsh_compare
@@ -349,6 +351,25 @@ def prompt():
 
 
 @cli.command()
+@click.option("--host", required=True)
+@click.option(
+    "--username", default="root", help="Username to use when connecting host."
+)
+@click.option("--password", required=True, help="Password to use when connecting host.")
+def resources(host, username, password):
+    """ Check if destination has enough resources to migrate ucs. """
+    with error_handler():
+        controller = MigrationController()
+
+        device = Device(host=host, ssh_username=username, ssh_password=password)
+        click.echo(
+            ensure_if_minimum_resources_are_met_on_destination(
+                config_path=controller.repo_path, device=device
+            )
+        )
+
+
+@cli.command()
 @click.option("--host", required=True, help="Host to fetch ucs from.")
 @click.option(
     "--username", default="root", help="Username to use when connecting host."
@@ -382,28 +403,13 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             local_ucs_name=os.path.join(working_directory, output),
         )
 
-        delete_ucs(device=device, ucs_location=ucs_remote_dir)
+        delete_file(device=device, location=ucs_remote_dir)
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local} ")
-        delete_ucs(device=device, ucs_location=ucs_remote_dir)
+        delete_file(device=device, location=ucs_remote_dir)
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
         click.echo("Migration process is not available for you BIGIP version.")
-
-
-@cli.command()
-@click.option("--host", required=True)
-@click.option("--username", default="root")
-@click.option(
-    "--password",
-    prompt=True,
-    hide_input=True,
-    help="Password to use when connecting host.",
-)
-def minimal_required_tenant_resources(host, username, password):
-    device = Device(host=host, ssh_username=username, ssh_password=password)
-    device = Device(host=host, ssh_username=username, ssh_password=password)
-    click.echo(obtain_source_resources(device=device))
 
 
 @cli.command()

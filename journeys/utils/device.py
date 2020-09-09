@@ -72,6 +72,11 @@ def get_file(device: Device, remote: str, local: str) -> str:
         return c.get(remote, local)
 
 
+def put_file(device: Device, local: str, remote: str):
+    with Connection(device.ssh.host, **device.ssh.fabric) as c:
+        return c.put(local, remote)
+
+
 def get_ucs(device: Device, remote: str, local_ucs_name: str):
     with Connection(device.ssh.host, **device.ssh.fabric) as c:
         return c.get(remote, local_ucs_name)
@@ -98,36 +103,5 @@ def get_image(device: Device) -> Version:
     return Version(**(parse_version_file(result.stdout)))
 
 
-def obtain_source_resources(device: Device) -> dict:
-    return device.ssh.run_transaction(
-        cmds=[
-            ("disk", "tmsh show /sys hardware field-fmt", _obtain_disk_size),
-            ("ram", "tmsh show /sys memory field-fmt", _obtain_memory),
-            ("cores", "tmsh show /sys hardware field-fmt", _obtain_cpu_cores_no),
-        ],
-    )
-
-
-def delete_ucs(device: Device, ucs_location: str):
-    device.ssh.run(f"rm -rf {ucs_location}")
-
-
-def _obtain_disk_size(result):
-    result = result.stdout.splitlines()
-    for idx, line in enumerate(result):
-        if "versions.2.name Size" == line.lstrip():
-            return result[idx + 1].lstrip().split()[-1]
-
-
-def _obtain_cpu_cores_no(result):
-    result = result.stdout.splitlines()
-    for idx, line in enumerate(result):
-        if "versions.1.name cores" == line.lstrip():
-            return result[idx + 1].lstrip().split()[1]
-
-
-def _obtain_memory(result):
-    for line in result.stdout.splitlines():
-        line = line.lstrip()
-        if line.startswith("memory-total"):
-            return line.split()[-1]
+def delete_file(device: Device, location: str):
+    device.ssh.run(f"rm -rf {location}")

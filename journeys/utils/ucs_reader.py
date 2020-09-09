@@ -2,6 +2,7 @@ import os
 from functools import partial
 
 from journeys.config import Config
+from journeys.modifier.conflict.plugins.Plugin import find_object_with_type_match
 from journeys.utils.image import Version
 from journeys.utils.image import parse_version_file
 
@@ -33,3 +34,20 @@ class UcsReader:
 
         with open(ucs_version_fn) as version_fd:
             return Version(**parse_version_file(version_fd.read()))
+
+    def get_provisioned_modules(self) -> dict:
+        bigip_base_conf = Config.from_conf(
+            filename=self.ucs_path("config/bigip_base.conf")
+        )
+        provisioned_module_obj = find_object_with_type_match(
+            config=bigip_base_conf, type_matcher=("sys", "provision")
+        )
+
+        def _get_modules_level(provisioned_module_obj):
+            provisioning_mapping = {}
+            for module_ in provisioned_module_obj:
+                obj = bigip_base_conf.fields.get(module_)
+                provisioning_mapping[obj.name] = obj.fields[0].value
+            return provisioning_mapping
+
+        return _get_modules_level(provisioned_module_obj)
