@@ -40,6 +40,7 @@ build:
   tags:
     - docker-executor
   script:
+    - 'echo "__build_ref__ = \""${CI_BUILD_REF}"\"" >> journeys/__init__.py'
     - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
     - docker build -t ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} .
     - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest

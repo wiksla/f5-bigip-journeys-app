@@ -9,6 +9,7 @@ from time import strftime
 import click
 from git.exc import GitError
 
+from journeys import __version__ as journey_version
 from journeys.controller import MigrationController
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
@@ -37,12 +38,14 @@ from journeys.validators.exceptions import JourneysError
 
 
 @click.group()
+@click.version_option(
+    version=journey_version, message=f"Journey App Version: {journey_version}"
+)
 def cli():
     """
     Tool useful in config migration process: \n
         * CBIP to VELOS(tenant).
     """
-    pass
 
 
 def print_conflicts_info(conflicts):
