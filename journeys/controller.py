@@ -81,7 +81,7 @@ class MigrationController:
         with open(
             file=os.path.join(self.repo_path, ".gitignore"), mode="w"
         ) as gitignore:
-            gitignore.write(self.SHELF_FILE_NAME)
+            gitignore.write(f"{self.SHELF_FILE_NAME}*")
         self.repo.git.add("*")
         self.repo.index.commit("initial")
 
