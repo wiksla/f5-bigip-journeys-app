@@ -5,12 +5,40 @@ info:
 servers:
   - url: 'localhost'
 paths:
+  '/supported_features':
+    get:
+      summary: Information about existing sessions
+      operationId: get_supported_features
+      tags:
+        - '1. Before You Start'
+      responses:
+        '200':
+          description: Supported feature list
+          content:
+            'application/json':
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  total_count:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - 'Trunk'
+                      - 'Virtual Wire'
+                      - 'Double Tagging'
+                      - 'Compatibility Level'
+                      - 'VLAN Groups'
   '/sessions':
     get:
       summary: Information about existing sessions
       operationId: get_sessions
       tags:
-        - 'Start/Resume'
+        - '2. Start/Resume'
       responses:
         '200':
           description: Sessions list
@@ -20,33 +48,30 @@ paths:
                 type: object
                 required:
                   - items
-                  - total_count
                 properties:
-                  total_count:
-                    type: integer
                   items:
                     type: array
                     items:
-                      $ref: '#/components/schemas/SessionReference'
+                      $ref: '#/components/schemas/Session'
     post:
       summary: Create a new session
       operationId: create_session
       tags:
-        - 'Start/Resume'
+        - '2. Start/Resume'
       responses:
         '200':
           description: Session details
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/Session'
+                $ref: '#/components/schemas/SessionDetails'
   '/session/{session_id}':
     summary: Information about given session
     get:
       summary: Get information about existing session
       operationId: get_session_details
       tags:
-        - 'Start/Resume'
+        - '2. Start/Resume'
       parameters:
         - name: session_id
           in: path
@@ -59,7 +84,7 @@ paths:
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/Session'
+                $ref: '#/components/schemas/SessionDetails'
         '404':
           description: No session exists
           content:
@@ -72,7 +97,7 @@ paths:
       summary: Delete existing session
       operationId: delete_session
       tags:
-        - 'Start/Resume'
+        - '2. Start/Resume'
       parameters:
         - name: session_id
           in: path
@@ -85,7 +110,7 @@ paths:
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/Session'
+                $ref: '#/components/schemas/SessionDetails'
         '404':
           description: No session exists
           content:
@@ -99,7 +124,7 @@ paths:
       summary: Provide configuration_source
       operationId: provide_source
       tags:
-        - 'Source BIG-IP System'
+        - '3. Source BIG-IP System'
       parameters:
         - name: session_id
           in: path
@@ -153,7 +178,7 @@ paths:
       summary: Get list of supported destination platforms and versions
       operationId: list_supported_destinations
       tags:
-        - 'Destination BIG-IP System'
+        - '4. Destination BIG-IP System'
       responses:
         '200':
           description: Sorted list of supported destination platforms and versions (descending order)
@@ -168,7 +193,7 @@ paths:
       summary: Set destination platform and version
       operationId: set_destination
       tags:
-       - 'Destination BIG-IP System'
+       - '4. Destination BIG-IP System'
       parameters:
         - name: session_id
           in: path
@@ -197,7 +222,7 @@ paths:
       summary: Get conflicts report
       operationId: generate_conflicts_report
       tags:
-        - 'Configuration Analysis'
+        - '5. Configuration Analysis'
       parameters:
         - name: session_id
           in: path
@@ -219,7 +244,7 @@ paths:
       summary: Get a conflict details
       operationId: get_conflict_details
       tags:
-        - 'Resolve Conflicts'
+        - '6. Resolve Conflicts'
       parameters:
         - name: session_id
           in: path
@@ -251,7 +276,7 @@ paths:
       summary: Provide conflict resolution
       operationId: resolve_conflict
       tags:
-        - 'Resolve Conflicts'
+        - '6. Resolve Conflicts'
       parameters:
         - name: session_id
           in: path
@@ -291,7 +316,7 @@ paths:
       summary: Get the conflict resolution details
       operationId: Get_conflict_resolution_details
       tags:
-        - 'Resolution Summary'
+        - '7. Resolution Summary'
       parameters:
         - name: session_id
           in: path
@@ -305,12 +330,12 @@ paths:
             type: string
       responses:
         '200':
-          $ref: '#/components/schemas/Resolution'
+          $ref: '#/components/schemas/ResolutionDetails'
     delete:
       summary: Revert conflict resolution
       operationId: revert_resolved_conflict
       tags:
-        - 'Resolution Summary'
+        - '7. Resolution Summary'
       parameters:
         - name: session_id
           in: path
@@ -330,7 +355,7 @@ paths:
       summary: Resolve all remaining conflicts automatically using recommended solutions
       operationId: resolve_conflicts_automatically
       tags:
-        - 'Resolve Conflicts'
+        - '6. Resolve Conflicts'
       parameters:
         - name: session_id
           in: path
@@ -347,7 +372,7 @@ paths:
       summary: Get resolutions report
       operationId: generate_resolutions_report
       tags:
-        - 'Resolution Summary'
+        - '7. Resolution Summary'
       parameters:
         - name: session_id
           in: path
@@ -364,12 +389,12 @@ paths:
                 format: binary
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployment/output':
+  '/session/{session_id}/output':
     get:
       summary: Get output UCS/AS3
       operationId: generate_output
       tags:
-        - 'Journey Summary'
+        - '8. Journey Summary'
       parameters:
         - name: session_id
           in: path
@@ -384,12 +409,12 @@ paths:
               schema:
                 type: string
                 format: binary
-  '/session/{session_id}/deployment/test_connection':
+  '/session/{session_id}/deployments/test_connection':
     post:
       summary: Test connection using credentials
       operationId: test_connection
       tags:
-        - 'Deployment'
+        - '9. Deployment'
       parameters:
         - name: session_id
           in: path
@@ -425,7 +450,7 @@ paths:
       summary: Get list of supported destination validators
       operationId: list_supported_validators
       tags:
-        - 'Deployment'
+        - '9. Deployment'
       responses:
         '200':
           description: List of supported deployment validators with the descriptions
@@ -435,12 +460,12 @@ paths:
                 $ref: '#/components/schemas/SupportedValidators'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployment':
+  '/session/{session_id}/deployments':
     post:
       summary: Deploy configuration to given system and validate the results
       operationId: start_deployment_operation
       tags:
-        - 'Deployment'
+        - '9. Deployment'
       parameters:
         - name: session_id
           in: path
@@ -460,26 +485,22 @@ paths:
           content:
             'application/json':
               schema:
-                type: object
-                properties:
-                  operation_id:
-                    type: integer
-                    minimum: 1
+                $ref: '#/components/schemas/Deployment'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployment/{operation_id}':
+  '/session/{session_id}/deployments/{deployment_id}':
     get:
       summary: Get status of deployment operation
       operationId: get_deployment_operation_status
       tags:
-        - 'Deployment Results'
+        - '10. Deployment Results'
       parameters:
         - name: session_id
           in: path
           required: true
           schema:
             type: integer
-        - name: operation_id
+        - name: deployment_id
           in: path
           required: true
           schema:
@@ -490,7 +511,7 @@ paths:
           content:
             'application/json':
               schema:
-                $ref: '#/components/schemas/DeploymentStatus'
+                $ref: '#/components/schemas/DeploymentDetails'
         '404':
           description: Given deployment operation does not exist
           content:
@@ -499,19 +520,19 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployment/{operation_id}/log':
+  '/session/{session_id}/deployments/{deployment_id}/log':
     get:
       summary: Get deployment operation's log file
       operationId: get_deployment_operation_log_file
       tags:
-        - 'Deployment Results'
+        - '10. Deployment Results'
       parameters:
         - name: session_id
           in: path
           required: true
           schema:
             type: integer
-        - name: operation_id
+        - name: deployment_id
           in: path
           required: true
           schema:
@@ -536,19 +557,19 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/Error'
-  '/session/{session_id}/deployment/{operation_id}/report':
+  '/session/{session_id}/deployments/{deployment_id}/report':
     get:
       summary: Get resolutions report
       operationId: generate_deployment_report
       tags:
-        - 'Deployment Results'
+        - '10. Deployment Results'
       parameters:
         - name: session_id
           in: path
           required: true
           schema:
             type: integer
-        - name: operation_id
+        - name: deployment_id
           in: path
           required: true
           schema:
@@ -584,7 +605,7 @@ components:
           schema:
             type: array
             items:
-              $ref: '#/components/schemas/ConflictReference'
+              $ref: '#/components/schemas/Conflict'
     Resolutions:
       description: List of conflicts and their resolutions
       content:
@@ -643,7 +664,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/File'
-    ConflictReference:
+    Conflict:
       type: object
       required:
         - id
@@ -659,10 +680,16 @@ components:
         url:
           type: string
           example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}'
+        objects:
+          type: array
+          items:
+            type: string
+          example:
+            - '#SPDAG: Value of field cmp hash is not supported on target platform\nnet vlan /Common/vlan1 {\n  cmp-hash src-ip\n  tag 4094\n}'
 
     ConflictDetails:
       allOf:
-        - $ref: '#/components/schemas/ConflictReference'
+        - $ref: '#/components/schemas/Conflict'
         - type: object
           required:
             - mitigations
@@ -688,7 +715,7 @@ components:
           index 98b8bbf..d298f8d 100644
           --- a/journeys/backend/api-schema.yaml
           +++ b/journeys/backend/api-schema.yaml
-    ResolutionReference:
+    Resolution:
       type: object
       required:
         - conflict_id
@@ -699,9 +726,9 @@ components:
         url:
           type: string
           example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}/resolution'
-    Resolution:
+    ResolutionDetails:
       allOf:
-        - $ref: '#/components/schemas/ResolutionReference'
+        - $ref: '#/components/schemas/Resolution'
         - type: object
           required:
             - diffs
@@ -762,17 +789,24 @@ components:
     Conflicts:
       type: array
       items:
-        $ref: '#/components/schemas/ConflictReference'
+        $ref: '#/components/schemas/Conflict'
     Resolutions:
       type: array
       items:
-        $ref: '#/components/schemas/ResolutionReference'
+        $ref: '#/components/schemas/Resolution'
     Deployment:
       type: object
       required:
         - destination
         - validators
       properties:
+        id:
+          type: integer
+          readOnly: true
+          example: 1
+        url:
+          type: string
+          format: uri
         source:
           $ref: '#/components/schemas/SystemCredentials'
         destination:
@@ -783,20 +817,29 @@ components:
           example:
             'validator1': true
             'validator2': false
-        deployment_id:
-          type: integer
-          readOnly: true
-    DeploymentStatus:
-      type: object
-      properties:
         status:
           type: string
           enum: ['in_progress', 'finished']
-        details:
-          type: array
-          items:
-            type: string
-    SessionReference:
+          readOnly: true
+    DeploymentDetails:
+      allOf:
+        - $ref: '#/components/schemas/Deployment'
+        - type: object
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  time:
+                    type: integer
+                  message:
+                    type: string
+                example:
+                  time: 1234456
+                  message: 'backup created'
+
+    Session:
       type: object
       required:
         - last_update_time
@@ -810,9 +853,9 @@ components:
         url:
           type: string
           example: 'http://localhost/sessions/{session_id}'
-    Session:
+    SessionDetails:
       allOf:
-        - $ref: '#/components/schemas/SessionReference'
+        - $ref: '#/components/schemas/Session'
         - type: object
           required:
             - source
@@ -833,8 +876,10 @@ components:
               properties:
                 message:
                   type: string
-            deployment:
-              $ref: '#/components/schemas/Deployment'
+            deployments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Deployment'
 
     Error:
       type: object
