@@ -1,4 +1,3 @@
-import hashlib
 import os
 import shelve
 import shutil
@@ -16,19 +15,10 @@ from journeys.errors import DifferentConflictError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
-from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
 from journeys.utils.ucs_reader import UcsReader
-
-
-def md5(fname):
-    hash_md5 = hashlib.md5()
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
 
 
 class MigrationController:
@@ -47,21 +37,20 @@ class MigrationController:
             shutil.rmtree(self.repo_path, ignore_errors=True)
         if not os.path.exists(self.repo_path):
             os.mkdir(self.repo_path)
-        self.repo = Repo.init(self.repo_path)
 
         self.config_path = os.path.join(self.repo_path, "config")
 
-        self.shelf_path = os.path.join(self.repo_path, self.SHELF_FILE_NAME)
-        self.shelf = shelve.open(self.shelf_path)
+        self.repo = Repo.init(self.repo_path)
+        self.shelf = shelve.open(os.path.join(self.repo_path, self.SHELF_FILE_NAME))
 
         self.ucs_reader = None
         self.config = None
         self.conflict_handler = None
 
-        self._ensure_master()
+        self._ensure_is_master()
 
         if not allow_empty:
-            self._ensure_initialized()
+            self._ensure_is_initialized()
 
     def initialize(self, input_ucs, ucs_passphrase):
 
@@ -78,10 +67,7 @@ class MigrationController:
             raise ArchiveDecryptError()
 
         self.shelf["files_metadata"] = files_metadata
-        with open(
-            file=os.path.join(self.repo_path, ".gitignore"), mode="w"
-        ) as gitignore:
-            gitignore.write(f"{self.SHELF_FILE_NAME}*")
+        self._add_shelf_file_to_gitignore()
         self.repo.git.add("*")
         self.repo.index.commit("initial")
 
@@ -99,7 +85,7 @@ class MigrationController:
         return self.shelf.get("current_conflict", None)
 
     def prompt(self):
-        current_conflict = self.shelf.get("current_conflict", None)
+        current_conflict = self.current_conflict
         conflicts = self.shelf.get("conflicts", None)
 
         if current_conflict:
@@ -111,14 +97,14 @@ class MigrationController:
 
         return f"\\e[1;32mjourney{prompt}: \\e[0m"
 
-    def process(self):
+    def process(self) -> dict:
 
         if self.config is None:
             self._read_config()
-        conflicts = self.conflict_handler.detect_conflicts()
+        conflicts = self.conflict_handler.get_conflicts()
         self.shelf["conflicts"] = list(conflicts.keys())
 
-        current_conflict = self.shelf.get("current_conflict", None)
+        current_conflict = self.current_conflict
         if current_conflict:
             if current_conflict not in conflicts:
                 if self.repo.is_dirty():
@@ -140,23 +126,20 @@ class MigrationController:
         return conflicts
 
     def history(self):
-        commits = [commit for commit in self.repo.iter_commits(rev="initial...master")]
-        return [commit for commit in reversed(commits)]
+        commits = list(self.repo.iter_commits(rev="initial...master"))
+        commits.reverse()
+        return commits
 
-    def resolve(self, conflict_id):
+    def resolve(self, conflict_id: str):
 
-        current_conflict = self.shelf.get("current_conflict", None)
+        current_conflict = self.current_conflict
         if current_conflict and current_conflict != conflict_id:
             raise DifferentConflictError(conflict_id=current_conflict)
 
         if self.config is None:
             self._read_config()
-        conflicts = self.conflict_handler.detect_conflicts()
 
-        if conflict_id not in conflicts:
-            raise UnknownConflictError(conflict_id=conflict_id)
-
-        conflict_info = conflicts[conflict_id]
+        conflict_info = self.conflict_handler.get_conflict(conflict_id=conflict_id)
         self.shelf["current_conflict"] = conflict_id
 
         for mitigation in conflict_info.mitigations:
@@ -189,7 +172,7 @@ class MigrationController:
             self._read_config()
 
         if not force:
-            if self.conflict_handler.detect_conflicts():
+            if self.conflict_handler.get_conflicts():
                 raise NotAllConflictResolvedError()
 
         output_ucs = self._create_output_ucs(
@@ -197,11 +180,11 @@ class MigrationController:
         )
         return output_ucs
 
-    def _ensure_master(self):
+    def _ensure_is_master(self):
         if self.repo.active_branch.name != "master":
             raise NotMasterBranchError()
 
-    def _ensure_initialized(self):
+    def _ensure_is_initialized(self):
         if not self._is_repo_initialized():
             raise NotInitializedError()
 
@@ -232,3 +215,8 @@ class MigrationController:
             archive_passphrase=ucs_passphrase,
         )
         return output_path
+
+    def _add_shelf_file_to_gitignore(self):
+        git_ignore_file = os.path.join(self.repo_path, ".gitignore")
+        with open(file=git_ignore_file, mode="w") as gitignore:
+            gitignore.write(f"{self.SHELF_FILE_NAME}*")

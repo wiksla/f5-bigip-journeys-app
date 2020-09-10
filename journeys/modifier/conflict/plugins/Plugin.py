@@ -144,7 +144,7 @@ class Plugin:
                         mutable_config
                     )
 
-    def get_conflicts(self) -> Conflict:
+    def get_conflict(self) -> Conflict:
         if not self.objects:
             return None
         return Conflict(
