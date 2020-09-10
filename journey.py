@@ -134,7 +134,9 @@ def error_handler():
 
     except NotInitializedError:
         click.echo("The migration process has not been started yet.")
-        click.echo("In order to start new Migration process run 'journey.py start'")
+        click.echo(
+            "In order to start new Migration process run 'journey.py start <ucs>'"
+        )
 
     except ConflictNotResolvedError as e:
         click.echo(f"Current conflict_info {e.conflict_id} is not yet resolved.")
