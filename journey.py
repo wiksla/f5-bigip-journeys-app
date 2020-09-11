@@ -185,7 +185,7 @@ def start(ucs, clear, ucs_passphrase):
         version = controller.ucs_reader.get_version()
         if not version.is_velos_supported():
             click.echo(
-                f"Journey App does not support migrating ucs version: {version.version}"
+                f"Migration from the provided ucs version {version.version} is not supported."
             )
             return
         process_and_print_output(controller=controller)
