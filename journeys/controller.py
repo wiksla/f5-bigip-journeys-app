@@ -76,6 +76,7 @@ class MigrationController:
         ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(self.repo_path))
         config: Config = ucs_reader.get_config()
         config.build(dirname=self.config_path)
+        self.ucs_reader = ucs_reader
         self.repo.git.add(u=True)
         self.repo.index.commit("reformat")
         self.repo.create_head("initial")
