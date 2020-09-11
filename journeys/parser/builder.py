@@ -5,6 +5,7 @@ import os
 import re
 
 from .const import BLOBTYPES
+from .const import LISTTYPES
 
 DELIMITERS = ("{", "}", ";")
 ESCAPE_SEQUENCES_RE = re.compile(r"(\\x[0-9a-f]{2}|\\[0-7]{1,3})")
@@ -69,7 +70,7 @@ def build(payload, indent=4, tabs=False, header=False):
         output += blob
         return output
 
-    def _build_block(output, block, depth):
+    def _build_block(output, block, depth, current_object=None, newlines=True):
         margin = padding * depth
 
         for stmt in block:
@@ -94,16 +95,36 @@ def build(payload, indent=4, tabs=False, header=False):
                     ):  # ignore last arg - all blob types have a name
                         built = _build_blob(built, stmt["block"])
                     else:
-                        built = _build_block(built, stmt["block"], depth + 1)
-                        if not stmt.get("block"):
-                            built += " "
+                        base_obj = " ".join(args) if depth == 0 else current_object
+                        is_list = False
+                        if current_object:
+                            list_fields = next(
+                                (
+                                    v
+                                    for k, v in LISTTYPES.items()
+                                    if current_object.startswith(k)
+                                ),
+                                None,
+                            )
+                            if list_fields and "".join(args).startswith(list_fields):
+                                is_list = True
+                                built += " "
+                        built = _build_block(
+                            built,
+                            stmt["block"],
+                            depth + 1,
+                            base_obj,
+                            newlines=not is_list,
+                        )
+                        if not stmt.get("block") or is_list:
+                            built = built + " "
                         else:
                             built += "\n" + margin
                     built += "}"
                 if stmt.get("comment") is not None:
                     built += " #" + stmt["comment"]
 
-            output += ("\n" if output else "") + margin + built
+            output += ("\n" + margin if output and newlines else "") + built
 
         return output
 

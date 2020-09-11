@@ -35,6 +35,26 @@ BLOBTYPES = {
     ("sys", "application", "template"),
     ("sys", "icall", "script"),
 }
+LISTTYPES = {
+    "analytics gui-widget": ("drilldown-entities", "drilldown-values", "metrics"),
+    "analytics predefined-report": ("values",),
+    "apm profile access": ("accept-languages",),
+    "cm device": ("active-modules", "optional-modules"),
+    "cm trust-domain": ("ca-devices",),
+    "ltm policy": ("controls", "requires", "values"),
+    "ltm profile client-ssl": ("cert-extension-includes", "options"),
+    "ltm profile server-ssl": ("c3d-cert-extension-includes", "options"),
+    "ltm profile http-compression": (
+        "content-type-include",
+        "content-type-exclude",
+        "uri-include",
+        "uri-exclude",
+    ),
+    "sys dns": ("name-servers",),
+    "sys management-dhcp": ("request-options",),
+    "sys ntp": ("servers",),
+    "sys snmp": ("agent-addresses", "allowed-addresses"),
+}
 MODULES = (
     "analytics",
     "apm",
