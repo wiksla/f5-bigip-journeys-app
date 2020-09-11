@@ -184,7 +184,9 @@ def start(ucs, clear, ucs_passphrase):
         controller.initialize(input_ucs=ucs, ucs_passphrase=ucs_passphrase)
         version = controller.ucs_reader.get_version()
         if not version.is_velos_supported():
-            click.echo(f"Journey App does not support migrating ucs version: {version.version}")
+            click.echo(
+                f"Journey App does not support migrating ucs version: {version.version}"
+            )
             return
         process_and_print_output(controller=controller)
 
@@ -217,28 +219,6 @@ def resolve(conflict_id):
             working_directory=working_directory,
             config_path=config_path,
         )
-
-
-@cli.command()
-def resolve_all():
-    """ Resolve  all conflicts automatically with F5 recommendations. """
-    with error_handler():
-        controller = MigrationController()
-        conflicts = controller.process()
-        click.echo(conflicts)
-        for key, value in conflicts.items():
-            print(key)
-            controller.repo.git.checkout(".")
-            # controller.repo.git.merge()
-
-        # conflict_info, working_directory, config_path = controller.resolve(
-        #     conflict_id=conflict_id
-        # )
-        # print_conflict_resolution_help(
-        #     conflict_info=conflict_info,
-        #     working_directory=working_directory,
-        #     config_path=config_path,
-        # )
 
 
 @cli.command()
