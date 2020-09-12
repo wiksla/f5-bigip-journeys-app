@@ -105,7 +105,7 @@ def save_ucs(device: Device, ucs_name: str, ucs_passphrase: str) -> str:
 
 def load_ucs(device: Device, ucs: str, ucs_passphrase: str) -> None:
     ucs = os.path.basename(ucs)
-    cmd = f"tmsh load sys ucs {ucs} platform-migrate no-license"
+    cmd = f"tmsh load sys ucs {ucs} platform-migrate no-license keep-current-management-ip"
     if ucs_passphrase:
         cmd += f" passphrase {ucs_passphrase}"
     try:
