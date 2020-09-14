@@ -137,5 +137,5 @@ def get_image(device: Device) -> Version:
     return Version(**(parse_version_file(result.stdout)))
 
 
-def delete_file(device: Device, location: str):
-    device.ssh.run(f"rm -rf {location}")
+def delete_file(device: Device, remote: str):
+    device.ssh.run(f"rm -rf {remote}")

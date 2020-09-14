@@ -29,7 +29,7 @@ def ensure_if_minimum_resources_are_met_on_destination(
     mprov_check_result = check_mprov_cfg(
         device=device, mprov_cfg_location=remote_mprov_cfg_location
     )
-    delete_file(device=device, location=remote_mprov_cfg_location)
+    delete_file(device=device, remote=remote_mprov_cfg_location)
     return mprov_check_result
 
 

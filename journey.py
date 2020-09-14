@@ -173,6 +173,7 @@ def error_handler():
         click.echo("There still are some unresolved conflicts.")
         click.echo("")
         click.echo("In order to handle them run 'journey.py migrate'")
+        click.echo("Or rerun the command with '--force' flag")
 
 
 def process_and_print_output(controller: MigrationController):
@@ -358,12 +359,24 @@ def revert(step):
     is_flag=True,
     help="Generate output ucs even if not all conflict_info has been resolved.",
 )
-def generate(output, ucs_passphrase, force):
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help="Generate output ucs even if file with given name already exists.",
+)
+def generate(output, ucs_passphrase, force, overwrite):
     """ Generate output UCS. """
     if not ucs_passphrase:
         ucs_passphrase = "".join(
             random.choice(string.ascii_letters + string.digits) for i in range(10)
         )
+
+    if os.path.exists(os.path.join(WORKDIR, output)) and not overwrite:
+        click.echo(f"File {output} already exists.")
+        click.echo(
+            "In order to overwrite the file rerun the command with '--overwrite' flag"
+        )
+        return
 
     with error_handler():
         controller = MigrationController()
@@ -447,9 +460,7 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             device=device, remote=ucs_remote_dir, local=os.path.join(WORKDIR, output),
         )
 
-        delete_file(device=device, location=ucs_remote_dir)
-        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local} ")
-        delete_file(device=device, location=ucs_remote_dir)
+        delete_file(device=device, remote=ucs_remote_dir)
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
@@ -521,6 +532,10 @@ def deploy(
         )
         return
 
+    if not os.path.exists(os.path.join(WORKDIR, input_ucs)):
+        click.echo(f"Input file {input_ucs} does not exists.")
+        return
+
     destination = Device(
         host=destination_host,
         ssh_username=destination_username,
@@ -549,7 +564,7 @@ def deploy(
             click.echo(err)  # TODO: push it through logger
 
     try:
-        put_file(destination, input_ucs, REMOTE_UCS_DIRECTORY)
+        put_file(destination, os.path.join(WORKDIR, input_ucs), REMOTE_UCS_DIRECTORY)
         load_ucs(destination, input_ucs, ucs_passphrase)
     except JourneysError as c_err:
         click.echo(f"Failed to deploy ucs file! Encountered problem:\n" f"{c_err}")
