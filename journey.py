@@ -490,12 +490,10 @@ def backup(
 
 @cli.command()
 @click.option(
-    "--input-ucs", default="output.ucs", help="Use given filename instead of default."
-)
-@click.option(
     "--ucs-passphrase", default=None, help="Passphrase to decrypt ucs archive."
 )
 @click.option("--autocheck", default=False, help="Run diagnose option after deployment")
+@click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
 @click.option("--destination-host", required=True)
 @click.option("--destination-username", default="root")
 @click.option("--destination-password", required=True)
