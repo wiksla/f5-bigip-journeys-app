@@ -358,12 +358,18 @@ def revert(step):
 )
 def generate(output, ucs_passphrase, force):
     """ Generate output UCS. """
+    if not ucs_passphrase:
+        ucs_passphrase = "".join(
+            random.choice(string.ascii_letters + string.digits) for i in range(10)
+        )
+
     with error_handler():
         controller = MigrationController()
         output_ucs = controller.generate(
             force=force, output=output, ucs_passphrase=ucs_passphrase
         )
         click.echo(f"Output ucs has been stored as {output_ucs}.")
+        click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
 
 
 @cli.command(hidden=True)
