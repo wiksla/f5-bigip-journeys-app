@@ -536,7 +536,9 @@ def deploy(
             backed_up = run_backup(
                 destination, ucs_passphrase="", is_user_triggered=False
             )
-            restore_command = f"tmsh load sys ucs {backed_up}"
+            restore_command = format_restore_backup_command(
+                ucs=backed_up, ucs_passphrase=""
+            )
             click.echo(
                 "Backup created.\n In case of emergency you can restore it on "
                 "Destination Platform platform by running: \n"
