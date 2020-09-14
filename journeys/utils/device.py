@@ -15,6 +15,29 @@ from journeys.validators.exceptions import JourneysError
 REMOTE_UCS_DIRECTORY = "/var/local/ucs/"
 
 
+def format_ucs_load_command(ucs: str, ucs_passphrase: str):
+    cmd = f"tmsh load sys ucs {ucs} platform-migrate no-license keep-current-management-ip"
+    if ucs_passphrase:
+        cmd += f" passphrase {ucs_passphrase}"
+    return cmd
+
+
+def format_ucs_save_command(ucs: str, ucs_passphrase: str):
+    cmd = f"tmsh save sys ucs {ucs}"
+    if ucs_passphrase:
+        cmd += f" passphrase {ucs_passphrase}"
+
+    return cmd
+
+
+def format_restore_backup_command(ucs: str, ucs_passphrase: str):
+    cmd = f"tmsh load sys ucs {ucs}"
+    if ucs_passphrase:
+        cmd += f" passphrase {ucs_passphrase}"
+
+    return cmd
+
+
 class SSHConnector:
     def __init__(self, host, root_username, root_password):
         self.host = host
@@ -90,24 +113,19 @@ def list_dir(device: Device, directory: str):
 
 
 def save_ucs(device: Device, ucs_name: str, ucs_passphrase: str) -> str:
-    ucs_remote_dirname = REMOTE_UCS_DIRECTORY
-    cmd = f"tmsh save sys ucs {ucs_name}"
-    if ucs_passphrase:
-        cmd += f" passphrase {ucs_passphrase}"
+    cmd = format_ucs_save_command(ucs=ucs_name, ucs_passphrase=ucs_passphrase)
     try:
         device.ssh.run(cmd=cmd)
     except (UnexpectedExit, Failure, ThreadException) as err:
         raise JourneysError(err)
     if not ucs_name.endswith(".ucs"):
         ucs_name += ".ucs"
-    return os.path.join(ucs_remote_dirname, ucs_name)
+    return os.path.join(REMOTE_UCS_DIRECTORY, ucs_name)
 
 
 def load_ucs(device: Device, ucs: str, ucs_passphrase: str) -> None:
     ucs = os.path.basename(ucs)
-    cmd = f"tmsh load sys ucs {ucs} platform-migrate no-license keep-current-management-ip"
-    if ucs_passphrase:
-        cmd += f" passphrase {ucs_passphrase}"
+    cmd = format_ucs_load_command(ucs=ucs, ucs_passphrase=ucs_passphrase)
     try:
         device.ssh.run(cmd=cmd)
     except (UnexpectedExit, Failure, ThreadException) as err:

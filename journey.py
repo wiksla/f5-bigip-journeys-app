@@ -27,6 +27,8 @@ from journeys.errors import UnknownConflictError
 from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
 from journeys.utils.device import delete_file
+from journeys.utils.device import format_restore_backup_command
+from journeys.utils.device import format_ucs_load_command
 from journeys.utils.device import get_file
 from journeys.utils.device import get_image
 from journeys.utils.device import load_ucs
@@ -370,6 +372,21 @@ def generate(output, ucs_passphrase, force):
         )
         click.echo(f"Output ucs has been stored as {output_ucs}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
+        click.echo("")
+        click.echo("In order to deploy it on destination system, run")
+        click.echo(
+            f"'journey.py deploy --input-ucs {output} --ucs-passphrase {ucs_passphrase} "
+            "--destination-host <host> --destination-username <username> --destination-password <password>'."
+        )
+        click.echo("Run 'journey.py deploy --help' for more details.")
+        click.echo("")
+        click.echo(
+            f"In order to deploy the ucs manually, upload generated output to '{REMOTE_UCS_DIRECTORY}'"
+            "on destination system."
+        )
+        click.echo(
+            f"and run '{format_ucs_load_command(ucs=output, ucs_passphrase=ucs_passphrase)}'."
+        )
 
 
 @cli.command(hidden=True)
@@ -461,13 +478,13 @@ def backup(
         click.echo("\nBackup NOT created!!!\n")
         click.echo(err)  # TODO: replace with logger
         return
-    restore_command = f"tmsh load sys ucs {backed_up}"
-    if ucs_passphrase:
-        restore_command += f" passphrase {ucs_passphrase}"
+    restore_command = format_restore_backup_command(
+        ucs=backed_up, ucs_passphrase=ucs_passphrase
+    )
     click.echo(
         "Backup created.\n In case of emergency you can restore it on Destination System "
         "platform by running: \n "
-        f"{restore_command}"
+        f"'{restore_command}'"
     )
 
 
