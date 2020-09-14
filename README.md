@@ -24,7 +24,7 @@ Run command one by one starting a separate docker container (requires git tool)
 1. `alias journey.py="docker run --rm -v /tmp/journeys:/migrate journeys"`
 1. `journey.py start spdag.ucs`
 1. `journey.py resolve SPDAG`
-1. `journey.py cleanup ; journey.py use SPDAG_change_value_to_default`
+1. `journey.py use SPDAG_change_value_to_default`
 1. `journey.py migrate`
 1. `journey.py generate`
 
@@ -32,7 +32,7 @@ Or use interactive container mode:
 1. `docker run -it --rm -v /tmp/journeys:/migrate journeys --shell`
 1. `journey.py migrate spdag.ucs`
 1. `journey.py resolve SPDAG`
-1. `journey.py cleanup ; journey.py use SPDAG_change_value_to_default`
+1. `journey.py use SPDAG_change_value_to_default`
 1. `journey.py migrate`
 1. `journey.py generate`
 

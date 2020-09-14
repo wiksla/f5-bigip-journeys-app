@@ -109,10 +109,9 @@ def print_conflict_resolution_help(conflict_info, working_directory, config_path
     click.echo("To view the issues found, run 'journey.py diff'")
     click.echo("")
     click.echo(
-        "To apply proposed changes right away run"
-        "'journey.py cleanup ; journey.py use <mitigation>"
+        "To apply proposed changes right away run" "'journey.py use <mitigation>'"
     )
-    click.echo(f"Example 'journey.py cleanup ; journey.py use {mitigation_name}'")
+    click.echo(f"Example 'journey.py use {mitigation_name}'")
     click.echo("")
 
     click.echo(
@@ -268,6 +267,7 @@ def use(mitigation):
     with error_handler():
         controller = MigrationController()
         repo = controller.repo
+        repo.git.checkout(".")
         current_conflict = controller.current_conflict
         if not current_conflict:
             click.echo("Not resolving any conflict_info at this point.")
