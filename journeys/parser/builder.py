@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 import codecs
-import json
 import os
-import re
 
 from .const import BLOBTYPES
 from .const import LISTTYPES
 
 DELIMITERS = ("{", "}", ";")
-ESCAPE_SEQUENCES_RE = re.compile(r"(\\x[0-9a-f]{2}|\\[0-7]{1,3})")
 
 
 def _escape(string):
@@ -48,14 +45,10 @@ def _needs_quotes(string):
     return char in ("\\", "$") or expanding
 
 
-def _replace_escape_sequences(match):
-    return match.group(1).decode("string-escape")
-
-
 def _enquote(arg):
     if not _needs_quotes(arg):
         return arg
-    return json.dumps(arg).replace("\\\\", "\\")
+    return '"' + arg.replace('"', '\\"') + '"'
 
 
 def build(payload, indent=4, tabs=False, header=False):
@@ -157,7 +150,6 @@ def build_files(payload, dirname=None, indent=4, tabs=False, header=False, files
         if not os.path.exists(dirpath):
             os.makedirs(dirpath)
 
-        # build then create the config file using the json payload
         parsed = config["parsed"]
         output = build(parsed, indent=indent, tabs=tabs, header=header)
         output = output.rstrip() + "\n"
