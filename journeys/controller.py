@@ -112,13 +112,13 @@ class MigrationController:
         conflicts = self.shelf.get("conflicts", None)
 
         if current_conflict:
-            prompt = f" ({current_conflict})"
+            prompt = f"{current_conflict}"
         elif conflicts:
-            prompt = f" ({len(conflicts)} conflicts left)"
+            prompt = f"{len(conflicts)} conflicts left"
         else:
-            prompt = ""
+            prompt = "No more conflicts"
 
-        return f"\\e[1;32mjourney{prompt}: \\e[0m"
+        return prompt
 
     def process(self) -> dict:
         log.info("Initiating conflict search.")

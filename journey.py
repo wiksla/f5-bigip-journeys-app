@@ -347,8 +347,14 @@ def generate(output, ucs_passphrase, force, overwrite):
 @cli.command(hidden=True)
 def prompt():
     with error_handler():
-        controller = MigrationController()
-        click.echo(controller.prompt())
+
+        try:
+            controller = MigrationController()
+            prompt = controller.prompt()
+        except NotInitializedError:
+            prompt = "Not started"
+
+        click.echo(f"\\e[1;32mjourney({prompt}): \\e[0m")
 
 
 @cli.command()
