@@ -371,6 +371,24 @@ DEFAULT_DEPENDENCIES = [
         dependency=FieldKeyToNameDependency(),
     ),
     SubCollectionDependency(
+        child_types=[("security", "dos", "network-whitelist")],
+        field_name="entries",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=NestedDependency(
+            field_name="source",
+            dependency=FieldValueToNameDependency(field_name="vlans"),
+        ),
+    ),
+    SubCollectionDependency(
+        child_types=[("security", "dos", "network-whitelist")],
+        field_name="extended-entries",
+        parent_types=[("net", "vlan"), ("net", "vlan-group")],
+        dependency=NestedDependency(
+            field_name="source",
+            dependency=FieldValueToNameDependency(field_name="vlans"),
+        ),
+    ),
+    SubCollectionDependency(
         child_types=[
             ("security", "firewall", "management-ip-rules"),
             ("security", "firewall", "policy"),
