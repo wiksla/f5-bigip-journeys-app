@@ -16,6 +16,7 @@ from journeys.errors import DifferentConflictError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
+from journeys.errors import OutputAlreadyExistsError
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
@@ -86,6 +87,7 @@ class MigrationController:
         except RuntimeError:
             raise ArchiveDecryptError()
 
+        self.shelf["input_ucs_name"] = os.path.basename(input_ucs)
         self.shelf["files_metadata"] = files_metadata
         self._add_shelf_file_to_gitignore()
         log.info("Preparing the initial commit.")
@@ -232,7 +234,7 @@ class MigrationController:
 
             self._read_config()
 
-    def generate(self, output, force, ucs_passphrase):
+    def generate(self, output, force, ucs_passphrase, overwrite):
 
         if self.config is None:
             self._read_config()
@@ -241,8 +243,10 @@ class MigrationController:
             if self.conflict_handler.get_conflicts():
                 raise NotAllConflictResolvedError()
 
+        output = output or self.shelf["input_ucs_name"].replace(".ucs", ".modified.ucs")
+
         output_ucs = self._create_output_ucs(
-            output=output, ucs_passphrase=ucs_passphrase
+            output=output, ucs_passphrase=ucs_passphrase, overwrite=overwrite
         )
         return output_ucs
 
@@ -268,16 +272,22 @@ class MigrationController:
 
         return True
 
-    def _create_output_ucs(self, output, ucs_passphrase):
-        try:
-            os.remove(output)
-            log.info(f"Old version of {output} found and removed.")
-        except FileNotFoundError:
-            pass
+    def _create_output_ucs(self, output, ucs_passphrase, overwrite):
+
+        output_path = os.path.join(WORKDIR, os.path.basename(output))
+
+        if overwrite:
+            try:
+                os.remove(output_path)
+                log.info(f"Old version of {output_path} found and removed.")
+            except FileNotFoundError:
+                pass
+
+        if os.path.exists(output_path):
+            raise OutputAlreadyExistsError(output=output_path)
 
         log.info(f"Creating output ucs {output}.")
 
-        output_path = os.path.join(WORKDIR, os.path.basename(output))
         tar_file(
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),

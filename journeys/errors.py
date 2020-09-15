@@ -51,3 +51,8 @@ class ConflictNotResolvedError(ControllerError):
 
 class NotAllConflictResolvedError(ControllerError):
     pass
+
+
+class OutputAlreadyExistsError(ControllerError):
+    def __init__(self, output):
+        self.output = output

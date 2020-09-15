@@ -23,6 +23,7 @@ from journeys.errors import DifferentConflictError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
+from journeys.errors import OutputAlreadyExistsError
 from journeys.errors import UnknownConflictError
 from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
@@ -177,6 +178,11 @@ def error_handler():
         click.echo("")
         click.echo("In order to handle them run 'journey.py migrate'")
         click.echo("Or rerun the command with '--force' flag")
+    except OutputAlreadyExistsError as e:
+        click.echo(f"File '{e.output}' already exists.")
+        click.echo(
+            "In order to overwrite the file rerun the command with '--overwrite' flag"
+        )
 
 
 def process_and_print_output(controller: MigrationController):
@@ -367,9 +373,7 @@ def revert(step):
 
 
 @cli.command()
-@click.option(
-    "--output", default="output.ucs", help="Use given filename instead of default."
-)
+@click.option("--output", default=None, help="Use given filename instead of default.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
 @click.option(
     "--force",
@@ -388,17 +392,13 @@ def generate(output, ucs_passphrase, force, overwrite):
             random.choice(string.ascii_letters + string.digits) for i in range(10)
         )
 
-    if os.path.exists(os.path.join(WORKDIR, output)) and not overwrite:
-        click.echo(f"File {output} already exists.")
-        click.echo(
-            "In order to overwrite the file rerun the command with '--overwrite' flag"
-        )
-        return
-
     with error_handler():
         controller = MigrationController()
         output_ucs = controller.generate(
-            force=force, output=output, ucs_passphrase=ucs_passphrase
+            force=force,
+            output=output,
+            ucs_passphrase=ucs_passphrase,
+            overwrite=overwrite,
         )
         click.echo(f"Output ucs has been stored as {output_ucs}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
