@@ -25,6 +25,7 @@ from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import OutputAlreadyExistsError
 from journeys.errors import UnknownConflictError
+from journeys.modifier.conflict.plugins import load_plugins
 from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
 from journeys.utils.device import delete_file
@@ -54,144 +55,62 @@ log = logging.getLogger(__name__)
 def cli():
     """
     Tool useful in config migration process: \n
-        * CBIP to VELOS(tenant).
+        * CBIP to VELOS(tenant).\n\n
+    Run 'journey.py features' and 'journey.py prerequisites' to get useful information
+    before staring the migration process.
     """
     setup_logging()
     log.info(f"Processing command: {sys.argv}")
 
 
-def print_conflicts_info(conflicts):
-    click.echo("There are following conflicts waiting to be resolved:")
-    for _id, conflict in conflicts.items():
-        click.echo("")
-        click.echo(f"{conflict.id}:")
-        conflict_name = conflict.id
-        for line in conflict.summary:
-            click.echo(f"\t{line}")
-    click.echo("")
-    click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
-    click.echo(f"Example 'journey.py resolve {conflict_name}'")
-    click.echo("")
-    click.echo(
-        "Alternatively to resolve all the conflicts automatically run 'journey.py resolve-all'"
-    )
+@cli.command()
+def features():
+    """ Prints a list of supported features """
+
+    plugins = load_plugins()
+    click.echo("Supported plugins are:")
+    for plugin in plugins:
+        click.echo(f"\t{plugin.ID}")
 
 
-def print_no_conflict_info(history):
-    click.echo("No conflicts has been found.")
-    click.echo("")
-    click.echo("In order to generate output ucs run 'journey.py generate'")
-
-    if not history:
-        return
-
-    click.echo("")
-    click.echo(
-        "In order to review the changes history run 'journey.py history' or 'journey.py history --details'"
-    )
-
-
-def print_conflict_resolution_help(
-    conflict_info, working_directory, config_path, mitigation_branches
-):
-    click.echo(f"Workdir: {working_directory}")
-    click.echo(f"Config path: {config_path}\n")
-    click.echo(f"Resolving conflict_info {conflict_info.id}\n")
-    click.echo(
-        f"Resolve the issues on objects commented with '{conflict_info.id}' in the following files:"
-    )
-    for filename in conflict_info.files_to_render:
-        click.echo(f"\t{filename}")
-
-    click.echo("")
-    click.echo("Proposed mitigations are listed below:")
-    for mitigation_branch in mitigation_branches:
-        click.echo(f"\t{mitigation_branch}")
-    click.echo("")
-    click.echo("To view the mitigation content, run 'journey.py show <mitigation>'")
-    click.echo(f"Example 'journey.py show {mitigation_branch}'")
-    click.echo("")
-    click.echo("To view the issues found, run 'journey.py diff'")
-    click.echo("")
-    click.echo(
-        "To apply proposed changes right away run" "'journey.py use <mitigation>'"
-    )
-    click.echo(f"Example 'journey.py use {mitigation_branch}'")
-    click.echo("")
+@cli.command()
+def prerequisites():
+    """ Prints prerequisites before start """
 
     click.echo(
-        "Alternatively, you can edit the files manually and run 'journey.py migrate'"
+        "Before start of migration process it is important to handle the master-key migration."
     )
-
-
-@contextmanager
-def error_handler():
-    try:
-        yield
-    except AlreadyInitializedError as e:
-        click.echo("Migration process has already been started.")
-        click.echo(
-            f"In order to start processing new ucs file run 'journey.py start {e.input} --clear'"
-        )
-
-    except ArchiveOpenError:
-        click.echo("Failed to open the archive.")
-        click.echo("")
-        click.echo(
-            "If the archive is encrypted rerun with --ucs-passphrase <passphrase> parameter."
-        )
-
-    except ArchiveDecryptError:
-        click.echo("Failed to decrypt the archive.")
-        click.echo("")
-        click.echo("Make sure that appropriate passphrase was passed.")
-
-    except NotMasterBranchError:
-        click.echo("Please checkout to master branch.")
-
-    except NotInitializedError:
-        click.echo("The migration process has not been started yet.")
-        click.echo(
-            "In order to start new Migration process run 'journey.py start <ucs>'"
-        )
-
-    except ConflictNotResolvedError as e:
-        click.echo(f"Current conflict_info {e.conflict_id} is not yet resolved.")
-        click.echo("")
-        print_conflict_resolution_help(
-            conflict_info=e.conflict_info,
-            working_directory=e.working_directory,
-            config_path=e.config_path,
-            mitigation_branches=e.mitigation_branches,
-        )
-
-    except DifferentConflictError as e:
-        click.echo(
-            f"Conflict {e.conflict_id} resolution already in progress."
-            "Finish it by calling 'journey.py migrate' first before starting a new one."
-        )
-    except UnknownConflictError as e:
-        click.echo(
-            f"Invalid conflict_info ID ({e.conflict_id}) - given conflict_info not found in the config."
-        )
-    except NotAllConflictResolvedError:
-        click.echo("There still are some unresolved conflicts.")
-        click.echo("")
-        click.echo("In order to handle them run 'journey.py migrate'")
-        click.echo("Or rerun the command with '--force' flag")
-    except OutputAlreadyExistsError as e:
-        click.echo(f"File '{e.output}' already exists.")
-        click.echo(
-            "In order to overwrite the file rerun the command with '--overwrite' flag"
-        )
-
-
-def process_and_print_output(controller: MigrationController):
-    current_conflicts = controller.process()
-    if current_conflicts:
-        print_conflicts_info(conflicts=current_conflicts)
-    else:
-        print_no_conflict_info(history=controller.history)
+    click.echo("It can be done in 2 following ways:")
+    click.echo(
+        "\t1. Copying Source System master key to the Destination System with 'f5mku' (recommended):"
+    )
+    click.echo("\t\tRun 'f5mku -K' on the Source System and copy the output")
+    click.echo("\t\tIt should look like this 'oruIVCHfmVBnwGaSR/+MAA=='")
+    click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System")
+    click.echo("")
+    click.echo("\t2. Reset the master key on Source System before saving the UCS")
+    click.echo(
+        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Source System"
+    )
+    click.echo(
+        "\t\tInput password (remember it because it will be needed on the Destination System)"
+    )
+    click.echo(
+        "\t\tSave master key change by running 'tmsh save sys config' on Source System"
+    )
+    click.echo(
+        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Destination System"
+    )
+    click.echo("\t\tInput remembered password from Source System")
+    click.echo(
+        "\t\tSave master key change by running 'tmsh save sys config' on Destination System"
+    )
+    click.echo("")
+    click.echo("More details can be found here:")
+    click.echo("\thttps://support.f5.com/csp/article/K82540512#p1")
+    click.echo("\thttps://support.f5.com/csp/article/K9420")
+    click.echo("")
+    print_destination_system_prerequisites()
 
 
 @cli.command()
@@ -421,6 +340,8 @@ def generate(output, ucs_passphrase, force, overwrite):
         click.echo(
             f"and run '{format_ucs_load_command(ucs=output_ucs_name, ucs_passphrase=ucs_passphrase)}'."
         )
+        click.echo("")
+        print_destination_system_prerequisites()
 
 
 @cli.command(hidden=True)
@@ -659,6 +580,154 @@ def diagnose(
         kwargs = {"destination": destination, "source": source, "output": logfile}
         run_diagnose(auto_checks, kwargs, output_json)
     click.echo(f"Finished. Check {output_log} and {output_json} for details.")
+
+
+def print_conflicts_info(conflicts):
+    click.echo("There are following conflicts waiting to be resolved:")
+    for _id, conflict in conflicts.items():
+        click.echo("")
+        click.echo(f"{conflict.id}:")
+        conflict_name = conflict.id
+        for line in conflict.summary:
+            click.echo(f"\t{line}")
+    click.echo("")
+    click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
+    click.echo(f"Example 'journey.py resolve {conflict_name}'")
+    click.echo("")
+    click.echo(
+        "Alternatively to resolve all the conflicts automatically run 'journey.py resolve-all'"
+    )
+
+
+def print_no_conflict_info(history):
+    click.echo("No conflicts has been found.")
+    click.echo("")
+    click.echo("In order to generate output ucs run 'journey.py generate'")
+
+    if not history:
+        return
+
+    click.echo("")
+    click.echo(
+        "In order to review the changes history run 'journey.py history' or 'journey.py history --details'"
+    )
+
+
+def print_conflict_resolution_help(
+    conflict_info, working_directory, config_path, mitigation_branches
+):
+    click.echo(f"Workdir: {working_directory}")
+    click.echo(f"Config path: {config_path}\n")
+    click.echo(f"Resolving conflict_info {conflict_info.id}\n")
+    click.echo(
+        f"Resolve the issues on objects commented with '{conflict_info.id}' in the following files:"
+    )
+    for filename in conflict_info.files_to_render:
+        click.echo(f"\t{filename}")
+
+    click.echo("")
+    click.echo("Proposed mitigations are listed below:")
+    for mitigation_branch in mitigation_branches:
+        click.echo(f"\t{mitigation_branch}")
+    click.echo("")
+    click.echo("To view the mitigation content, run 'journey.py show <mitigation>'")
+    click.echo(f"Example 'journey.py show {mitigation_branch}'")
+    click.echo("")
+    click.echo("To view the issues found, run 'journey.py diff'")
+    click.echo("")
+    click.echo(
+        "To apply proposed changes right away run" "'journey.py use <mitigation>'"
+    )
+    click.echo(f"Example 'journey.py use {mitigation_branch}'")
+    click.echo("")
+
+    click.echo(
+        "Alternatively, the files can be edited manually followed by running 'journey.py migrate' command."
+    )
+
+
+def print_destination_system_prerequisites():
+    click.echo(
+        "Before deploying to Destination System, following requirements should be met:"
+    )
+    click.echo("\tVelos VM tenat should be deployed.")
+    click.echo(
+        "\tVLANs, trunks and interfaces should be configured (Chassis Controller level)."
+    )
+    click.echo(
+        "\tAll modules from the Source System should be provisioned"
+        "(except PEM and CGNAT which are not supported yet)"
+    )
+
+
+@contextmanager
+def error_handler():
+    try:
+        yield
+    except AlreadyInitializedError as e:
+        click.echo("Migration process has already been started.")
+        click.echo(
+            f"In order to start processing new ucs file run 'journey.py start {e.input} --clear'"
+        )
+
+    except ArchiveOpenError:
+        click.echo("Failed to open the archive.")
+        click.echo("")
+        click.echo(
+            "If the archive is encrypted rerun with --ucs-passphrase <passphrase> parameter."
+        )
+
+    except ArchiveDecryptError:
+        click.echo("Failed to decrypt the archive.")
+        click.echo("")
+        click.echo("Make sure that appropriate passphrase was passed.")
+
+    except NotMasterBranchError:
+        click.echo("Please checkout to master branch.")
+
+    except NotInitializedError:
+        click.echo("The migration process has not been started yet.")
+        click.echo(
+            "In order to start new Migration process run 'journey.py start <ucs>'"
+        )
+
+    except ConflictNotResolvedError as e:
+        click.echo(f"Current conflict_info {e.conflict_id} is not yet resolved.")
+        click.echo("")
+        print_conflict_resolution_help(
+            conflict_info=e.conflict_info,
+            working_directory=e.working_directory,
+            config_path=e.config_path,
+            mitigation_branches=e.mitigation_branches,
+        )
+
+    except DifferentConflictError as e:
+        click.echo(
+            f"Conflict {e.conflict_id} resolution already in progress."
+            "Finish it by calling 'journey.py migrate' first before starting a new one."
+        )
+    except UnknownConflictError as e:
+        click.echo(
+            f"Invalid conflict_info ID ({e.conflict_id}) - given conflict_info not found in the config."
+        )
+    except NotAllConflictResolvedError:
+        click.echo("There still are some unresolved conflicts.")
+        click.echo("")
+        click.echo("In order to handle them run 'journey.py migrate'")
+        click.echo("Or rerun the command with '--force' flag")
+    except OutputAlreadyExistsError as e:
+        click.echo(f"File '{e.output}' already exists.")
+        click.echo(
+            "In order to overwrite the file rerun the command with '--overwrite' flag"
+        )
+
+
+def process_and_print_output(controller: MigrationController):
+    current_conflicts = controller.process()
+    if current_conflicts:
+        print_conflicts_info(conflicts=current_conflicts)
+    else:
+        print_no_conflict_info(history=controller.history)
 
 
 if __name__ == "__main__":
