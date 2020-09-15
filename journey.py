@@ -501,7 +501,7 @@ def backup(
 
 @cli.command()
 @click.option(
-    "--ucs-passphrase", default=None, help="Passphrase to decrypt ucs archive."
+    "--ucs-passphrase", required=True, help="Passphrase to decrypt ucs archive."
 )
 @click.option("--autocheck", default=False, help="Run diagnose option after deployment")
 @click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
@@ -523,14 +523,6 @@ def deploy(
     no_backup,
 ):
     """ Deploy UCS on Destination Platform. """
-    if not ucs_passphrase:
-        click.echo(
-            "This tool generates only passphrase encrypted UCS files.\n"
-            "Please enter password for given UCS file.\n"
-            "If you didn't store password for your ucs, "
-            "you can generate the UCS again.\n"
-        )
-        return
 
     if not os.path.exists(os.path.join(WORKDIR, input_ucs)):
         click.echo(f"Input file {input_ucs} does not exists.")
