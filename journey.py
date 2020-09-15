@@ -406,7 +406,8 @@ def generate(output, ucs_passphrase, force, overwrite):
         click.echo("In order to deploy it on destination system, run")
         click.echo(
             f"'journey.py deploy --input-ucs {output} --ucs-passphrase {ucs_passphrase} "
-            "--destination-host <host> --destination-username <username> --destination-password <password>'."
+            "--destination-host <host> --destination-username <username> --destination-password <password> "
+            "--destination-admin-user <admin user> --destination-admin-password <admin password>'."
         )
         click.echo("Run 'journey.py deploy --help' for more details.")
         click.echo("")
@@ -520,7 +521,7 @@ def backup(
 @click.option(
     "--ucs-passphrase", required=True, help="Passphrase to decrypt ucs archive."
 )
-@click.option("--autocheck", default=False, help="Run diagnose option after deployment")
+@click.option("--autocheck", is_flag=True, help="Run diagnose option after deployment")
 @click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
 @click.option("--destination-host", required=True)
 @click.option("--destination-username", default="root")
