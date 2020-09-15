@@ -410,7 +410,7 @@ def generate(output, ucs_passphrase, force, overwrite):
         click.echo(
             f"'journey.py deploy --input-ucs {output_ucs_name} --ucs-passphrase {ucs_passphrase} "
             "--destination-host <host> --destination-username <username> --destination-password <password> "
-            "--destination-admin-user <admin user> --destination-admin-password <admin password>'."
+            "--destination-admin-username <admin user> --destination-admin-password <admin password>'."
         )
         click.echo("Run 'journey.py deploy --help' for more details.")
         click.echo("")
