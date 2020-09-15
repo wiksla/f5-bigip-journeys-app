@@ -38,6 +38,7 @@ from journeys.utils.device import save_ucs
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
+from journeys.validators.checks_for_cli import FAILED
 from journeys.validators.checks_for_cli import auto_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import run_backup
@@ -580,6 +581,7 @@ def deploy(
         click.echo(f"Failed to deploy ucs file! Encountered problem:\n" f"{c_err}")
         return
 
+    check_success = True
     if autocheck:
         prefix = "autocheck_diagnose_output"
         timestamp = strftime("%Y%m%d%H%M%S", gmtime())
@@ -587,7 +589,26 @@ def deploy(
         output_json = f"{prefix}_{timestamp}.json"
         with open(output_log, "w") as logfile:
             kwargs = {"destination": destination, "output": logfile}
-            run_diagnose(auto_checks, kwargs, output_json)
+            diagnose_result = run_diagnose(auto_checks, kwargs, output_json)
+        fails = []
+        for check, result in diagnose_result.items():
+            if result["result"] == FAILED:
+                check_success = False
+                fails.append(check)
+        click.echo("Diagnose finished.")
+        if check_success:
+            click.echo("No known diagnose issues found.")
+            click.echo(
+                "To perform a self evaluation of the results, please check the output logs."
+            )
+        else:
+            click.echo(
+                f"Diagnose failures found in {', '.join(fails)}. Please check the output logs for details."
+            )
+    click.echo("")
+    click.echo(
+        f"Deployment completed {'successfully' if check_success else 'with errors'}."
+    )
 
 
 @cli.command()

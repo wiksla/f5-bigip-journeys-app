@@ -5,6 +5,7 @@ from typing import Dict
 
 import click
 
+from journeys.controller import WORKDIR
 from journeys.utils.device import Device
 from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
@@ -101,7 +102,9 @@ def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> None:
         results[check_name] = check_method(**kwargs)
 
     if results:
-        (Path("/migrate") / output_json).write_text(json.dumps(results))
+        (Path(WORKDIR) / output_json).write_text(json.dumps(results))
+
+    return results
 
 
 default_checks = OrderedDict()
