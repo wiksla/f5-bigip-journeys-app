@@ -69,6 +69,10 @@ def print_conflicts_info(conflicts):
     click.echo("")
     click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
     click.echo(f"Example 'journey.py resolve {conflict_name}'")
+    click.echo("")
+    click.echo(
+        "Alternatively to resolve all the conflicts automatically run 'journey.py resolve-all'"
+    )
 
 
 def print_no_conflict_info(history):
@@ -85,7 +89,9 @@ def print_no_conflict_info(history):
     )
 
 
-def print_conflict_resolution_help(conflict_info, working_directory, config_path):
+def print_conflict_resolution_help(
+    conflict_info, working_directory, config_path, mitigation_branches
+):
     click.echo(f"Workdir: {working_directory}")
     click.echo(f"Config path: {config_path}\n")
     click.echo(f"Resolving conflict_info {conflict_info.id}\n")
@@ -97,21 +103,18 @@ def print_conflict_resolution_help(conflict_info, working_directory, config_path
 
     click.echo("")
     click.echo("Proposed mitigations are listed below:")
-    for mitigation in conflict_info.mitigations:
-        if mitigation == "comment_only":
-            continue
-        mitigation_name = f"{conflict_info.id}_{mitigation}"
-        click.echo(f"\t{mitigation_name}")
+    for mitigation_branch in mitigation_branches:
+        click.echo(f"\t{mitigation_branch}")
     click.echo("")
     click.echo("To view the mitigation content, run 'journey.py show <mitigation>'")
-    click.echo(f"Example 'journey.py show {mitigation_name}'")
+    click.echo(f"Example 'journey.py show {mitigation_branch}'")
     click.echo("")
     click.echo("To view the issues found, run 'journey.py diff'")
     click.echo("")
     click.echo(
         "To apply proposed changes right away run" "'journey.py use <mitigation>'"
     )
-    click.echo(f"Example 'journey.py use {mitigation_name}'")
+    click.echo(f"Example 'journey.py use {mitigation_branch}'")
     click.echo("")
 
     click.echo(
@@ -157,6 +160,7 @@ def error_handler():
             conflict_info=e.conflict_info,
             working_directory=e.working_directory,
             config_path=e.config_path,
+            mitigation_branches=e.mitigation_branches,
         )
 
     except DifferentConflictError as e:
@@ -221,14 +225,27 @@ def resolve(conflict_id):
     """ Start single conflict resolution process. """
     with error_handler():
         controller = MigrationController()
-        conflict_info, working_directory, config_path = controller.resolve(
-            conflict_id=conflict_id
-        )
+        (
+            conflict_info,
+            working_directory,
+            config_path,
+            mitigation_branches,
+        ) = controller.resolve(conflict_id=conflict_id)
         print_conflict_resolution_help(
             conflict_info=conflict_info,
             working_directory=working_directory,
             config_path=config_path,
+            mitigation_branches=mitigation_branches,
         )
+
+
+@cli.command()
+def resolve_all():
+    """ Resolve all conflicts with f5 recommended solutions. """
+    with error_handler():
+        controller = MigrationController()
+        controller.resolve_recommended()
+        print_no_conflict_info(history=controller.history)
 
 
 @cli.command()

@@ -73,7 +73,8 @@ class WildcardWhitelist(Plugin):
     def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "adjust_objects": self.adjust_objects,
+            "recommended": self.adjust_objects,
+            "mitigations": {"adjust_objects": self.adjust_objects},
         }
 
     def summary(self) -> List:

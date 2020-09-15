@@ -154,8 +154,9 @@ class Plugin:
             mitigations=self.mitigations(),
         )
 
-    def mitigations(self) -> dict:
+    def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "delete_objects": self.delete_objects,
+            "recommended": self.delete_objects,
+            "mitigations": {"delete_objects": self.delete_objects},
         }

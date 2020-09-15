@@ -34,11 +34,19 @@ class UnknownConflictError(ControllerError):
 
 
 class ConflictNotResolvedError(ControllerError):
-    def __init__(self, conflict_id, conflict_info, working_directory, config_path):
+    def __init__(
+        self,
+        conflict_id,
+        conflict_info,
+        working_directory,
+        config_path,
+        mitigation_branches,
+    ):
         self.conflict_id = conflict_id
         self.conflict_info = conflict_info
         self.working_directory = working_directory
         self.config_path = config_path
+        self.mitigation_branches = mitigation_branches
 
 
 class NotAllConflictResolvedError(ControllerError):

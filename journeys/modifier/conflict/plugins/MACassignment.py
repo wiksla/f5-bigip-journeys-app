@@ -58,6 +58,9 @@ class VLANMACassignment(Plugin):
     def mitigations(self) -> dict:
         return {
             "comment_only": self.comment_objects,
-            "share_single_mac_global": self.set_vlan_mac_assignment_to_global,
-            "share_single_mac_unique": self.set_vlan_mac_assignment_to_unique,
+            "recommended": self.set_vlan_mac_assignment_to_unique,
+            "mitigations": {
+                "share_single_mac_global": self.set_vlan_mac_assignment_to_global,
+                "share_single_mac_unique": self.set_vlan_mac_assignment_to_unique,
+            },
         }

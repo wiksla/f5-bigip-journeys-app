@@ -16,6 +16,7 @@ from journeys.errors import DifferentConflictError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
+from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
@@ -119,7 +120,6 @@ class MigrationController:
 
     def process(self) -> dict:
         log.info("Initiating conflict search.")
-
         if self.config is None:
             self._read_config()
         conflicts = self.conflict_handler.get_conflicts()
@@ -145,17 +145,10 @@ class MigrationController:
                     conflict_info=conflicts[current_conflict],
                     working_directory=WORKDIR,
                     config_path=self.config_path,
+                    mitigation_branches=self.get_mitigation_branches(),
                 )
 
-        to_remove = [
-            head
-            for head in self.repo.heads
-            if head not in [self.repo.heads.master, self.repo.heads.initial]
-        ]
-        if to_remove:
-            log.info(f"Removing stale branches: {to_remove}")
-        for head in to_remove:
-            head.delete(self.repo, head, force=True)
+        self.remove_mitigations_branches()
 
         return conflicts
 
@@ -177,31 +170,67 @@ class MigrationController:
         conflict_info = self.conflict_handler.get_conflict(conflict_id=conflict_id)
         self.shelf["current_conflict"] = conflict_id
 
-        for mitigation in conflict_info.mitigations:
-            if mitigation == "comment_only":
-                # leave "comment" solution for the end - we want to keep it on master,
-                # and we want to branch off from non-commented files
-                continue
+        for mitigation in conflict_info.mitigations["mitigations"]:
 
             branch_name = f"{conflict_id}_{mitigation}"
+
+            if self._mitigation_is_recommended(
+                conflict_info=conflict_info, mitigation=mitigation
+            ):
+                branch_name = f"F5_Recommended_{conflict_id}_{mitigation}"
+
             log.info(f'Creating resolution branch "{branch_name}".')
+
             if branch_name not in self.repo.heads:
                 self.repo.heads.master.checkout()
-                self.repo.create_head(branch_name).checkout()
-                self.conflict_handler.render(
-                    dirname=self.config_path,
-                    conflict=conflict_info,
-                    mitigation=mitigation,
+                self._create_mitigation_branch(
+                    conflict_info=conflict_info,
+                    branch_name=branch_name,
+                    mitigation_func=conflict_info.mitigations["mitigations"][
+                        mitigation
+                    ],
                 )
-                self.repo.git.add(u=True)
-                self.repo.index.commit(branch_name)
 
         self.repo.heads.master.checkout()
         log.info('Creating resolution branch "comment_only".')
         self.conflict_handler.render(
-            dirname=self.config_path, conflict=conflict_info, mitigation="comment_only",
+            dirname=self.config_path,
+            conflict=conflict_info,
+            mitigation_func=conflict_info.mitigations["comment_only"],
         )
-        return conflict_info, WORKDIR, self.config_path
+        return (
+            conflict_info,
+            WORKDIR,
+            self.config_path,
+            self.get_mitigation_branches(),
+        )
+
+    def resolve_recommended(self):
+        while True:
+            conflicts = self.process()
+            if not conflicts:
+                log.info("All conflicts are resolved automatically successfully.")
+                break
+
+            _, conflict_info = conflicts.popitem()
+
+            self.shelf["current_conflict"] = conflict_info.id
+            mitigation_name = conflict_info.mitigations["recommended"].__name__
+            branch_name = f"F5_Recommended_{conflict_info.id}_{mitigation_name}"
+            log.info(f'Creating resolution branch "{branch_name}".')
+
+            self.repo.heads.master.checkout()
+            self._create_mitigation_branch(
+                conflict_info=conflict_info,
+                branch_name=branch_name,
+                mitigation_func=conflict_info.mitigations["recommended"],
+            )
+
+            self.repo.heads.master.checkout()
+            self.repo.git.checkout(".")
+            self.repo.git.merge(branch_name)
+
+            self._read_config()
 
     def generate(self, output, force, ucs_passphrase):
 
@@ -229,7 +258,7 @@ class MigrationController:
         log.info(f"Reading and parsing the configuration from {self.repo_path}.")
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
-        self.conflict_handler = ConflictHandler(self.config)
+        self.conflict_handler = ConflictHandler(config=self.config)
 
     def _is_repo_initialized(self):
         try:
@@ -261,3 +290,35 @@ class MigrationController:
         git_ignore_file = os.path.join(self.repo_path, ".gitignore")
         with open(file=git_ignore_file, mode="w") as gitignore:
             gitignore.write(f"{self.SHELF_FILE_NAME}*")
+
+    def _create_mitigation_branch(
+        self, conflict_info: Conflict, branch_name: str, mitigation_func: str
+    ):
+        self.repo.create_head(branch_name).checkout()
+
+        self.conflict_handler.render(
+            dirname=self.config_path,
+            conflict=conflict_info,
+            mitigation_func=mitigation_func,
+        )
+
+        self.repo.git.add(u=True)
+        self.repo.index.commit(branch_name)
+
+    def get_mitigation_branches(self):
+        return set(self.repo.heads).difference(
+            {self.repo.heads.master, self.repo.heads.initial}
+        )
+
+    def remove_mitigations_branches(self):
+        mitigations_branch_to_remove = self.get_mitigation_branches()
+        if mitigations_branch_to_remove:
+            log.info(f"Removing stale branches: {mitigations_branch_to_remove}")
+            for head in mitigations_branch_to_remove:
+                head.delete(self.repo, head, force=True)
+
+    @staticmethod
+    def _mitigation_is_recommended(conflict_info: Conflict, mitigation: str):
+        current_mitigation = conflict_info.mitigations["mitigations"][mitigation]
+        recommended_mitigation = conflict_info.mitigations["recommended"]
+        return current_mitigation.__name__ == recommended_mitigation.__name__

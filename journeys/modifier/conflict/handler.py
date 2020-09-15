@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Callable
 from typing import List
 from typing import Type
 
@@ -35,8 +36,7 @@ class ConflictHandler:
         except KeyError:
             raise UnknownConflictError(conflict_id=conflict_id)
 
-    def render(self, dirname: str, conflict: Conflict, mitigation: str):
-        mitigation_func = conflict.mitigations[mitigation]
+    def render(self, dirname, conflict: Conflict, mitigation_func: Callable):
         config_copy: Config = deepcopy(self.config)
         mitigation_func(config_copy)
         config_copy.build(dirname=dirname, files=conflict.files_to_render)

@@ -31,6 +31,9 @@ class SPDAG(Plugin):
     def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "change_value_to_default": self.change_value_to_default,
-            "delete_objects": self.delete_objects,
+            "recommended": self.change_value_to_default,
+            "mitigations": {
+                "delete_objects": self.delete_objects,
+                "change_value_to_default": self.change_value_to_default,
+            },
         }

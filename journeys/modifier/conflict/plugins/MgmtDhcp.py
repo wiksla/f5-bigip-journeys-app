@@ -31,5 +31,6 @@ class MgmtDhcp(Plugin):
     def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "disable_mgmt_dhcp": self.disable_dhcp,
+            "recommended": self.disable_dhcp,
+            "mitigations": {"disable_mgmt_dhcp": self.disable_dhcp},
         }

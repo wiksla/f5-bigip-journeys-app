@@ -85,7 +85,10 @@ class SPVA(Plugin):
 
     def mitigations(self):
         return {
-            "compatibility_lvl_1": self.set_compatibility_lvl_to_1,
-            "delete_objects": self.delete_objects,
             "comment_only": self.comment_objects,
+            "recommended": self.set_compatibility_lvl_to_1,
+            "mitigations": {
+                "delete_objects": self.delete_objects,
+                "compatibility_lvl_1": self.set_compatibility_lvl_to_1,
+            },
         }
