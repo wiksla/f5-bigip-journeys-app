@@ -401,12 +401,14 @@ def generate(output, ucs_passphrase, force, overwrite):
             ucs_passphrase=ucs_passphrase,
             overwrite=overwrite,
         )
+        output_ucs_name = os.path.basename(output_ucs)
+
         click.echo(f"Output ucs has been stored as {output_ucs}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
         click.echo("")
         click.echo("In order to deploy it on destination system, run")
         click.echo(
-            f"'journey.py deploy --input-ucs {output} --ucs-passphrase {ucs_passphrase} "
+            f"'journey.py deploy --input-ucs {output_ucs_name} --ucs-passphrase {ucs_passphrase} "
             "--destination-host <host> --destination-username <username> --destination-password <password> "
             "--destination-admin-user <admin user> --destination-admin-password <admin password>'."
         )
@@ -417,7 +419,7 @@ def generate(output, ucs_passphrase, force, overwrite):
             "on destination system."
         )
         click.echo(
-            f"and run '{format_ucs_load_command(ucs=output, ucs_passphrase=ucs_passphrase)}'."
+            f"and run '{format_ucs_load_command(ucs=output_ucs_name, ucs_passphrase=ucs_passphrase)}'."
         )
 
 
