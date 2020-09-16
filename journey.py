@@ -138,7 +138,7 @@ def migrate(ucs):
     # TODO: remove after release
     if ucs:
         click.echo("Ucs argument is deprecated.")
-        click.echo("In order to start new Migration process run 'journey.py start'")
+        click.echo("In order to start new Migration process, run 'journey.py start'")
 
     with error_handler():
         controller = MigrationController()
@@ -185,7 +185,7 @@ def show(mitigation):
         if not current_conflict:
             click.echo("Not resolving any conflict_info at this point.")
             click.echo(
-                "To start resolving process run 'journey.py resolve <conflict_id>'."
+                "To start resolving process, run 'journey.py resolve <conflict_id>'."
             )
             return
         try:
@@ -215,7 +215,7 @@ def use(mitigation):
         if not current_conflict:
             click.echo("Not resolving any conflict_info at this point.")
             click.echo(
-                "To start resolving process run 'journey.py resolve <conflict_id>'."
+                "To start resolving process, run 'journey.py resolve <conflict_id>'."
             )
             return
 
@@ -223,7 +223,7 @@ def use(mitigation):
             click.echo(
                 "Local changes detected. Clean it before using one of provided mitigations"
             )
-            click.echo("To clean local changes run 'journey.py cleanup'.")
+            click.echo("To clean local changes, run 'journey.py cleanup'.")
             return
         try:
             repo.git.merge(mitigation)
@@ -254,7 +254,7 @@ def history(details):
             click.echo("No steps has been done so far.")
             return
 
-        click.echo("So far, following steps was made:")
+        click.echo("So far, following steps were made:")
         for idx, commit in enumerate(commits_history):
             click.echo(f"\t{idx + 1}: {commit.summary}")
             if details:
@@ -262,11 +262,11 @@ def history(details):
 
         click.echo("")
         click.echo(
-            "In order to revert conflict_info resolution run 'journey.py revert <step name>'."
+            "In order to revert conflict_info resolution, run 'journey.py revert <step name>'."
         )
         click.echo("")
         click.echo(
-            "Note that reverting a conflict_info resolution will revert all the subsequent resolutions."
+            "Note that reverting a conflict_info resolution will also revert all the subsequent resolutions."
         )
 
 
@@ -283,7 +283,7 @@ def revert(step):
         except IndexError:
             click.echo("Given step was not found.")
             click.echo(
-                "In order to list steps performed so far run 'journey.py history'"
+                "In order to list steps performed so far, run 'journey.py history'"
             )
             return
 
@@ -298,7 +298,7 @@ def revert(step):
 @click.option(
     "--force",
     is_flag=True,
-    help="Generate output ucs even if not all conflict_info has been resolved.",
+    help="Generate output ucs even if not all conflict_info have been resolved.",
 )
 @click.option(
     "--overwrite",
@@ -360,9 +360,11 @@ def prompt():
 @cli.command()
 @click.option("--host", required=True)
 @click.option(
-    "--username", default="root", help="Username to use when connecting host."
+    "--username", default="root", help="Username to use when connecting to a host."
 )
-@click.option("--password", required=True, help="Password to use when connecting host.")
+@click.option(
+    "--password", required=True, help="Password to use when connecting to a host."
+)
 def resources(host, username, password):
     """ Check if destination has enough resources to migrate ucs. """
     with error_handler():
@@ -379,9 +381,11 @@ def resources(host, username, password):
 @cli.command()
 @click.option("--host", required=True, help="Host to fetch ucs from.")
 @click.option(
-    "--username", default="root", help="Username to use when connecting host."
+    "--username", default="root", help="Username to use when connecting to a host."
 )
-@click.option("--password", required=True, help="Password to use when connecting host.")
+@click.option(
+    "--password", required=True, help="Password to use when connecting to a host."
+)
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
 )
@@ -396,10 +400,10 @@ def download_ucs(host, username, password, ucs_passphrase, output):
     device = Device(host=host, ssh_username=username, ssh_password=password)
     version = get_image(device=device)
 
-    click.echo(f"Version on bigip: {version}")
+    click.echo(f"Version on BIG-IP: {version}")
 
     if version.is_velos_supported():
-        click.echo("BIGIP version is supported by VELOS.")
+        click.echo("BIG-IP version is supported by VELOS.")
         ucs_remote_dir = save_ucs(
             device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
         )
@@ -412,7 +416,7 @@ def download_ucs(host, username, password, ucs_passphrase, output):
         click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
     else:
-        click.echo("Migration process is not available for your BIGIP version.")
+        click.echo("Migration process is not available for your BIG-IP version.")
 
 
 @cli.command()
@@ -601,21 +605,21 @@ def print_conflicts_info(conflicts):
     click.echo(f"Example 'journey.py resolve {conflict_name}'")
     click.echo("")
     click.echo(
-        "Alternatively to resolve all the conflicts automatically run 'journey.py resolve-all'"
+        "Alternatively to resolve all the conflicts automatically, run 'journey.py resolve-all'"
     )
 
 
 def print_no_conflict_info(history):
     click.echo("No conflicts has been found.")
     click.echo("")
-    click.echo("In order to generate output ucs run 'journey.py generate'")
+    click.echo("In order to generate output ucs, run 'journey.py generate'")
 
     if not history:
         return
 
     click.echo("")
     click.echo(
-        "In order to review the changes history run 'journey.py history' or 'journey.py history --details'"
+        "In order to review the changes history, run 'journey.py history' or 'journey.py history --details'"
     )
 
 
@@ -642,7 +646,7 @@ def print_conflict_resolution_help(
     click.echo("To view the issues found, run 'journey.py diff'")
     click.echo("")
     click.echo(
-        "To apply proposed changes right away run" "'journey.py use <mitigation>'"
+        "To apply proposed changes right away, run " "'journey.py use <mitigation>'"
     )
     click.echo(f"Example 'journey.py use {mitigation_branch}'")
     click.echo("")
@@ -656,12 +660,17 @@ def print_destination_system_prerequisites():
     click.echo(
         "Before deploying to Destination System, following requirements should be met:"
     )
+    click.echo("\tHandling the master key.")
+    click.echo("\t\tRun 'f5mku -K' on the Source System and copy the output")
+    click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System")
+    click.echo("")
+
     click.echo("\tVelos VM tenat should be deployed.")
     click.echo(
         "\tVLANs, trunks and interfaces should be configured (Chassis Controller level)."
     )
     click.echo(
-        "\tAll modules from the Source System should be provisioned"
+        "\tAll modules from the Source System should be provisioned "
         "(except PEM and CGNAT which are not supported yet)"
     )
 
@@ -680,7 +689,7 @@ def error_handler():
         click.echo("Failed to open the archive.")
         click.echo("")
         click.echo(
-            "If the archive is encrypted rerun with --ucs-passphrase <passphrase> parameter."
+            "If the archive is encrypted, rerun with --ucs-passphrase <passphrase> parameter."
         )
 
     except ArchiveDecryptError:
@@ -694,8 +703,13 @@ def error_handler():
     except NotInitializedError:
         click.echo("The migration process has not been started yet.")
         click.echo(
-            "In order to start new Migration process run 'journey.py start <ucs>'"
+            "In order to start new Migration process, run 'journey.py start <ucs>'"
         )
+        click.echo("")
+        click.echo(
+            "To download the ucs from a source system, use 'journey download-ucs' command."
+        )
+        click.echo("Run 'journey download-ucs --help' for more details.")
 
     except ConflictNotResolvedError as e:
         click.echo(f"Current conflict_info {e.conflict_id} is not yet resolved.")
@@ -719,12 +733,12 @@ def error_handler():
     except NotAllConflictResolvedError:
         click.echo("There still are some unresolved conflicts.")
         click.echo("")
-        click.echo("In order to handle them run 'journey.py migrate'")
+        click.echo("In order to handle them, run 'journey.py migrate'")
         click.echo("Or rerun the command with '--force' flag")
     except OutputAlreadyExistsError as e:
         click.echo(f"File '{e.output}' already exists.")
         click.echo(
-            "In order to overwrite the file rerun the command with '--overwrite' flag"
+            "In order to overwrite the file, rerun the command with '--overwrite' flag"
         )
 
 
