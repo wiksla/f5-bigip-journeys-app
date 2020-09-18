@@ -41,6 +41,7 @@ from journeys.utils.resource_check import (
 )
 from journeys.validators.checks_for_cli import FAILED
 from journeys.validators.checks_for_cli import auto_checks
+from journeys.validators.checks_for_cli import default_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import run_backup
 from journeys.validators.exceptions import JourneysError
@@ -588,7 +589,7 @@ def diagnose(
     output_json = f"{prefix}_{timestamp}.json"
     with open(output_log, "w") as logfile:
         kwargs = {"destination": destination, "source": source, "output": logfile}
-        run_diagnose(auto_checks, kwargs, output_json)
+        run_diagnose(default_checks, kwargs, output_json)
     click.echo(f"Finished. Check {output_log} and {output_json} for details.")
 
 

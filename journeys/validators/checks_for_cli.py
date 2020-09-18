@@ -50,7 +50,7 @@ def cli_prompt_state_check(destination: Device, output: str, **kwargs) -> Dict:
 
 def cli_core_dumps_check(destination: Device, output: str, **kwargs) -> Dict:
     try:
-        click.echo(list_cores(destination, raise_exception=True))
+        list_cores(destination, raise_exception=True)
         click.echo(
             "No core dumps found in /var/core\n" "Core dumps check PASSED.\n",
             file=output,
@@ -78,7 +78,7 @@ def cli_memory_footprint_check(
 ) -> Dict:
     module_diff = compare_memory_footprint(first=source, second=destination)
     click.echo(f"Memory footprint diff:\n{module_diff.pretty()}", file=output)
-    return {"result": USER_EVALUATION, "value": module_diff}
+    return {"result": USER_EVALUATION, "value": module_diff.to_json()}
 
 
 def cli_ltm_vs_check(destination: Device, output: str, **kwargs) -> Dict:
