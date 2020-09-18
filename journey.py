@@ -56,7 +56,9 @@ log = logging.getLogger(__name__)
 def cli():
     """
     Tool useful in config migration process: \n
-        * CBIP to VELOS(tenant).\n\n
+        * CBIP to VELOS(tenant).\n
+            - CBIP UCS files from 11.5.0 or higher versions are supported only\n
+            - CBIP Source UCS version cannot be higher than VELOS tenant BIG-IP version\n
     Run 'journey.py features' and 'journey.py prerequisites' to get useful information
     before staring the migration process.
     """
@@ -85,32 +87,69 @@ def prerequisites():
     click.echo(
         "\t1. Copying Source System master key to the Destination System with 'f5mku' (recommended):"
     )
-    click.echo("\t\tRun 'f5mku -K' on the Source System and copy the output")
-    click.echo("\t\tIt should look like this 'oruIVCHfmVBnwGaSR/+MAA=='")
-    click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System")
+    click.echo("\t\tRun 'f5mku -K' on the Source System and copy the output.")
+    click.echo("\t\tIt should look like this 'oruIVCHfmVBnwGaSR/+MAA=='.")
+    click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System.")
     click.echo("")
-    click.echo("\t2. Reset the master key on Source System before saving the UCS")
+    click.echo("\t2. Reset the master key on Source System before saving the UCS:")
     click.echo(
-        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Source System"
+        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Source System."
     )
     click.echo(
-        "\t\tInput password (remember it because it will be needed on the Destination System)"
+        "\t\tInput password (remember it because it will be needed on the Destination System)."
     )
     click.echo(
-        "\t\tSave master key change by running 'tmsh save sys config' on Source System"
+        "\t\tSave master key change by running 'tmsh save sys config' on Source System."
     )
     click.echo(
-        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Destination System"
+        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on Destination System."
     )
-    click.echo("\t\tInput remembered password from Source System")
+    click.echo("\t\tInput remembered password from Source System.")
     click.echo(
-        "\t\tSave master key change by running 'tmsh save sys config' on Destination System"
+        "\t\tSave master key change by running 'tmsh save sys config' on Destination System."
     )
     click.echo("")
-    click.echo("More details can be found here:")
-    click.echo("\thttps://support.f5.com/csp/article/K82540512#p1")
-    click.echo("\thttps://support.f5.com/csp/article/K9420")
+    click.echo("\tMore details can be found here:")
+    click.echo(
+        "\t\t- K82540512: Overview of the UCS archive 'platform-migrate' option."
+    )
+    click.echo("\t\t  https://support.f5.com/csp/article/K82540512#p1")
+    click.echo(
+        "\t\t- K9420: Installing UCS files containing encrypted passwords or passphrases (11.5.x and later)"
+    )
+    click.echo("\t\t  https://support.f5.com/csp/article/K9420")
     click.echo("")
+
+    click.echo("SSH public keys migration")
+    click.echo(
+        "\tSSH public keys for passwordless authentication may stop work after UCS migration."
+    )
+    click.echo("\tUCS file may not contain SSH public keys for users.")
+    click.echo("\tIf the version is affected by the problem then:")
+    click.echo(
+        "\t\t- all keys files have to be migrated manually from source system to the target system"
+    )
+    click.echo(
+        "\t\t- /etc/ssh directory has to be added to the UCS backup configuration od the source system"
+    )
+    click.echo(
+        "\tFor more details how to manually mmimgrate SSH keys"
+        " and to verify if your version is affected by the problem please read:"
+    )
+    click.echo(
+        "\t\t- K22327083: UCS backup files do not include the /etc/ssh/ directory"
+    )
+    click.echo("\t\t  https://support.f5.com/csp/article/K22327083")
+    click.echo(
+        "\t\t- K17318: Public key SSH authentication may fail after installing a UCS"
+    )
+    click.echo("\t\t  https://support.f5.com/csp/article/K17318")
+    click.echo(
+        "\t\t- K13454: Configuring SSH public key authentication on BIG-IP systems (11.x - 15.x)"
+    )
+    click.echo("\t\t  https://support.f5.com/csp/article/K13454")
+    click.echo("")
+
     print_destination_system_prerequisites()
 
 
@@ -668,7 +707,7 @@ def print_destination_system_prerequisites():
 
     click.echo("\tVelos VM tenat should be deployed.")
     click.echo(
-        "\tVLANs, trunks and interfaces should be configured (Chassis Controller level)."
+        "\tVLANs, trunks and interfaces should be configured on the Controller and assigned to the Tenant."
     )
     click.echo(
         "\tAll modules from the Source System should be provisioned "
