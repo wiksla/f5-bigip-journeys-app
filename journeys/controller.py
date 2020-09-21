@@ -13,6 +13,7 @@ from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
+from journeys.errors import LocalChangesDetectedError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
@@ -120,7 +121,7 @@ class MigrationController:
 
         return prompt
 
-    def process(self) -> dict:
+    def process(self, commit_name: str = "") -> dict:
         log.info("Initiating conflict search.")
         if self.config is None:
             self._read_config()
@@ -134,12 +135,9 @@ class MigrationController:
             if current_conflict not in conflicts:
                 log.info(f"Conflict {current_conflict} appears resolved. Continuing.")
                 if self.repo.is_dirty():
-                    uncommited = [diff.a_path for diff in self.repo.index.diff(None)]
-                    log.info(
-                        f"Uncommited changes found: {uncommited}. Creating a new commit."
+                    self._commit_local_changes(
+                        commit_name=commit_name or current_conflict
                     )
-                    self.repo.git.add(u=True)
-                    self.repo.index.commit(message=current_conflict)
                 self.shelf["current_conflict"] = ""
             else:
                 raise ConflictNotResolvedError(
@@ -149,6 +147,9 @@ class MigrationController:
                     config_path=self.config_path,
                     mitigation_branches=self.get_mitigation_branches(),
                 )
+        else:
+            if self.repo.is_dirty():
+                self._commit_local_changes(commit_name=commit_name)
 
         self.remove_mitigations_branches()
 
@@ -249,6 +250,16 @@ class MigrationController:
             output=output, ucs_passphrase=ucs_passphrase, overwrite=overwrite
         )
         return output_ucs
+
+    def _commit_local_changes(self, commit_name: str):
+        uncommitted = [diff.a_path for diff in self.repo.index.diff(None)]
+        log.info(
+            f"Uncommitted changes found: {uncommitted}. Creating a new commit '{commit_name}'."
+        )
+        if not commit_name:
+            raise LocalChangesDetectedError(uncommitted=uncommitted)
+        self.repo.git.add(u=True)
+        self.repo.index.commit(message=commit_name)
 
     def _ensure_is_master(self):
         if self.repo.active_branch.name != "master":

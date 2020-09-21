@@ -20,6 +20,7 @@ from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
+from journeys.errors import LocalChangesDetectedError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
@@ -173,7 +174,8 @@ def start(ucs, clear, ucs_passphrase):
 
 @cli.command()
 @click.argument("ucs", default="")
-def migrate(ucs):
+@click.option("--message", default=None, help="Subject for local changes made.")
+def migrate(ucs, message):
     """ Continue or resume migration process. """
     # TODO: remove after release
     if ucs:
@@ -182,7 +184,7 @@ def migrate(ucs):
 
     with error_handler():
         controller = MigrationController()
-        process_and_print_output(controller=controller)
+        process_and_print_output(controller=controller, commit_name=message)
 
 
 @cli.command()
@@ -780,10 +782,16 @@ def error_handler():
         click.echo(
             "In order to overwrite the file, rerun the command with '--overwrite' flag"
         )
+    except LocalChangesDetectedError as e:
+        click.echo("Local changes detected in following files:")
+        for path in e.uncommitted:
+            click.echo(f"\t{path}")
+        click.echo('Run \'journey.py migrate --message "<message>" to apply changes.')
+        click.echo("Run 'journey.py cleanup' to discard changes.")
 
 
-def process_and_print_output(controller: MigrationController):
-    current_conflicts = controller.process()
+def process_and_print_output(controller: MigrationController, commit_name: str = None):
+    current_conflicts = controller.process(commit_name=commit_name)
     if current_conflicts:
         print_conflicts_info(conflicts=current_conflicts)
     else:

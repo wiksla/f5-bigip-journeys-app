@@ -1,3 +1,6 @@
+from typing import List
+
+
 class ControllerError(RuntimeError):
     pass
 
@@ -56,3 +59,8 @@ class NotAllConflictResolvedError(ControllerError):
 class OutputAlreadyExistsError(ControllerError):
     def __init__(self, output):
         self.output = output
+
+
+class LocalChangesDetectedError(ControllerError):
+    def __init__(self, uncommitted: List[str]):
+        self.uncommitted = uncommitted
