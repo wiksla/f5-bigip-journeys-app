@@ -1,3 +1,4 @@
+import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial
@@ -5,6 +6,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import Union
@@ -18,6 +20,7 @@ from journeys.config import TopLevelField
 class BaseDependency:
     parent_types: List[Tuple[str, ...]] = None
     child_types: List[Tuple[str, ...]] = None
+    comparer: Optional[Callable] = None
 
     def get_value(self, candidate: Field):
         """Get the value that would connect the candidate with a parent for a given dependency.
@@ -273,7 +276,63 @@ class NestedDependency(BaseDependency):
         yield from self.dependency.get_target_value(candidate)
 
 
+def interface_match(interface: str, address: str) -> bool:
+    try:
+        address = ipaddress.ip_address(address)
+        interface = ipaddress.ip_interface(interface)
+    except ValueError:
+        return False
+    return address == interface.ip
+
+
+def in_interface_network(interface: str, address: str) -> bool:
+    try:
+        address = ipaddress.ip_address(address)
+        interface = ipaddress.ip_interface(interface)
+    except ValueError:
+        return False
+    return address in interface.network
+
+
 DEFAULT_DEPENDENCIES = [
+    FieldValueToFieldValueDependency(
+        child_types=[("cm", "device")],
+        field_name="configsync-ip",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=interface_match,
+    ),
+    FieldValueToFieldValueDependency(
+        child_types=[("cm", "device")],
+        field_name="mirror-ip",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=interface_match,
+    ),
+    FieldValueToFieldValueDependency(
+        child_types=[("cm", "device")],
+        field_name="mirror-secondary-ip",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=interface_match,
+    ),
+    SubCollectionDependency(
+        child_types=[("cm", "device")],
+        field_name="unicast-address",
+        parent_types=[("net", "self")],
+        comparer=interface_match,
+        dependency=FieldValueToFieldValueDependency(
+            field_name="ip", target_field_name="address", resolution="delete_self"
+        ),
+        resolution="nested_with_cleanup",
+    ),
+    FieldValueToFieldValueDependency(
+        child_types=[("cm", "device")],
+        field_name="mirror-secondary-ip",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=interface_match,
+    ),
     SubCollectionDependency(
         child_types=[("gtm", "listener")],
         field_name="vlans",
@@ -342,6 +401,13 @@ DEFAULT_DEPENDENCIES = [
         child_types=[("net", "route")],
         field_name="interface",
         parent_types=[("net", "vlan"), ("net", "vlan-group")],
+    ),
+    FieldValueToFieldValueDependency(
+        child_types=[("net", "route")],
+        field_name="gw",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=in_interface_network,
     ),
     SubCollectionDependency(
         child_types=[("net", "stp"), ("sys", "ha-group")],
@@ -428,12 +494,21 @@ DEFAULT_DEPENDENCIES = [
 
 class DependencyMap:
     def __init__(self, config, dependencies=DEFAULT_DEPENDENCIES):
-        children = defaultdict(
-            lambda: defaultdict(set)
-        )  # {dependency: {match_value: {field_id}}}
+        # {dependency: {match_value: {field_id}}} - match_value first to improve lookup speed
+        children = defaultdict(lambda: defaultdict(set))
         parents = defaultdict(lambda: defaultdict(set))
-        resolutions = dict()
+        resolutions = defaultdict(list)
+        map_ = defaultdict(set)
         dependency_id_map = dict()
+
+        def _update_collections(dependency, child_value, child_ids, parent_ids):
+            for parent_id in parent_ids:
+                map_[parent_id] |= child_ids
+                for child_id in child_ids:
+                    resolutions[(child_id, parent_id)].append(
+                        dependency.get_resolve(config.fields[child_id], child_value)
+                    )
+
         for field in config.fields.all():
             for dependency in dependencies:
                 dependency_id_map[id(dependency)] = dependency
@@ -442,20 +517,26 @@ class DependencyMap:
                 for value in dependency.match_parent(field):
                     parents[id(dependency)][value].add(field.id)
 
-        map_ = defaultdict(set)
-
         for dependency_id, match in children.items():
+            dependency = dependency_id_map[dependency_id]
             for value, child_ids in match.items():
-                if value in parents[dependency_id]:
-                    for parent_id in parents[dependency_id][value]:
-                        map_[parent_id] |= child_ids
-                        for child_id in child_ids:
-                            dependency = dependency_id_map[dependency_id]
-                            resolutions[(child_id, parent_id)] = dependency.get_resolve(
-                                config.fields[child_id], value
+                if (
+                    dependency.comparer
+                ):  # if custom, need to check all of the value pairs individually
+                    for parent_value in parents[dependency_id]:
+                        if dependency.comparer(parent_value, value):
+                            _update_collections(
+                                dependency,
+                                value,
+                                child_ids,
+                                parents[dependency_id][parent_value],
                             )
+                elif value in parents[dependency_id]:  # else just lookup by value
+                    _update_collections(
+                        dependency, value, child_ids, parents[dependency_id][value]
+                    )
 
-        self.resolutions = resolutions
+        self.resolutions = dict(resolutions)
         self.reverse = dict(map_)
         self.forward = self._reverse_graph(self.reverse)
 
@@ -465,6 +546,10 @@ class DependencyMap:
             for edge_end in ends:
                 reverse[edge_end].add(edge_start)
         return dict(reverse)
+
+    def apply_resolution(self, config, parent_id, child_id):
+        for func in self.resolutions[(parent_id, child_id)]:
+            func(config)
 
     def get_dependencies(self, obj_id: str) -> Set[str]:
         """ Build the set of id of objects that given obj uses/depends on"""

@@ -140,8 +140,8 @@ class Plugin:
             obj.delete()
             if obj_id in self.dependency_map.reverse:
                 for related_id in self.dependency_map.reverse[obj_id]:
-                    self.dependency_map.resolutions[(related_id, obj_id)](
-                        mutable_config
+                    self.dependency_map.apply_resolution(
+                        mutable_config, related_id, obj_id
                     )
 
     def get_conflict(self) -> Conflict:

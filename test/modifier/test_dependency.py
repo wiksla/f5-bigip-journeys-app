@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from journeys.modifier.dependency import Config
@@ -201,6 +203,34 @@ net fdb vlan /Common/vlan {
     assert list(dep.match_child(fdb_vlan))
     assert next(dep.match_child(fdb_vlan)) == "/Common/vlan"
     assert not list(dep.match_parent(fdb_vlan))
+
+
+@pytest.mark.parametrize("comparer_return,result_length", [(False, 0), (True, 1)])
+def test_dependency_custom_comparer(comparer_return, result_length):
+    config_string = """
+cm device bigip1 {
+    mirror-ip foo
+}
+
+net self if1 {
+    address bar
+}
+    """
+
+    config = Config.from_string(string=config_string)
+    fake_comparer = MagicMock(return_value=comparer_return)
+
+    dep = FieldValueToFieldValueDependency(
+        child_types=[("cm", "device")],
+        field_name="mirror-ip",
+        parent_types=[("net", "self")],
+        target_field_name="address",
+        comparer=fake_comparer,
+    )
+    dep_map = DependencyMap(config, [dep])
+
+    fake_comparer.assert_called_with("bar", "foo")
+    assert len(dep_map.forward) == result_length
 
 
 @pytest.mark.parametrize(

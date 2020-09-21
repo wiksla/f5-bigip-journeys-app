@@ -10,6 +10,10 @@ from journeys.config import Config
 def dependency_conf():
     config = """
 #TMSH 12.1.2
+cm device bigip1 {
+    mirror-ip 10.11.12.13
+    multicast-ip 10.11.12.13
+}
 ltm node /Common/test_node {
     address 10.0.1.1
 }
@@ -37,6 +41,9 @@ ltm pool_member /Common/test_member {
 net fdb vlan /Common/vlan {
 }
 net interface 1.0 {
+}
+net self test-self {
+    address 10.11.12.13  # invalid - for test
 }
 net trunk test-trunk {
 }
@@ -84,9 +91,11 @@ def test_field_value_to_name_dependency_resolution(dependency_conf):
     deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "monitor" in dependency_conf.fields["ltm pool /Common/test_pool"].fields
-    deps.resolutions[
-        ("ltm pool /Common/test_pool", "ltm monitor tcp /Common/tcp_custom")
-    ](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf,
+        "ltm pool /Common/test_pool",
+        "ltm monitor tcp /Common/tcp_custom",
+    )
     assert "monitor" not in dependency_conf.fields["ltm pool /Common/test_pool"].fields
 
 
@@ -107,9 +116,11 @@ def test_field_value_to_field_value_dependency_delete_child_resolution(dependenc
         "address"
         in dependency_conf.fields["ltm pool_member /Common/test_member"].fields
     )
-    deps.resolutions[
-        ("ltm pool_member /Common/test_member", "ltm node /Common/test_node")
-    ](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf,
+        "ltm pool_member /Common/test_member",
+        "ltm node /Common/test_node",
+    )
     assert (
         "address"
         not in dependency_conf.fields["ltm pool_member /Common/test_member"].fields
@@ -131,9 +142,11 @@ def test_field_value_to_field_value_dependency_delete_self_resolution(dependency
     deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "ltm pool_member /Common/test_member" in dependency_conf.fields
-    deps.resolutions[
-        ("ltm pool_member /Common/test_member", "ltm node /Common/test_node")
-    ](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf,
+        "ltm pool_member /Common/test_member",
+        "ltm node /Common/test_node",
+    )
     assert "ltm pool_member /Common/test_member" not in dependency_conf.fields
 
 
@@ -157,9 +170,11 @@ def test_subcollection_dependency_nested_resolution(dependency_conf):
 
     deps = dp.DependencyMap(dependency_conf, matrix)
 
-    deps.resolutions[
-        ("ltm pool /Common/test_pool2", "ltm monitor tcp /Common/tcp_custom")
-    ](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf,
+        "ltm pool /Common/test_pool2",
+        "ltm monitor tcp /Common/tcp_custom",
+    )
     fake_dependency.get_resolve.assert_called()
     fake_resolution.assert_called()
     assert fake_resolution.call_count == 2  # one for each member
@@ -184,9 +199,11 @@ def test_subcollection_dependency_delete_resolution(dependency_conf):
     deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "members" in dependency_conf.fields["ltm pool /Common/test_pool2"].fields
-    deps.resolutions[
-        ("ltm pool /Common/test_pool2", "ltm monitor tcp /Common/tcp_custom")
-    ](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf,
+        "ltm pool /Common/test_pool2",
+        "ltm monitor tcp /Common/tcp_custom",
+    )
     fake_resolution.assert_not_called()
     assert "members" not in dependency_conf.fields["ltm pool /Common/test_pool2"].fields
 
@@ -204,12 +221,14 @@ def test_subcollection_dependency_nested_with_cleanup_resolution(dependency_conf
 
     deps = dp.DependencyMap(dependency_conf, matrix)
     assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
-    deps.resolutions[("net vlan /Common/vlan", "net trunk test-trunk")](dependency_conf)
+    deps.apply_resolution(
+        dependency_conf, "net vlan /Common/vlan", "net trunk test-trunk"
+    )
     assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan"].fields
 
     assert "interfaces" in dependency_conf.fields["net vlan /Common/vlan2"].fields
-    deps.resolutions[("net vlan /Common/vlan2", "net trunk test-trunk")](
-        dependency_conf
+    deps.apply_resolution(
+        dependency_conf, "net vlan /Common/vlan2", "net trunk test-trunk"
     )
     assert "interfaces" not in dependency_conf.fields["net vlan /Common/vlan2"].fields
 
@@ -231,8 +250,8 @@ def test_nested_dependency_nested_resolution(dependency_conf):
     ]
 
     deps = dp.DependencyMap(dependency_conf, matrix)
-    deps.resolutions[("security nat policy /Common/policy", "net vlan /Common/vlan")](
-        dependency_conf
+    deps.apply_resolution(
+        dependency_conf, "security nat policy /Common/policy", "net vlan /Common/vlan"
     )
 
     fake_dependency.get_resolve.assert_called()
@@ -261,8 +280,8 @@ def test_nested_dependency_delete_resolution(dependency_conf):
         "next-hop"
         in dependency_conf.fields["security nat policy /Common/policy"].fields
     )
-    deps.resolutions[("security nat policy /Common/policy", "net vlan /Common/vlan")](
-        dependency_conf
+    deps.apply_resolution(
+        dependency_conf, "security nat policy /Common/policy", "net vlan /Common/vlan"
     )
     fake_resolution.assert_not_called()
     assert (
@@ -282,7 +301,32 @@ def test_name_to_name_dependency_resolution(dependency_conf):
     deps = dp.DependencyMap(dependency_conf, matrix)
 
     assert "net fdb vlan /Common/vlan" in dependency_conf.fields
-    deps.resolutions[("net fdb vlan /Common/vlan", "net vlan /Common/vlan")](
-        dependency_conf
+    deps.apply_resolution(
+        dependency_conf, "net fdb vlan /Common/vlan", "net vlan /Common/vlan"
     )
     assert "net fdb vlan /Common/vlan" not in dependency_conf.fields
+
+
+def test_two_objects_multiple_dependencies_resolutions(dependency_conf):
+    matrix = [
+        dp.FieldValueToFieldValueDependency(
+            child_types=[("cm", "device")],
+            field_name="mirror-ip",
+            parent_types=[("net", "self")],
+            target_field_name="address",
+        ),
+        dp.FieldValueToFieldValueDependency(
+            child_types=[("cm", "device")],
+            field_name="multicast-ip",
+            parent_types=[("net", "self")],
+            target_field_name="address",
+        ),
+    ]
+
+    deps = dp.DependencyMap(dependency_conf, matrix)
+
+    assert "mirror-ip" in dependency_conf.fields["cm device bigip1"].fields
+    assert "multicast-ip" in dependency_conf.fields["cm device bigip1"].fields
+    deps.apply_resolution(dependency_conf, "cm device bigip1", "net self test-self")
+    assert "mirror-ip" not in dependency_conf.fields["cm device bigip1"].fields
+    assert "multicast-ip" not in dependency_conf.fields["cm device bigip1"].fields
