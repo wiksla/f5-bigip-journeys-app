@@ -8,7 +8,7 @@ from journeys.config import Config
 
 @pytest.fixture
 def dependency_conf():
-    config_string = """
+    config = """
 #TMSH 12.1.2
 ltm node /Common/test_node {
     address 10.0.1.1
@@ -61,7 +61,7 @@ security nat policy /Common/policy {
         vlan /Common/vlan
     }
 }"""
-    return Config.from_string(config_string)
+    return Config.from_string(config)
 
 
 def test_resolution_created_for_all_dependencies(dependency_conf):

@@ -70,12 +70,17 @@ class SPVA(Plugin):
             else:
                 obj.delete()
 
+        self.set_compatibility_lvl(mutable_config=mutable_config, value="0")
+
     def comment_objects(self, mutable_config: Config):
         super().comment_objects(mutable_config=mutable_config, dependency=False)
 
-    def set_compatibility_lvl_to_1(self, mutable_config: Config):
+    def set_compatibility_lvl(self, mutable_config: Config, value):
         level = self._find_level_field(mutable_config=mutable_config)
-        level.value = "1"
+        level.value = value
+
+    def compatibility_lvl_to_1(self, mutable_config: Config):
+        self.set_compatibility_lvl(mutable_config=mutable_config, value="1")
         mutable_config.bigdb.set(section="Dos.ForceSWdos", option="value", value="true")
 
     def _find_level_field(self, mutable_config: Config):
@@ -86,9 +91,9 @@ class SPVA(Plugin):
     def mitigations(self):
         return {
             "comment_only": self.comment_objects,
-            "recommended": self.set_compatibility_lvl_to_1,
+            "recommended": self.compatibility_lvl_to_1,
             "mitigations": {
                 "delete_objects": self.delete_objects,
-                "compatibility_lvl_1": self.set_compatibility_lvl_to_1,
+                "compatibility_lvl_1": self.compatibility_lvl_to_1,
             },
         }

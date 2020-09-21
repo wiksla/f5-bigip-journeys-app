@@ -13,6 +13,6 @@ lint:
 	pylint --errors-only $(sources)
 
 test: FORCE
-	PYTHONPATH=$$PYTHONPATH:${ROOT_DIR} pytest
+	PYTHONPATH=$$PYTHONPATH:${ROOT_DIR} pytest -s
 
 FORCE:

@@ -11,7 +11,7 @@ from journeys.modifier.dependency import SubCollectionDependency
 
 
 def test_field_value_to_name_dependency():
-    config_string = """
+    config = """
 ltm monitor tcp /Common/tcp_custom {
 }
 
@@ -20,7 +20,7 @@ ltm pool /Common/test_pool {
 }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     pool = config.fields.get("ltm pool /Common/test_pool")
     monitor = config.fields.get("ltm monitor tcp /Common/tcp_custom")
@@ -39,7 +39,7 @@ ltm pool /Common/test_pool {
 
 
 def test_field_value_to_field_value_dependency():
-    config_string = """
+    config = """
 ltm node /Common/192.168.0.100 {
     address 192.168.0.100
 }
@@ -50,7 +50,7 @@ ltm pool_member /Common/192.168.0.100:1025 {
 }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     objects = config.fields
     pool_member = objects.get("ltm pool_member /Common/192.168.0.100:1025")
@@ -73,7 +73,7 @@ ltm pool_member /Common/192.168.0.100:1025 {
 
 
 def test_subcollection_dependency():
-    config_string = """
+    config = """
 ltm monitor tcp /Common/tcp_custom {
 }
 
@@ -87,7 +87,7 @@ ltm pool /Common/test_pool {
 }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     objects = config.fields
     pool = objects.get("ltm pool /Common/test_pool")
@@ -110,7 +110,7 @@ ltm pool /Common/test_pool {
 
 
 def test_field_key_to_name_dependency():
-    config_string = """
+    config = """
 net vlan /Common/vlan {
 }
 
@@ -121,7 +121,7 @@ net vlan-group /Common/group {
 }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     objects = config.fields
     vlan_group = objects.get("net vlan-group /Common/group")
@@ -144,7 +144,7 @@ net vlan-group /Common/group {
 
 
 def test_nested_dependency():
-    config_string = """
+    config = """
 net vlan /Common/test_vlan {
 }
 security nat policy /Common/test_policy {
@@ -153,7 +153,7 @@ security nat policy /Common/test_policy {
     }
 }
     """
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     objects = config.fields
     vlan = objects.get("net vlan /Common/test_vlan")
@@ -176,7 +176,7 @@ security nat policy /Common/test_policy {
 
 
 def test_name_to_name_dependency():
-    config_string = """
+    config = """
 net vlan /Common/vlan {
 }
 
@@ -184,7 +184,7 @@ net fdb vlan /Common/vlan {
 }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     objects = config.fields
     vlan = objects.get("net vlan /Common/vlan")
@@ -207,7 +207,7 @@ net fdb vlan /Common/vlan {
     "test_deduplication", [False, True],
 )
 def test_build_dependencies_map(test_deduplication):
-    config_string = f"""
+    config = f"""
 ltm node /Common/192.168.0.100 {{
     address 192.168.0.100
 }}
@@ -226,7 +226,7 @@ ltm pool /Common/test_pool {{
 }}
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     dependencies = [
         FieldValueToNameDependency(
@@ -268,7 +268,7 @@ ltm pool /Common/test_pool {{
 
 
 def test_build_dependencies_map_net_module():
-    config_string = """
+    config = """
 net stp /Common/cist {
     trunks {
         trunk_external {}
@@ -328,7 +328,7 @@ net fdb vlan /Common/virtWire_vlan_4096_1_353 { }
 net fdb vlan /Common/virtWire_vlan_4096_2_354 { }
     """
 
-    config = Config.from_string(string=config_string)
+    config = Config.from_string(string=config)
 
     result = DependencyMap(config)
 
