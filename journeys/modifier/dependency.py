@@ -443,6 +443,12 @@ DEFAULT_DEPENDENCIES = [
         dependency=FieldKeyToNameDependency(),
     ),
     SubCollectionDependency(
+        child_types=[("ltm", "virtual")],
+        field_name="profiles",
+        parent_types=[("pem", "profile")],
+        dependency=FieldKeyToNameDependency(),
+    ),
+    SubCollectionDependency(
         child_types=[("security", "dos", "network-whitelist")],
         field_name="entries",
         parent_types=[("net", "vlan"), ("net", "vlan-group")],
