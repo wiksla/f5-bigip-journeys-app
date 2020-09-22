@@ -259,7 +259,7 @@ def resolve_all():
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         controller.resolve_recommended()
-        print_no_conflict_info(history=controller.history)
+        process_and_print_output(controller=controller)
 
 
 @cli.command()
