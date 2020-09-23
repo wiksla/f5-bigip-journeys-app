@@ -1,5 +1,6 @@
 import json
 from collections import OrderedDict
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Dict
 
@@ -107,6 +108,35 @@ def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> None:
     return results
 
 
+def exclude_checks(checks: Dict, excluded_checks: str):
+    checks = OrderedDict(checks)
+    try:
+        exclude = json.loads(excluded_checks)
+        for item in exclude:
+            try:
+                checks.pop(item)
+            except KeyError:
+                click.echo(
+                    f"Validation method to exclude not found: {item}\n"
+                    f"Check Documentation for allowed names."
+                )
+        return checks
+    except JSONDecodeError as js_err:
+        click.echo(
+            f"Given option is not a valid JSON: {js_err}"
+            "If you want to exclude single check, place it within list brackets"
+            ",\neg. '[\"TMM status\"]'"
+        )
+        raise JourneysError(js_err)
+    except TypeError as t_err:
+        click.echo(
+            "Given checks' names to exclude are not iterable.\n"
+            "If you want to exclude single check, place it within list brackets"
+            ",\neg. '[\"TMM status\"]'"
+        )
+        raise JourneysError(t_err)
+
+
 default_checks = OrderedDict()
 default_checks["MCP status"] = cli_mcp_status_check
 default_checks["TMM status"] = cli_tmm_status_check
@@ -115,7 +145,7 @@ default_checks["Core dumps"] = cli_core_dumps_check
 default_checks["DB compare"] = cli_compare_db_check
 default_checks["Memory footprint"] = cli_memory_footprint_check
 default_checks["Version check"] = cli_version_diff_check
-default_checks["cli_ltm_vs_check"] = cli_ltm_vs_check
+default_checks["LTM VS check"] = cli_ltm_vs_check
 
 auto_checks = OrderedDict()
 auto_checks["MCP status"] = cli_mcp_status_check

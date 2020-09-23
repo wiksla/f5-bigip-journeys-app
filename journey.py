@@ -44,6 +44,7 @@ from journeys.utils.resource_check import (
 from journeys.validators.checks_for_cli import FAILED
 from journeys.validators.checks_for_cli import auto_checks
 from journeys.validators.checks_for_cli import default_checks
+from journeys.validators.checks_for_cli import exclude_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import run_backup
 from journeys.validators.exceptions import JourneysError
@@ -554,7 +555,7 @@ def deploy(
             )
         except JourneysError as err:
             click.echo("\nBackup NOT created!!!\n")
-            click.echo(err)  # TODO: push it through logger
+            log.debug(err)
 
     try:
         put_file(destination, os.path.join(WORKDIR, input_ucs), REMOTE_UCS_DIRECTORY)
@@ -604,6 +605,11 @@ def deploy(
 @click.option("--destination-password", required=True)
 @click.option("--destination-admin-username", default="admin")
 @click.option("--destination-admin-password", required=True)
+@click.option(
+    "--excluded-checks",
+    default="",
+    help="Add checks to exclude in a list" 'e.g. \'["TMM status", "Core dumps"]\'',
+)
 def diagnose(
     source_host,
     source_username,
@@ -615,6 +621,7 @@ def diagnose(
     destination_password,
     destination_admin_username,
     destination_admin_password,
+    excluded_checks,
 ):
     """ Run diagnosis and comparison checks for Source and Destination Platforms. """
     source = Device(
@@ -635,9 +642,19 @@ def diagnose(
     timestamp = strftime("%Y%m%d%H%M%S", gmtime())
     output_log = f"{prefix}_{timestamp}.log"
     output_json = f"{prefix}_{timestamp}.json"
+
+    if excluded_checks:
+        try:
+            checks = exclude_checks(default_checks, excluded_checks)
+        except JourneysError as err:
+            checks = default_checks
+            log.debug(err)
+    else:
+        checks = default_checks
+
     with open(output_log, "w") as logfile:
         kwargs = {"destination": destination, "source": source, "output": logfile}
-        run_diagnose(default_checks, kwargs, output_json)
+        run_diagnose(checks, kwargs, output_json)
     click.echo(f"Finished. Check {output_log} and {output_json} for details.")
 
 
