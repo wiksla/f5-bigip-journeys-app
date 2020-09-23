@@ -64,3 +64,8 @@ class OutputAlreadyExistsError(ControllerError):
 class LocalChangesDetectedError(ControllerError):
     def __init__(self, uncommitted: List[str]):
         self.uncommitted = uncommitted
+
+
+class AS3InputDoesNotExistError(ControllerError):
+    def __init__(self):
+        pass

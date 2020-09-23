@@ -1,0 +1,18 @@
+{
+    "class": "ADC",
+    "f5vnf": {
+        "class": "Tenant",
+        "gilan_http": {
+            "class": "Application",
+            "template": "http",
+            "serviceMain": {
+                "allowVlans": [
+                    {
+                        "bigip": "/Common/vlan1"
+                    }
+                ],
+                "class": "Service_HTTP"
+            }
+        }
+    }
+}

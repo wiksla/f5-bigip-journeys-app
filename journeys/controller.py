@@ -7,10 +7,12 @@ from tarfile import ReadError
 from git import Repo
 from gitdb.exc import BadName
 
+from journeys.as3ucs.as3ucs import As3ucs
 from journeys.config import Config
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
+from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
 from journeys.errors import LocalChangesDetectedError
@@ -47,6 +49,7 @@ def setup_logging(level=logging.DEBUG):
 class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
+    AS3_UCS_FILE_NAME = "as3_ucs.json"
 
     def __init__(self, clear=False, allow_empty=False):
 
@@ -58,6 +61,7 @@ class MigrationController:
             os.mkdir(self.repo_path)
 
         self.config_path = os.path.join(self.repo_path, "config")
+        self.as3_ucs_path = os.path.join(self.repo_path, self.AS3_UCS_FILE_NAME)
 
         self.repo = Repo.init(self.repo_path)
         self.shelf = shelve.open(os.path.join(self.repo_path, self.SHELF_FILE_NAME))
@@ -71,7 +75,7 @@ class MigrationController:
         if not allow_empty:
             self._ensure_is_initialized()
 
-    def initialize(self, input_ucs, ucs_passphrase):
+    def initialize(self, input_ucs, ucs_passphrase, as3_path=None):
 
         if self._is_repo_initialized():
             raise AlreadyInitializedError(input=input_ucs)
@@ -87,6 +91,16 @@ class MigrationController:
             raise ArchiveOpenError()
         except RuntimeError:
             raise ArchiveDecryptError()
+
+        self.shelf["as3_used"] = False
+        if as3_path is not None:
+            if not os.path.exists(os.path.join(as3_path)):
+                raise AS3InputDoesNotExistError
+            shutil.copyfile(as3_path, self.as3_ucs_path)
+            self.shelf["as3_used"] = True
+            as3_decl = As3ucs(self.as3_ucs_path)
+            # Take care of formatting differences
+            as3_decl.save_declaration(self.as3_ucs_path)
 
         self.shelf["input_ucs_name"] = os.path.basename(input_ucs)
         self.shelf["files_metadata"] = files_metadata
@@ -317,11 +331,16 @@ class MigrationController:
     ):
         self.repo.create_head(branch_name).checkout()
 
-        self.conflict_handler.render(
+        modified_config = self.conflict_handler.render(
             dirname=self.config_path,
             conflict=conflict_info,
             mitigation_func=mitigation_func,
         )
+
+        if self.shelf["as3_used"] is True:
+            as3ucs: As3ucs = As3ucs(self.as3_ucs_path)
+            as3ucs.process_ucs_changes(modified_config)
+            as3ucs.save_declaration(self.as3_ucs_path)
 
         self.repo.git.add(u=True)
         self.repo.index.commit(branch_name)

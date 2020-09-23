@@ -273,6 +273,9 @@ class FieldCollection:
         self.parent = parent
         self.field_cls = field_class
 
+    def __len__(self):
+        return len(self.data)
+
     def get(self, item: Union[int, str, tuple]) -> Field:
         """Return the first element matching the criteria.
 

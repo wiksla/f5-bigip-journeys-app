@@ -3,7 +3,7 @@ isoparser==0.3
 fabric==2.5.0
 gitpython==3.1.7
 python-gnupg==0.4.6
-
+gitdb==4.0.5
 
 f5-sdk==3.0.21
 deepdiff==5.0.1

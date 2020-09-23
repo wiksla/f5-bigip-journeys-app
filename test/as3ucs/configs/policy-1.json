@@ -1,0 +1,30 @@
+{
+    "class": "ADC",
+    "Common": {
+        "class": "Tenant",
+        "Shared": {
+            "class": "Application",
+            "template": "shared",
+            "firewall_policy": {
+                "rules": [
+                    {
+                        "action": "accept",
+                        "source": {
+                            "vlans": [
+                                {
+                                    "bigip": "/Common/vlan1"
+                                }
+                            ]
+                        },
+                        "name": "inline_rule",
+                        "protocol": "any"
+                    },
+                    {
+                        "use": "/Common/Shared/rule_list1"
+                    }
+                ],
+                "class": "Firewall_Policy"
+            }
+        }
+    }
+}

@@ -18,6 +18,7 @@ from journeys.controller import setup_logging
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
+from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
 from journeys.errors import LocalChangesDetectedError
@@ -158,11 +159,17 @@ def prerequisites():
 @click.argument("ucs")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
-def start(ucs, clear, ucs_passphrase):
+@click.option(
+    "--as3-path",
+    help="Path to the AS3 declaration corresponding to this configuration.",
+)
+def start(ucs, clear, ucs_passphrase, as3_path):
     """ Start migration process. """
     with error_handler():
         controller = MigrationController(clear=clear, allow_empty=True)
-        controller.initialize(input_ucs=ucs, ucs_passphrase=ucs_passphrase)
+        controller.initialize(
+            input_ucs=ucs, ucs_passphrase=ucs_passphrase, as3_path=as3_path
+        )
         version = controller.ucs_reader.get_version()
         if not version.is_velos_supported():
             click.echo(
@@ -788,6 +795,8 @@ def error_handler():
             click.echo(f"\t{path}")
         click.echo('Run \'journey.py migrate --message "<message>" to apply changes.')
         click.echo("Run 'journey.py cleanup' to discard changes.")
+    except AS3InputDoesNotExistError:
+        click.echo("The specified AS3 file does not exist.")
 
 
 def process_and_print_output(controller: MigrationController, commit_name: str = None):

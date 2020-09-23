@@ -1,0 +1,23 @@
+{
+    "class": "ADC",
+    "Common": {
+        "class": "Tenant",
+        "Shared": {
+            "class": "Application",
+            "template": "shared",
+            "rule_list1": {
+                "rules": [
+                    {
+                        "action": "accept",
+                        "source": {
+                            "vlans": [
+                            ]
+                        },
+                        "name": "firewall_rule_1"
+                    }
+                ],
+                "class": "Firewall_Rule_List"
+            }
+        }
+    }
+}

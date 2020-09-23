@@ -36,7 +36,9 @@ class ConflictHandler:
         except KeyError:
             raise UnknownConflictError(conflict_id=conflict_id)
 
-    def render(self, dirname, conflict: Conflict, mitigation_func: Callable):
+    def render(self, dirname, conflict: Conflict, mitigation_func: Callable) -> Config:
         config_copy: Config = deepcopy(self.config)
         mitigation_func(config_copy)
         config_copy.build(dirname=dirname, files=conflict.files_to_render)
+
+        return config_copy
