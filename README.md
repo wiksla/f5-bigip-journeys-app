@@ -217,16 +217,72 @@ Or use interactive container mode:
    ```
    journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase>
    ```
+1. Prepare backup of the Destination System
+   ```
+   journey.py backup --destination-host <host_ip_or_fqdn> --destination-username <default_is_root> --destination-password <password>
+   ```
 1. Load the output UCS to a Destination System
    ```
    load sys ucs <output_ucs_name> passphrase <passphrase> platform-migrate no-license keep-current-management-ip
    ```
+1. After loading UCS to destination system you can run diagnose function that not only collects information relevant to your system condition but also compares its state and configuration with former BIGIP system.
+   ```
+   journey.py diagnose --source-host <ip_or_fqdn> --source-password <root_pass> --source-admin-password <admin_pass> --destination-host <ip_or_fqdn> --destination-password <root_password> --destination-admin-password <admin_password> 
+   ```
+You can skip some desired diagnose methods by using option `--exclude-checks <JSON_list_of_checks_to_skip`. 
+Please note that some methods ust dather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
 
-### Migrate
-### Deploy
-### Validate
+### Diagnose Methods
+- **MCP status check**
 
-----
+Area:| error detection
+-----|-----
+Checks values of returned fields are correct. 
+This method uses `tmsh show sys mcp-state field-fmt` that can be executed manually. 
+
+- **TMM status**
+
+Area:| error detection
+-----|-----
+Function logs status of TMM. 
+
+- **Prompt state**
+
+Area:| error detection
+-----|-----
+Checks if prompt state is in active mode. 
+
+- **Core dumps detection**
+
+Area:| error detection
+-----|-----
+Checks if diagnostic core dumps were created. 
+
+- **Database Comparison**
+
+Area:| config migration
+-----|-----
+Compares two system DBs getting them from iControl endpoint for sys db.
+
+- **Memory footprint Comparison**
+
+Area:| information, resource management
+-----|-----
+Compares information from `tmsh show sys provision` for both systems.
+
+- **Version Comparison**
+
+Area:| information
+-----|-----
+Compares information from `tmsh show sys version` for both systems.
+
+- **Local Traffic Manager (LTM) module comparison checks checks**
+
+Area:| config migration, resource management
+-----|-----
+This check lists all defined LTM nodes and Virtual Servers configured in the new system. \
+If both devices are on-line it can check conformance of both configuration and resource availability.
+
 ## Contributing
 
 ### Bug reporting
