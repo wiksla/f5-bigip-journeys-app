@@ -122,7 +122,7 @@ Preparing a temporary folder:
 1. `cd /tmp/journeys`
 1. `cp <ucs_file> .`
 
-Run commands one by one starting a separate docker container (requires git tool)
+Run commands one by one starting a separate docker container
 1. `alias journey.py="docker run --rm -v /tmp/journeys:/migrate journeys"`
 1. `journey.py start spdag.ucs`
 1. `journey.py resolve SPDAG`
@@ -198,6 +198,14 @@ Or use interactive container mode:
    ```
    After the command is run, the tool searches for conflicts in a given source configuration.
 
+   `AS3 support`
+
+   It is also possible to pass AS3 declaration in addition to UCS.
+   ```
+   journey.py start <ucs file> --ucs-passphrase <passphrase> --as3-path <as3 declaration>
+   ```
+   The tool will track changes made by resolving the conflicts and apply them to AS3 declaration.
+
 ### Resolving conflicts.
    If at least one conflict has been detected, the tool will print the entire list.
    1. One-by-one
@@ -216,6 +224,12 @@ Or use interactive container mode:
    NOTE: File will have entries fixed for VELOS parity but is still in the source BIG-IP version.
    ```
    journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase>
+   ```
+   `AS3 support`
+
+   If AS3 declaration was passed to start method, the tool will also generate it.
+   ```
+   journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase> --output-as3 <output_as3_name>
    ```
    
 ### Deployment and Validation
