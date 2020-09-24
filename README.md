@@ -1,20 +1,17 @@
-
 # Migration utility for Classic BIG-IP system to VELOS platform. 
 
 ----
 ## Contents:
 - [Descrpition](#description)
 - [Prerequisites](#prerequisites)
-- [App deployment](#deployment)
+- [Deployment](#deployment)
 - [Usage](#usage)
-   - [Example](#example)
-   - [Diagnose methods](#diagnose-methods)
-- [Contribution](#contributing)
+- [Contributions](#contributions)
 
 ----
 ## Description
-The tool allows migrating from 11.5.0 to 14.1.2 software versions running on the source system. 
-Journey App supports flagging feature parity gaps with exemplary solutions implemented for:
+The tool allows migrating a configuration from BIG-IP 11.5.0 to 14.1.x software versions running on the source system. 
+Journeys App supports flagging of feature parity gaps with exemplary solutions implemented for:
 
 + Compatibility level
 + Double Tagging
@@ -56,12 +53,12 @@ Device Flood vector will be handled by the software instead of hardware support.
 
 ----
 ## Prerequisites
-1. Steps before running Journey App or manually creating and loading UCS.
+1. Mandatory steps before running the Journeys App or manually creating and loading source BIG-IP UCS configuration.
 
-    Before you run Journey App, you need to set a device master key password on both Source and Destination Systems.
+    Before you run the Journeys App, you need to set a device master key password on both Source and Destination Systems.
     There are two ways of doing this:
 
-    1. Copying Source System master key with f5mku and re-keying master key on the Destination System:
+    1. Copying the Source System master key with f5mku and re-keying master key on the Destination System:
 
        >Important: Whenever possible, use the documented tmsh commands for master and unit key manipulation. 
        >Only use the f5mku command with assistance from F5 Support when no tmsh commands exist to perform 
@@ -101,7 +98,7 @@ Device Flood vector will be handled by the software instead of hardware support.
       - [Installing UCS files containing encrypted passwords or passphrases: K9420](https://support.f5.com/csp/article/K9420)
 
 1. Destination System:
-    1. Destination VELOS VM tenant deployed and configured on the chassis partition
+    1. Destination VELOS BIG-IP VM tenant deployed and configured on the chassis partition
     1. VLANs, trunks and interfaces configured and assigned to othe VM Tenant (on System Controller level)
     1. All modules from the Source System provisioned on the destination host (with the exception for PEM and CGNAT)
 
@@ -117,7 +114,7 @@ Available via setuptools as a standalone CLI.
 
 ### Running Journeys app as a docker container: summary
 
-Example usage of tool can look like this:
+Usage examples:
 
 Preparing a temporary folder:
 1. `docker build -t journeys .`
@@ -144,7 +141,7 @@ Or use interactive container mode:
 ----
 ## Usage
 
-### Example
+### Tool Environment and Installation
 1. Install Docker on a host system
     ```
     https://www.docker.com/get-started
@@ -169,7 +166,7 @@ Or use interactive container mode:
              ```
              docker run --rm -it -v %cd%:/migrate f5devcentral/journeys:latest --shell 
              ```
-    1. Non Interactive mode
+    1. Non-Interactive mode
         1. On Linux-based hosts:
              ```
              alias journey.py="docker run --rm -v $(pwd):/migrate f5devcentral/journeys:latest"
@@ -178,44 +175,53 @@ Or use interactive container mode:
              ```
              doskey journey.py=docker run --rm -v %cd%:/migrate f5devcentral/journeys:latest
              ```
+
+### Source configuration
 1. Prepare source UCS file
    1. manually, by saving the UCS on a Source System:
        ```
        tmsh save sys ucs <ucs_name> passphrase <passphrase>
        ```
        and copying it (eg: scp, USB) to the working directory: /tmp/journey on a host system    
-   1. automatically, by using Journey App:
+   1. automatically, by using Journeys App:
        1. download the ucs file from a live source BIG-IP system:
             ```
             journey.py download-ucs --host <bigip host> --username <bigip username> --password <bigip password> --ucs-passphrase <passphrase> --output <ucs file>
             ```
    >IMPORTANT for security reasons:
    >The account used should be a READ-ONLY and should have permission only to generate and fetch the ucs.
-   >Generated UCS should be encrypted with passphrase.**
-1. Run the tool.
+   >Generated UCS configuration should be encrypted with a passphrase.**
+
+### Running the tool
    ```
    journey.py start <ucs file> --ucs-passphrase <passphrase>
    ```
    After the command is run, the tool searches for conflicts in a given source configuration.
-1. Resolving conflicts.
-   If at least one conflict has been detected, the tool will print the whole list.
+
+### Resolving conflicts.
+   If at least one conflict has been detected, the tool will print the entire list.
    1. One-by-one
    ``` 
    journey.py resolve <conflict_tag>
    ```
-   1. Resolve all conflicts and apply recommended changes
+   1. Resolve all conflicts and apply F5 recommended changes to each
    ```
    journey.py resolve-all
    ```
    After the command is run, the tool will generate git branches with proposed conflict mitigations. 
    Detailed instructions about resolving conflicts are printed by the tool.
-1. Generate the output UCS file.
-
-   Once all conflicts are resolved, following command will generate the output UCS file.
+### Generating VELOS-ready output configuration
+   1. Generating output ucs configuration
+   Once all conflicts are resolved, the following command will generate an output UCS file.
+   NOTE: File will have entries fixed for VELOS parity but is still in the source BIG-IP version.
    ```
    journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase>
    ```
+   
+### Deployment and Validation
+If you're running the Journeys App in an environment where there is a connectivity to Source and Destination BIG-IP systems, you can use the Deployment and Validation feature to have the configuration deployed automatically on the Destination system and run a series of automated tests. 
 1. Prepare backup of the Destination System
+Before starting it's always recommended to create a backup of your existing Destination configuration. Loading VELOS-ready Source configuration on the Destination will overwrite it, so if anything goes wrong, you'll be able to use it and recreate the Destination configuration.
    ```
    journey.py backup --destination-host <host_ip_or_fqdn> --destination-username <default_is_root> --destination-password <password>
    ```
@@ -223,20 +229,21 @@ Or use interactive container mode:
    ```
    load sys ucs <output_ucs_name> passphrase <passphrase> platform-migrate no-license keep-current-management-ip
    ```
-1. After loading UCS to destination system you can run diagnose function that not only collects information relevant to your system condition but also compares its state and configuration with former BIGIP system.
+1. Run diagnostics
+After loading the UCS to the Destination System, you can run a diagnose function that collects information relevant to your system condition and compares its state and configuration with the Source BIG-IP System.
    ```
    journey.py diagnose --source-host <ip_or_fqdn> --source-password <root_pass> --source-admin-password <admin_pass> --destination-host <ip_or_fqdn> --destination-password <root_password> --destination-admin-password <admin_password> 
    ```
-You can skip some desired diagnose methods by using option `--exclude-checks <JSON_list_of_checks_to_skip`. 
+To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_checks_to_skip`. 
 Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
 
-### Diagnose Methods
+#### Diagnose Methods
 - **MCP status check**
 
 Area:| error detection
 -----|-----
 
-Checks values of returned fields are correct. 
+Checks if values of returned fields are correct. 
 This method uses `tmsh show sys mcp-state field-fmt` that can be executed manually. 
 
 - **TMM status**
@@ -281,20 +288,20 @@ Area:| information
 
 Compares information from `tmsh show sys version` for both systems. Requires manual evaluation.
 
-- **Local Traffic Manager (LTM) module comparison checks checks**
+- **Local Traffic Manager (LTM) module comparison checks**
 
 Area:| config migration, resource management
 -----|-----
 
-This check lists all defined LTM nodes and Virtual Servers configured in the new system. 
-If both devices are on-line it can check conformance of both configuration and resource availability.
+Check lists of all defined LTM nodes and Virtual Servers configured in the new system. 
+If both devices are on-line, it will check conformance of both configuration and resource availability.
 Requires manual evaluation.
 
-## Contributing
+## Contributions
 
 ### Bug reporting
 
-Let us know if something went wrong. By doing reporting issues, you supports development of this project and gets a chance of having it fixed soon. 
+Let us know if something went wrong. By reporting issues, you support development of this project and get a chance of having it fixed soon. 
 Please use bug template available [here]()
 
 ### Feature requests
@@ -303,7 +310,7 @@ Ideas for enhancements are welcome [here]()
 
 ### Code contribution 
 
-If you wish to contribute please contact with: p.purc@f5.com to get CLA document. The below section explains why.  
+If you wish to contribute, please contact: p.purc@f5.com to get a CLA document. The below section explains why.  
 
 #### F5 Networks Contributor License Agreement
 
