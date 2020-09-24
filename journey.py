@@ -346,6 +346,9 @@ def revert(step):
 @click.option("--output", default=None, help="Use given filename instead of default.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
 @click.option(
+    "--output-as3", default=None, help="Use given filename instead of default for as3."
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Generate output ucs even if not all conflict_info have been resolved.",
@@ -355,7 +358,7 @@ def revert(step):
     is_flag=True,
     help="Generate output ucs even if file with given name already exists.",
 )
-def generate(output, ucs_passphrase, force, overwrite):
+def generate(output, ucs_passphrase, output_as3, force, overwrite):
     """ Generate output UCS. """
     if not ucs_passphrase:
         ucs_passphrase = "".join(
@@ -364,16 +367,21 @@ def generate(output, ucs_passphrase, force, overwrite):
 
     with error_handler():
         controller = MigrationController()
-        output_ucs = controller.generate(
-            force=force,
-            output=output,
+        output_ucs_path, output_as3_path = controller.generate(
+            output_ucs=output,
             ucs_passphrase=ucs_passphrase,
+            output_as3=output_as3,
+            force=force,
             overwrite=overwrite,
         )
-        output_ucs_name = os.path.basename(output_ucs)
+        output_ucs_name = os.path.basename(output_ucs_path)
 
-        click.echo(f"Output ucs has been stored as {output_ucs}.")
+        click.echo(f"Output ucs has been stored as {output_ucs_path}.")
         click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
+        if output_as3_path:
+            click.echo("")
+            click.echo(f"Output as3 has been stored as {output_as3_path}.")
+
         click.echo("")
         click.echo("In order to deploy it on destination system, run")
         click.echo(

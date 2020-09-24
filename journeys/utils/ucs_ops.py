@@ -34,7 +34,13 @@ def untar_file(archive_file, output_dir, archive_passphrase=None):
     return output_dir, files_metadata
 
 
-def tar_file(archive_file, input_dir, files_metadata, archive_passphrase=None):
+def tar_file(
+    archive_file,
+    input_dir,
+    files_metadata,
+    archive_passphrase=None,
+    excluded_files=None,
+):
     decrypted_archive_file = archive_file
     if archive_passphrase:
         decrypted_archive_file = archive_file + ".decrypted"
@@ -43,8 +49,10 @@ def tar_file(archive_file, input_dir, files_metadata, archive_passphrase=None):
     current_dir = os.getcwd()
     os.chdir(input_dir)
 
+    excluded_files = excluded_files or [".git", ".gitignore", ".shelf"]
+
     def reset_metadata(tarinfo):
-        if tarinfo.path in [".git", ".gitignore", ".shelf"]:
+        if tarinfo.path in excluded_files:
             return None
 
         try:

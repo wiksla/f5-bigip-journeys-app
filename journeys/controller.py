@@ -49,7 +49,6 @@ def setup_logging(level=logging.DEBUG):
 class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
-    AS3_UCS_FILE_NAME = "as3_ucs.json"
 
     def __init__(self, clear=False, allow_empty=False):
 
@@ -61,7 +60,6 @@ class MigrationController:
             os.mkdir(self.repo_path)
 
         self.config_path = os.path.join(self.repo_path, "config")
-        self.as3_ucs_path = os.path.join(self.repo_path, self.AS3_UCS_FILE_NAME)
 
         self.repo = Repo.init(self.repo_path)
         self.shelf = shelve.open(os.path.join(self.repo_path, self.SHELF_FILE_NAME))
@@ -75,6 +73,19 @@ class MigrationController:
         if not allow_empty:
             self._ensure_is_initialized()
 
+    @property
+    def as3_ucs_path(self):
+        input_as3_name = self.shelf.get("input_as3_name", None)
+        return os.path.join(self.repo_path, input_as3_name) if input_as3_name else None
+
+    def _ensure_is_master(self):
+        if self.repo.active_branch.name != "master":
+            raise NotMasterBranchError()
+
+    def _ensure_is_initialized(self):
+        if not self._is_repo_initialized():
+            raise NotInitializedError()
+
     def initialize(self, input_ucs, ucs_passphrase, as3_path=None):
 
         if self._is_repo_initialized():
@@ -82,6 +93,31 @@ class MigrationController:
 
         log.info("Initializing the git repository.")
 
+        self._handle_ucs_input(input_ucs=input_ucs, ucs_passphrase=ucs_passphrase)
+        self._handle_as3_input(as3_path=as3_path)
+
+        self._add_shelf_file_to_gitignore()
+        log.info("Preparing the initial commit.")
+        self.repo.git.add("*")
+        self.repo.index.commit("initial")
+
+        # rebuilding the config changes the formatting slightly -
+        # do it here so that later diffs are clean
+        self._reformat_input()
+
+        self.repo.git.add(u=True)
+        self.repo.index.commit("reformat")
+        self.repo.create_head("initial")
+
+    def _is_repo_initialized(self):
+        try:
+            self.repo.commit("initial")
+        except BadName:
+            return False
+
+        return True
+
+    def _handle_ucs_input(self, input_ucs, ucs_passphrase):
         try:
             log.info(f"Unpacking the provided file {input_ucs} into {self.repo_path}.")
             _, files_metadata = untar_file(
@@ -91,32 +127,36 @@ class MigrationController:
             raise ArchiveOpenError()
         except RuntimeError:
             raise ArchiveDecryptError()
-
-        self.shelf["as3_used"] = False
-        if as3_path is not None:
-            if not os.path.exists(os.path.join(as3_path)):
-                raise AS3InputDoesNotExistError
-            shutil.copyfile(as3_path, self.as3_ucs_path)
-            self.shelf["as3_used"] = True
-            as3_decl = As3ucs(self.as3_ucs_path)
-            # Take care of formatting differences
-            as3_decl.save_declaration(self.as3_ucs_path)
-
         self.shelf["input_ucs_name"] = os.path.basename(input_ucs)
         self.shelf["files_metadata"] = files_metadata
-        self._add_shelf_file_to_gitignore()
-        log.info("Preparing the initial commit.")
-        self.repo.git.add("*")
-        self.repo.index.commit("initial")
 
-        # rebuilding the config changes the formatting slightly -
-        # do it here so that later diffs are clean
+    def _handle_as3_input(self, as3_path):
+        self.shelf["input_as3_name"] = None
+        if as3_path is not None:
+            if not os.path.exists(as3_path):
+                raise AS3InputDoesNotExistError
+            self.shelf["input_as3_name"] = os.path.basename(as3_path)
+            shutil.copyfile(as3_path, self.as3_ucs_path)
+
+    def _add_shelf_file_to_gitignore(self):
+        git_ignore_file = os.path.join(self.repo_path, ".gitignore")
+        with open(file=git_ignore_file, mode="w") as gitignore:
+            gitignore.write(f"{self.SHELF_FILE_NAME}*")
+
+    def _reformat_input(self):
         self._read_config()
         log.info("Preparing the reformat commit.")
         self.config.build(dirname=self.config_path)
-        self.repo.git.add(u=True)
-        self.repo.index.commit("reformat")
-        self.repo.create_head("initial")
+
+        if self.as3_ucs_path:
+            as3_decl = As3ucs(self.as3_ucs_path)
+            as3_decl.save_declaration(self.as3_ucs_path)
+
+    def _read_config(self):
+        log.info(f"Reading and parsing the configuration from {self.repo_path}.")
+        self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
+        self.config: Config = self.ucs_reader.get_config()
+        self.conflict_handler = ConflictHandler(config=self.config)
 
     @property
     def current_conflict(self):
@@ -165,9 +205,26 @@ class MigrationController:
             if self.repo.is_dirty():
                 self._commit_local_changes(commit_name=commit_name)
 
-        self.remove_mitigations_branches()
+        self._remove_mitigations_branches()
 
         return conflicts
+
+    def _commit_local_changes(self, commit_name: str):
+        uncommitted = [diff.a_path for diff in self.repo.index.diff(None)]
+        log.info(
+            f"Uncommitted changes found: {uncommitted}. Creating a new commit '{commit_name}'."
+        )
+        if not commit_name:
+            raise LocalChangesDetectedError(uncommitted=uncommitted)
+        self.repo.git.add(u=True)
+        self.repo.index.commit(message=commit_name)
+
+    def _remove_mitigations_branches(self):
+        mitigations_branch_to_remove = self.get_mitigation_branches()
+        if mitigations_branch_to_remove:
+            log.info(f"Removing stale branches: {mitigations_branch_to_remove}")
+            for head in mitigations_branch_to_remove:
+                head.delete(self.repo, head, force=True)
 
     def history(self):
         commits = list(self.repo.iter_commits(rev="initial...master"))
@@ -222,6 +279,31 @@ class MigrationController:
             self.get_mitigation_branches(),
         )
 
+    @staticmethod
+    def _mitigation_is_recommended(conflict_info: Conflict, mitigation: str):
+        current_mitigation = conflict_info.mitigations["mitigations"][mitigation]
+        recommended_mitigation = conflict_info.mitigations["recommended"]
+        return current_mitigation.__name__ == recommended_mitigation.__name__
+
+    def _create_mitigation_branch(
+        self, conflict_info: Conflict, branch_name: str, mitigation_func: str
+    ):
+        self.repo.create_head(branch_name).checkout()
+
+        modified_config = self.conflict_handler.render(
+            dirname=self.config_path,
+            conflict=conflict_info,
+            mitigation_func=mitigation_func,
+        )
+
+        if self.as3_ucs_path:
+            as3ucs: As3ucs = As3ucs(self.as3_ucs_path)
+            as3ucs.process_ucs_changes(modified_config)
+            as3ucs.save_declaration(self.as3_ucs_path)
+
+        self.repo.git.add(u=True)
+        self.repo.index.commit(branch_name)
+
     def resolve_recommended(self):
         while True:
             conflicts = self.process()
@@ -249,7 +331,7 @@ class MigrationController:
 
             self._read_config()
 
-    def generate(self, output, force, ucs_passphrase, overwrite):
+    def generate(self, output_ucs, ucs_passphrase, output_as3, force, overwrite):
 
         if self.config is None:
             self._read_config()
@@ -258,47 +340,42 @@ class MigrationController:
             if self.conflict_handler.get_conflicts():
                 raise NotAllConflictResolvedError()
 
-        output = output or self.shelf["input_ucs_name"].replace(".ucs", ".modified.ucs")
-
-        output_ucs = self._create_output_ucs(
-            output=output, ucs_passphrase=ucs_passphrase, overwrite=overwrite
+        output_ucs_path, output_as3_path = self._check_output_files(
+            output_ucs=output_ucs, output_as3=output_as3, overwrite=overwrite
         )
-        return output_ucs
 
-    def _commit_local_changes(self, commit_name: str):
-        uncommitted = [diff.a_path for diff in self.repo.index.diff(None)]
-        log.info(
-            f"Uncommitted changes found: {uncommitted}. Creating a new commit '{commit_name}'."
+        self._create_output_ucs(
+            output_path=output_ucs_path, ucs_passphrase=ucs_passphrase
         )
-        if not commit_name:
-            raise LocalChangesDetectedError(uncommitted=uncommitted)
-        self.repo.git.add(u=True)
-        self.repo.index.commit(message=commit_name)
 
-    def _ensure_is_master(self):
-        if self.repo.active_branch.name != "master":
-            raise NotMasterBranchError()
+        if output_as3_path:
+            self._create_output_as3(output_path=output_as3_path)
 
-    def _ensure_is_initialized(self):
-        if not self._is_repo_initialized():
-            raise NotInitializedError()
+        return output_ucs_path, output_as3_path
 
-    def _read_config(self):
-        log.info(f"Reading and parsing the configuration from {self.repo_path}.")
-        self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
-        self.config: Config = self.ucs_reader.get_config()
-        self.conflict_handler = ConflictHandler(config=self.config)
+    def _check_output_files(self, output_ucs, output_as3, overwrite):
+        if not output_ucs:
+            root, ext = os.path.splitext(self.shelf["input_ucs_name"])
+            output_ucs = f"{root}.modified{ext}"
 
-    def _is_repo_initialized(self):
-        try:
-            self.repo.commit("initial")
-        except BadName:
-            return False
+        output_ucs_path = self._check_output_file(
+            output=output_ucs, overwrite=overwrite
+        )
 
-        return True
+        output_as3_path = None
+        if self.as3_ucs_path:
+            if not output_as3:
+                root, ext = os.path.splitext(self.shelf["input_as3_name"])
+                output_as3 = f"{root}.modified{ext}"
 
-    def _create_output_ucs(self, output, ucs_passphrase, overwrite):
+            output_as3_path = self._check_output_file(
+                output=output_as3, overwrite=overwrite
+            )
 
+        return output_ucs_path, output_as3_path
+
+    @staticmethod
+    def _check_output_file(output, overwrite):
         output_path = os.path.join(WORKDIR, os.path.basename(output))
 
         if overwrite:
@@ -311,54 +388,30 @@ class MigrationController:
         if os.path.exists(output_path):
             raise OutputAlreadyExistsError(output=output_path)
 
-        log.info(f"Creating output ucs {output}.")
+        return output_path
 
+    def _create_output_ucs(self, output_path, ucs_passphrase):
+
+        log.info(f"Creating output ucs {output_path}.")
         tar_file(
             archive_file=output_path,
             input_dir=os.path.join(self.repo_path),
             files_metadata=self.shelf["files_metadata"],
             archive_passphrase=ucs_passphrase,
-        )
-        return output_path
-
-    def _add_shelf_file_to_gitignore(self):
-        git_ignore_file = os.path.join(self.repo_path, ".gitignore")
-        with open(file=git_ignore_file, mode="w") as gitignore:
-            gitignore.write(f"{self.SHELF_FILE_NAME}*")
-
-    def _create_mitigation_branch(
-        self, conflict_info: Conflict, branch_name: str, mitigation_func: str
-    ):
-        self.repo.create_head(branch_name).checkout()
-
-        modified_config = self.conflict_handler.render(
-            dirname=self.config_path,
-            conflict=conflict_info,
-            mitigation_func=mitigation_func,
+            excluded_files=[
+                ".git",
+                ".gitignore",
+                ".shelf",
+                self.shelf["input_as3_name"],
+            ],
         )
 
-        if self.shelf["as3_used"] is True:
-            as3ucs: As3ucs = As3ucs(self.as3_ucs_path)
-            as3ucs.process_ucs_changes(modified_config)
-            as3ucs.save_declaration(self.as3_ucs_path)
+    def _create_output_as3(self, output_path):
 
-        self.repo.git.add(u=True)
-        self.repo.index.commit(branch_name)
+        log.info(f"Creating output as3 {output_path}.")
+        shutil.copyfile(self.as3_ucs_path, output_path)
 
     def get_mitigation_branches(self):
         return set(self.repo.heads).difference(
             {self.repo.heads.master, self.repo.heads.initial}
         )
-
-    def remove_mitigations_branches(self):
-        mitigations_branch_to_remove = self.get_mitigation_branches()
-        if mitigations_branch_to_remove:
-            log.info(f"Removing stale branches: {mitigations_branch_to_remove}")
-            for head in mitigations_branch_to_remove:
-                head.delete(self.repo, head, force=True)
-
-    @staticmethod
-    def _mitigation_is_recommended(conflict_info: Conflict, mitigation: str):
-        current_mitigation = conflict_info.mitigations["mitigations"][mitigation]
-        recommended_mitigation = conflict_info.mitigations["recommended"]
-        return current_mitigation.__name__ == recommended_mitigation.__name__
