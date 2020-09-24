@@ -68,7 +68,9 @@ def ucs():
 @pytest.fixture
 def controller():
     def _controller(input_ucs, clear=False):
-        controller = MigrationController(allow_empty=True, clear=clear)
+        controller = MigrationController(
+            working_directory=".", allow_empty=True, clear=clear,
+        )
         if clear:
             controller.initialize(input_ucs=input_ucs, ucs_passphrase="")
 

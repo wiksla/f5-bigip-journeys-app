@@ -28,31 +28,14 @@ from journeys.utils.ucs_reader import UcsReader
 
 log = logging.getLogger(__name__)
 
-WORKDIR = os.environ.get("MIGRATE_DIR", ".")
-
-
-def setup_logging(level=logging.DEBUG):
-    log_file = os.path.join(WORKDIR, "journeys.log")
-
-    format_string = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
-    formatter = logging.Formatter(format_string)
-
-    handler = logging.FileHandler(log_file)
-    handler.setLevel(level)
-    handler.setFormatter(formatter)
-
-    log = logging.getLogger()
-    log.setLevel(level)
-    log.addHandler(handler)
-
 
 class MigrationController:
     SHELF_FILE_NAME = ".shelf"
     REPO_FOLDER_NAME = "wip"
 
-    def __init__(self, clear=False, allow_empty=False):
-
-        self.repo_path = os.path.join(WORKDIR, self.REPO_FOLDER_NAME)
+    def __init__(self, working_directory, clear=False, allow_empty=False):
+        self.working_directory = working_directory
+        self.repo_path = os.path.join(self.working_directory, self.REPO_FOLDER_NAME)
         if clear:
             log.info(f"Clear enabled - removing {self.repo_path}.")
             shutil.rmtree(self.repo_path, ignore_errors=True)
@@ -197,7 +180,7 @@ class MigrationController:
                 raise ConflictNotResolvedError(
                     conflict_id=current_conflict,
                     conflict_info=conflicts[current_conflict],
-                    working_directory=WORKDIR,
+                    working_directory=self.working_directory,
                     config_path=self.config_path,
                     mitigation_branches=self.get_mitigation_branches(),
                 )
@@ -274,7 +257,7 @@ class MigrationController:
         )
         return (
             conflict_info,
-            WORKDIR,
+            self.working_directory,
             self.config_path,
             self.get_mitigation_branches(),
         )
@@ -374,9 +357,8 @@ class MigrationController:
 
         return output_ucs_path, output_as3_path
 
-    @staticmethod
-    def _check_output_file(output, overwrite):
-        output_path = os.path.join(WORKDIR, os.path.basename(output))
+    def _check_output_file(self, output, overwrite):
+        output_path = os.path.join(self.working_directory, os.path.basename(output))
 
         if overwrite:
             try:

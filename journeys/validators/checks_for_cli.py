@@ -6,7 +6,6 @@ from typing import Dict
 
 import click
 
-from journeys.controller import WORKDIR
 from journeys.utils.device import Device
 from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
@@ -23,7 +22,7 @@ FAILED = "FAILED"
 USER_EVALUATION = "FOR_USER_EVALUATION"
 
 
-def cli_mcp_status_check(destination: Device, output: str, **kwargs) -> Dict:
+def cli_mcp_status_check(destination: Device, output, **kwargs) -> Dict:
     mcp_status = get_mcp_status(bigip=destination)
     click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}", file=output)
     if (
@@ -36,20 +35,20 @@ def cli_mcp_status_check(destination: Device, output: str, **kwargs) -> Dict:
     return {"result": PASSED, "value": mcp_status}
 
 
-def cli_tmm_status_check(destination: Device, output: str, **kwargs) -> Dict:
+def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
     tmm_status = get_tmm_global_status(bigip=destination)
     click.echo(f"TMM status:\n{json.dumps(tmm_status, indent=4)}", file=output)
     return {"result": USER_EVALUATION, "value": tmm_status}
 
 
-def cli_prompt_state_check(destination: Device, output: str, **kwargs) -> Dict:
+def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
     if not wait_for_prompt_state(device=destination):
         click.echo("Prompt is not active/standby", file=output)
         return {"result": FAILED, "value": False}
     return {"result": PASSED, "value": True}
 
 
-def cli_core_dumps_check(destination: Device, output: str, **kwargs) -> Dict:
+def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
     try:
         list_cores(destination, raise_exception=True)
         click.echo(
@@ -68,27 +67,25 @@ def cli_core_dumps_check(destination: Device, output: str, **kwargs) -> Dict:
         return {"result": FAILED}
 
 
-def cli_compare_db_check(source: Device, destination: Device, output: str) -> Dict:
+def cli_compare_db_check(source: Device, destination: Device, output) -> Dict:
     db_diff = compare_db(first=source, second=destination)
     click.echo(f"Sys DB diff:\n{db_diff.pretty()}", file=output)
     return {"result": USER_EVALUATION}
 
 
-def cli_memory_footprint_check(
-    source: Device, destination: Device, output: str
-) -> Dict:
+def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
     module_diff = compare_memory_footprint(first=source, second=destination)
     click.echo(f"Memory footprint diff:\n{module_diff.pretty()}", file=output)
     return {"result": USER_EVALUATION, "value": module_diff.to_json()}
 
 
-def cli_ltm_vs_check(destination: Device, output: str, **kwargs) -> Dict:
+def cli_ltm_vs_check(destination: Device, output, **kwargs) -> Dict:
     vs_status = get_ltm_vs_status(device=destination)
     click.echo(vs_status, file=output)
     return {"result": USER_EVALUATION, "value": vs_status}
 
 
-def cli_version_diff_check(source: Device, destination: Device, output: str) -> Dict:
+def cli_version_diff_check(source: Device, destination: Device, output) -> Dict:
     version_diff = tmsh_compare(
         cmd="tmsh show sys version", first=source, second=destination
     )
@@ -96,14 +93,14 @@ def cli_version_diff_check(source: Device, destination: Device, output: str) -> 
     return {"result": USER_EVALUATION, "value": version_diff}
 
 
-def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> None:
+def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> dict:
     results = {}
     for check_name, check_method in checks.items():
         click.echo(f"Running check: {check_name}")
         results[check_name] = check_method(**kwargs)
 
     if results:
-        (Path(WORKDIR) / output_json).write_text(json.dumps(results))
+        Path(output_json).write_text(json.dumps(results))
 
     return results
 

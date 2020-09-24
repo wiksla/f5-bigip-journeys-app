@@ -12,9 +12,7 @@ import click
 from git.exc import GitError
 
 from journeys import __version__ as journey_version
-from journeys.controller import WORKDIR
 from journeys.controller import MigrationController
-from journeys.controller import setup_logging
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
@@ -50,6 +48,23 @@ from journeys.validators.deployment import run_backup
 from journeys.validators.exceptions import JourneysError
 
 log = logging.getLogger(__name__)
+
+WORKDIR = os.environ.get("MIGRATE_DIR", ".")
+
+
+def setup_logging(level=logging.DEBUG):
+    log_file = os.path.join(WORKDIR, "journeys.log")
+
+    format_string = "%(asctime)s %(name)s [%(levelname)s] %(message)s"
+    formatter = logging.Formatter(format_string)
+
+    handler = logging.FileHandler(log_file)
+    handler.setLevel(level)
+    handler.setFormatter(formatter)
+
+    _log = logging.getLogger()
+    _log.setLevel(level)
+    _log.addHandler(handler)
 
 
 @click.group()
@@ -167,7 +182,9 @@ def prerequisites():
 def start(ucs, clear, ucs_passphrase, as3_path):
     """ Start migration process. """
     with error_handler():
-        controller = MigrationController(clear=clear, allow_empty=True)
+        controller = MigrationController(
+            working_directory=WORKDIR, clear=clear, allow_empty=True
+        )
         controller.initialize(
             input_ucs=ucs, ucs_passphrase=ucs_passphrase, as3_path=as3_path
         )
@@ -191,7 +208,7 @@ def migrate(ucs, message):
         click.echo("In order to start new Migration process, run 'journey.py start'")
 
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         process_and_print_output(controller=controller, commit_name=message)
 
 
@@ -200,7 +217,7 @@ def migrate(ucs, message):
 def resolve(conflict_id):
     """ Start single conflict resolution process. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         (
             conflict_info,
             working_directory,
@@ -219,7 +236,7 @@ def resolve(conflict_id):
 def resolve_all():
     """ Resolve all conflicts with f5 recommended solutions. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         controller.resolve_recommended()
         print_no_conflict_info(history=controller.history)
 
@@ -229,7 +246,7 @@ def resolve_all():
 def show(mitigation):
     """ Show proposed mitigation for a conflict. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         current_conflict = controller.current_conflict
         if not current_conflict:
@@ -248,7 +265,7 @@ def show(mitigation):
 def diff():
     """ Show changes made or conflict highlights. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         click.echo(repo.git.diff())
 
@@ -258,7 +275,7 @@ def diff():
 def use(mitigation):
     """ Apply proposed mitigation. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         repo.git.checkout(".")
         current_conflict = controller.current_conflict
@@ -286,7 +303,7 @@ def use(mitigation):
 def cleanup():
     """ Clean local changes. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         repo.git.checkout(".")
 
@@ -296,7 +313,7 @@ def cleanup():
 def history(details):
     """ Show conflict resolution history. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         commits_history = controller.history()
 
@@ -325,7 +342,7 @@ def history(details):
 def revert(step):
     """ Revert conflict resolution. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         commits_history = controller.history()
         try:
@@ -366,7 +383,7 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
         )
 
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
         output_ucs_path, output_as3_path = controller.generate(
             output_ucs=output,
             ucs_passphrase=ucs_passphrase,
@@ -407,7 +424,7 @@ def prompt():
     with error_handler():
 
         try:
-            controller = MigrationController()
+            controller = MigrationController(working_directory=WORKDIR)
             prompt = controller.prompt()
         except NotInitializedError:
             prompt = "Not started"
@@ -426,7 +443,7 @@ def prompt():
 def resources(host, username, password):
     """ Check if destination has enough resources to migrate ucs. """
     with error_handler():
-        controller = MigrationController()
+        controller = MigrationController(working_directory=WORKDIR)
 
         device = Device(host=host, ssh_username=username, ssh_password=password)
         click.echo(
@@ -576,11 +593,13 @@ def deploy(
     if autocheck:
         prefix = "autocheck_diagnose_output"
         timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-        output_log = f"{prefix}_{timestamp}.log"
-        output_json = f"{prefix}_{timestamp}.json"
+        output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
+        output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
         with open(output_log, "w") as logfile:
             kwargs = {"destination": destination, "output": logfile}
-            diagnose_result = run_diagnose(auto_checks, kwargs, output_json)
+            diagnose_result = run_diagnose(
+                checks=auto_checks, kwargs=kwargs, output_json=output_json,
+            )
         fails = []
         for check, result in diagnose_result.items():
             if result["result"] == FAILED:
@@ -648,8 +667,8 @@ def diagnose(
     )
     prefix = "diagnose_output"
     timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-    output_log = f"{prefix}_{timestamp}.log"
-    output_json = f"{prefix}_{timestamp}.json"
+    output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
+    output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
 
     if excluded_checks:
         try:
@@ -662,7 +681,9 @@ def diagnose(
 
     with open(output_log, "w") as logfile:
         kwargs = {"destination": destination, "source": source, "output": logfile}
-        run_diagnose(checks, kwargs, output_json)
+        run_diagnose(
+            checks=checks, kwargs=kwargs, output_json=output_json,
+        )
     click.echo(f"Finished. Check {output_log} and {output_json} for details.")
 
 
