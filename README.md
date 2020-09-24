@@ -8,9 +8,7 @@
 - [App deployment](#deployment)
 - [Usage](#usage)
    - [Example](#example)
-   - [Migrate](#migrate)
-   - [Deploy](#deploy)
-   - [Validate](#validate)
+   - [Diagnose methods](#diagnose-methods)
 - [Contribution](#contributing)
 
 ----
@@ -230,58 +228,67 @@ Or use interactive container mode:
    journey.py diagnose --source-host <ip_or_fqdn> --source-password <root_pass> --source-admin-password <admin_pass> --destination-host <ip_or_fqdn> --destination-password <root_password> --destination-admin-password <admin_password> 
    ```
 You can skip some desired diagnose methods by using option `--exclude-checks <JSON_list_of_checks_to_skip`. 
-Please note that some methods ust dather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
+Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
 
 ### Diagnose Methods
 - **MCP status check**
 
 Area:| error detection
 -----|-----
+
 Checks values of returned fields are correct. 
 This method uses `tmsh show sys mcp-state field-fmt` that can be executed manually. 
 
 - **TMM status**
 
-Area:| error detection
+Area:| resource management
 -----|-----
-Function logs status of TMM. 
+
+Function logs status of TMM. Requires manual evaluation.
 
 - **Prompt state**
 
 Area:| error detection
 -----|-----
+
 Checks if prompt state is in active mode. 
 
 - **Core dumps detection**
 
 Area:| error detection
 -----|-----
+
 Checks if diagnostic core dumps were created. 
 
 - **Database Comparison**
 
 Area:| config migration
 -----|-----
-Compares two system DBs getting them from iControl endpoint for sys db.
+
+Compares two system DBs getting them from iControl endpoint for sys db. Requires manual evaluation. 
 
 - **Memory footprint Comparison**
 
 Area:| information, resource management
 -----|-----
-Compares information from `tmsh show sys provision` for both systems.
+
+Compares information from `tmsh show sys provision` for both systems. Requires manual evaluation.
 
 - **Version Comparison**
 
 Area:| information
 -----|-----
-Compares information from `tmsh show sys version` for both systems.
+
+Compares information from `tmsh show sys version` for both systems. Requires manual evaluation.
 
 - **Local Traffic Manager (LTM) module comparison checks checks**
 
 Area:| config migration, resource management
 -----|-----
-This check lists all defined LTM nodes and Virtual Servers configured in the new system. \
+
+This check lists all defined LTM nodes and Virtual Servers configured in the new system. 
 If both devices are on-line it can check conformance of both configuration and resource availability.
+Requires manual evaluation.
 
 ## Contributing
 
