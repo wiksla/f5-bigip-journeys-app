@@ -3,6 +3,7 @@ from __future__ import annotations
 import configparser
 import logging
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from pathlib import Path
@@ -73,9 +74,17 @@ class Config:
                         f"Build: Key 'file' not found for root field {id_}. Skipping."
                     )
                 else:
-                    log.warn(
-                        f"Build: File {item['file']} for {id_} does not exist in original config. Skipping."
+                    log.debug(
+                        f"Build: File {item['file']} for {id_} does not exist in original config. Adding it."
                     )
+                    d = {
+                        "file": item["file"],
+                        "status": "ok",
+                        "errors": [],
+                        "parsed": [item],
+                    }
+                    self.data["config"].append(d)
+                    file_index[item["file"]] = len(self.data["config"]) - 1
 
     @property
     def fields(self) -> FastFieldCollection:
@@ -267,7 +276,7 @@ class TopLevelField(Field):
 
 class FieldCollection:
     def __init__(
-        self, block: dict, parent: Union[Field, Config], field_class: type = Field
+        self, block: list, parent: Union[Field, Config], field_class: type = Field
     ):
         self.data = block
         self.parent = parent
@@ -335,6 +344,25 @@ class FieldCollection:
             if item["args"] and not item["args"][0].startswith("#"):
                 yield self.field_cls(item, self)
 
+    def add_data(self, data: dict, index: Optional[int] = None, copy: bool = True):
+        """Inserts a field in a dict format into the collection.
+        This can be extracted from an existing field via the 'data' attribute.
+
+        index - index in which to insert the new field. End by default
+        copy - whether to create a deepcopy of the dict before inserting it
+
+        Returns a Field instance pointing to the inserted data.
+        """
+
+        to_insert = deepcopy(data) if copy else data
+
+        if index is None:
+            self.data.append(to_insert)
+        else:
+            self.data.insert(index, to_insert)
+
+        return self.field_cls(to_insert, self)
+
     def add(
         self,
         args: Iterable[str] = None,
@@ -369,12 +397,7 @@ class FieldCollection:
         if file is not None:
             d["file"] = file
 
-        field = self.field_cls(d, self)
-
-        if index is None:
-            self.data.append(d)
-        else:
-            self.data.insert(index, d)
+        field = self.add_data(d, index, False)
         return field
 
     def remove(self, field: Field):
@@ -507,12 +530,12 @@ class FastFieldCollection(FieldCollection):
         for child in node.tree.values():
             yield from self._get_all(child)
 
-    def add(self, *args, **kwargs) -> Field:
-        """Add a new method to this collection.
+    def add_data(self, *args, **kwargs) -> Field:
+        """Add a new field to this collection.
 
         Check the parent method for usage details.
         """
-        field = super().add(*args, **kwargs)
+        field = super().add_data(*args, **kwargs)
         self._tree_insert(field)
         self._id_map[field.id] = field
         return field
