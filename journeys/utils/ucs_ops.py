@@ -1,8 +1,14 @@
+import filecmp
+import io
+import logging
 import os
-import shutil
 import tarfile
+import tempfile
+from contextlib import redirect_stdout
 
 import gnupg
+
+log = logging.getLogger(__name__)
 
 
 def untar_file(archive_file, output_dir, archive_passphrase=None):
@@ -96,5 +102,33 @@ def tar_file(
     return archive_file
 
 
-def delete_temp_dir(temp_dir):
-    shutil.rmtree(temp_dir, ignore_errors=True)
+def compare_archives(
+    source_archive_fn: str,
+    destination_archive_fn: str,
+    source_passphrase=None,
+    destination_passphrase=None,
+) -> str:
+    """Returns recursively compared contents of two archives as a string. """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        dirs = [f"{tmp_dir}/{source_archive_fn}", f"{tmp_dir}/{destination_archive_fn}"]
+        for d in dirs:
+            os.mkdir(d)
+
+        files = [source_archive_fn, destination_archive_fn]
+        passwds = [source_passphrase, destination_passphrase]
+        for archive, passwd, dir_name in zip(files, passwds, dirs):
+            untar_file(archive, dir_name, passwd)
+
+        comparison = filecmp.dircmp(*dirs)
+        report = get_comparison_report(comparison)
+
+    return report
+
+
+def get_comparison_report(comparison: filecmp.dircmp) -> str:
+    """Returns stdout from report_full_closure execution as a string. """
+    f = io.StringIO()
+    with redirect_stdout(f):
+        comparison.report_full_closure()
+
+    return f.getvalue()
