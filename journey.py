@@ -46,10 +46,9 @@ from journeys.validators.checks_for_cli import exclude_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import run_backup
 from journeys.validators.exceptions import JourneysError
+from journeys.workdir import WORKDIR
 
 log = logging.getLogger(__name__)
-
-WORKDIR = os.environ.get("MIGRATE_DIR", ".")
 
 
 def setup_logging(level=logging.DEBUG):
