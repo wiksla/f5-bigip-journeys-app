@@ -69,3 +69,17 @@ class LocalChangesDetectedError(ControllerError):
 class AS3InputDoesNotExistError(ControllerError):
     def __init__(self):
         pass
+
+
+class SSHConnection(Exception):
+    pass
+
+
+class DeviceAuthenticationError(SSHConnection):
+    def __init__(self, host: str, ssh_username: str):
+        self.host = host
+        self.ssh_username = ssh_username
+
+
+class NetworkConnectionError(SSHConnection):
+    pass

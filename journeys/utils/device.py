@@ -1,6 +1,9 @@
+import inspect
 import os
+import socket
 from typing import Union
 
+import paramiko
 from f5.bigip import ManagementRoot
 from fabric import Connection
 from invoke import Failure
@@ -8,6 +11,8 @@ from invoke import ThreadException
 from invoke import UnexpectedExit
 from paramiko.sftp_attr import SFTPAttributes
 
+from journeys.errors import DeviceAuthenticationError
+from journeys.errors import NetworkConnectionError
 from journeys.utils.image import Version
 from journeys.utils.image import parse_version_file
 from journeys.validators.exceptions import JourneysError
@@ -48,22 +53,59 @@ class SSHConnector:
     def fabric(self):
         return {
             "user": self.ssh_username,
-            "connect_kwargs": {"password": self.ssh_password},
+            "connect_kwargs": {"password": self.ssh_password, "timeout": 30},
         }
 
     def run(self, cmd: str, raise_error=True):
-        with Connection(host=self.host, **self.fabric) as c:
+        with Connector(host=self.host, **self.fabric) as c:
             result = c.run(cmd, hide=True, warn=not raise_error)
         return result
 
     def run_transaction(self, cmds):
         """ ['disk', 'tmsh show /sys hardware field-fmt', _disk_validate ] """
         results = {}
-        with Connection(host=self.host, **self.fabric) as c:
+        with Connector(host=self.host, **self.fabric) as c:
             for name, cmd, validator in cmds:
                 result = c.run(cmd, hide=True)
                 results[name] = validator(result)
         return results
+
+
+def _connector_func_decorator(func_, retry):
+    def decorator(*args, **kwargs):
+        for i in range(retry):
+            try:
+                return func_(*args, **kwargs)
+            except paramiko.AuthenticationException:
+                raise DeviceAuthenticationError(
+                    host=args[0].host, ssh_username=args[0].user
+                )
+            except (
+                paramiko.SSHException,
+                socket.error,
+                ConnectionResetError,
+                socket.error,
+            ):
+                continue
+        else:
+            raise NetworkConnectionError()
+
+    return decorator
+
+
+def error_handler(funcs_, retry):
+    def wrapped(cls):
+        for name, method in inspect.getmembers(cls):
+            if name in funcs_:
+                setattr(cls, name, _connector_func_decorator(func_=method, retry=retry))
+        return cls
+
+    return wrapped
+
+
+@error_handler(["get", "run", "put", "sftp"], retry=3)
+class Connector(Connection):
+    pass
 
 
 class APIConnector:
@@ -93,22 +135,22 @@ class Device:
 
 
 def stat_file(device: Device, remote: str) -> SFTPAttributes:
-    with Connection(device.ssh.host, **device.ssh.fabric) as c:
+    with Connector(device.ssh.host, **device.ssh.fabric) as c:
         return c.sftp().stat(remote)
 
 
 def get_file(device: Device, remote: str, local: str) -> str:
-    with Connection(device.ssh.host, **device.ssh.fabric) as c:
+    with Connector(device.ssh.host, **device.ssh.fabric) as c:
         return c.get(remote, local)
 
 
 def put_file(device: Device, local: Union[str, bytes], remote: str):
-    with Connection(device.ssh.host, **device.ssh.fabric) as c:
+    with Connector(device.ssh.host, **device.ssh.fabric) as c:
         return c.put(local, remote)
 
 
 def list_dir(device: Device, directory: str):
-    with Connection(device.ssh.host, **device.ssh.fabric) as c:
+    with Connector(device.ssh.host, **device.ssh.fabric) as c:
         return c.sftp().listdir(directory)
 
 

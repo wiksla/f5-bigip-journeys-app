@@ -18,8 +18,10 @@ from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
+from journeys.errors import DeviceAuthenticationError
 from journeys.errors import DifferentConflictError
 from journeys.errors import LocalChangesDetectedError
+from journeys.errors import NetworkConnectionError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
@@ -842,6 +844,15 @@ def error_handler():
         click.echo("Run 'journey.py cleanup' to discard changes.")
     except AS3InputDoesNotExistError:
         click.echo("The specified AS3 file does not exist.")
+
+    except DeviceAuthenticationError as e:
+        click.echo("Cannot authenticate to BIGIP check given credentials. ")
+        click.echo(f"HOST: {e.host}")
+        click.echo(f"USER: {e.ssh_username}")
+    except NetworkConnectionError:
+        click.echo(
+            "There are some problems with you network connection please check it."
+        )
 
 
 def process_and_print_output(controller: MigrationController, commit_name: str = None):
