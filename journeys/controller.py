@@ -74,7 +74,7 @@ class MigrationController:
         if self._is_repo_initialized():
             raise AlreadyInitializedError(input=input_ucs)
 
-        log.info("Initializing the git repository.")
+        log.info("Initializing git repository.")
 
         self._handle_ucs_input(input_ucs=input_ucs, ucs_passphrase=ucs_passphrase)
         self._handle_as3_input(as3_path=as3_path)
@@ -84,7 +84,7 @@ class MigrationController:
         self.repo.git.add("*")
         self.repo.index.commit("initial")
 
-        # rebuilding the config changes the formatting slightly -
+        # rebuilding config changes the formatting slightly -
         # do it here so that later diffs are clean
         self._reformat_input()
 
@@ -102,7 +102,7 @@ class MigrationController:
 
     def _handle_ucs_input(self, input_ucs, ucs_passphrase):
         try:
-            log.info(f"Unpacking the provided file {input_ucs} into {self.repo_path}.")
+            log.info(f"Unpacking provided file {input_ucs} to {self.repo_path}.")
             _, files_metadata = untar_file(
                 input_ucs, output_dir=self.repo_path, archive_passphrase=ucs_passphrase,
             )
@@ -159,7 +159,7 @@ class MigrationController:
         return prompt
 
     def process(self, commit_name: str = "") -> dict:
-        log.info("Initiating conflict search.")
+        log.info("Initiating VELOS conflict search.")
         if self.config is None:
             self._read_config()
         conflicts = self.conflict_handler.get_conflicts()
@@ -291,7 +291,9 @@ class MigrationController:
         while True:
             conflicts = self.process()
             if not conflicts:
-                log.info("All conflicts are resolved automatically successfully.")
+                log.info(
+                    "All conflicts have been resolved successfully basing on F5 recommendations."
+                )
                 break
 
             _, conflict_info = conflicts.popitem()
