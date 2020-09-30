@@ -19,6 +19,7 @@ List of supported features:
 + Double Tagging
 + Hardware Class of Service
 + Management dhcp
++ PEM [2]
 + Service Provider DAG
 + sPVA [1]
 + Trunk
@@ -27,9 +28,6 @@ List of supported features:
 + Wildcard allow-list
 
 **Journey App does not support** following feature parity gaps, which:
-
-+ can cause migration failure:
-    + PEM [2]
 
 + reside outside a ucs file to be migrated, eg. in a host ucs (not in a guest ucs):
     + Crypto/Compression Guest Isolation (affects vCMP guests only)
