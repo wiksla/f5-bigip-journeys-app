@@ -25,6 +25,7 @@ from journeys.errors import NetworkConnectionError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
+from journeys.errors import NotResolvingConflictError
 from journeys.errors import OutputAlreadyExistsError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.plugins import load_plugins
@@ -235,6 +236,21 @@ def resolve(conflict_id):
 
 
 @cli.command()
+def abort():
+    """ Abort resolving current conflict.
+        Call to this command effectively reverts the state of the migration process
+        to a moment before calling 'journey.py resolve'.
+    """
+    with error_handler():
+        controller = MigrationController(working_directory=WORKDIR)
+        current_conflict = controller.current_conflict
+        if not current_conflict:
+            raise NotResolvingConflictError()
+        controller.abort()
+        process_and_print_output(controller=controller, commit_name=None)
+
+
+@cli.command()
 def resolve_all():
     """ Resolve all conflicts with f5 recommended solutions. """
     with error_handler():
@@ -252,11 +268,7 @@ def show(mitigation):
         repo = controller.repo
         current_conflict = controller.current_conflict
         if not current_conflict:
-            click.echo("Not resolving any conflict_info at this point.")
-            click.echo(
-                "To start the conflict resolution process, run 'journey.py resolve <conflict_id>'."
-            )
-            return
+            raise NotResolvingConflictError()
         try:
             click.echo(repo.git.show(mitigation))
         except GitError:
@@ -282,11 +294,7 @@ def use(mitigation):
         repo.git.checkout(".")
         current_conflict = controller.current_conflict
         if not current_conflict:
-            click.echo("Not resolving any conflict_info at this point.")
-            click.echo(
-                "To start the conflict resolution process, run 'journey.py resolve <conflict_id>'."
-            )
-            return
+            raise NotResolvingConflictError()
 
         if repo.is_dirty():
             click.echo(
@@ -756,6 +764,8 @@ def print_conflict_resolution_help(
     click.echo(
         "Please note, that files can be also edited manually, followed by running 'journey.py migrate' command."
     )
+    click.echo("")
+    click.echo("To abort resolving current conflict, run 'journey.py abort'")
 
 
 def print_destination_system_prerequisites():
@@ -858,6 +868,11 @@ def error_handler():
     except NetworkConnectionError:
         click.echo(
             "There are some problems with you network connection please check it."
+        )
+    except NotResolvingConflictError:
+        click.echo("Not resolving any conflict_info at this point.")
+        click.echo(
+            "To start the conflict resolution process, run 'journey.py resolve <conflict_id>'."
         )
 
 

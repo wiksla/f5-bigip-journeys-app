@@ -66,6 +66,10 @@ class LocalChangesDetectedError(ControllerError):
         self.uncommitted = uncommitted
 
 
+class NotResolvingConflictError(ControllerError):
+    pass
+
+
 class AS3InputDoesNotExistError(ControllerError):
     def __init__(self):
         pass

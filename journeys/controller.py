@@ -287,6 +287,11 @@ class MigrationController:
         self.repo.git.add(u=True)
         self.repo.index.commit(branch_name)
 
+    def abort(self):
+        self.repo.git.checkout(".")
+        self._remove_mitigations_branches()
+        self.shelf["current_conflict"] = None
+
     def resolve_recommended(self):
         while True:
             conflicts = self.process()
