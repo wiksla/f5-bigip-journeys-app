@@ -455,7 +455,11 @@ def prompt():
     "--username", default="root", help="Username to use when connecting to a host."
 )
 @click.option(
-    "--password", required=True, help="Password to use when connecting to a host."
+    "--password",
+    prompt=True,
+    hide_input=True,
+    required=True,
+    help="Password to use when connecting to a host.",
 )
 def resources(host, username, password):
     """ Check if the destination has enough resources to migrate the ucs. """
@@ -476,7 +480,11 @@ def resources(host, username, password):
     "--username", default="root", help="Username to use when connecting to a host."
 )
 @click.option(
-    "--password", required=True, help="Password to use when connecting to a host."
+    "--password",
+    prompt=True,
+    hide_input=True,
+    required=True,
+    help="Password to use when connecting to a host.",
 )
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
@@ -517,7 +525,7 @@ def download_ucs(host, username, password, ucs_passphrase, output):
 )
 @click.option("--destination-host", required=True)
 @click.option("--destination-username", default="root")
-@click.option("--destination-password", required=True)
+@click.option("--destination-password", prompt=True, hide_input=True, required=True)
 def backup(
     ucs_passphrase, destination_username, destination_host, destination_password
 ):
@@ -551,9 +559,11 @@ def backup(
 @click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
 @click.option("--destination-host", required=True)
 @click.option("--destination-username", default="root")
-@click.option("--destination-password", required=True)
+@click.option("--destination-password", prompt=True, hide_input=True, required=True)
 @click.option("--destination-admin-username", default="admin")
-@click.option("--destination-admin-password", required=True)
+@click.option(
+    "--destination-admin-password", prompt=True, hide_input=True, required=True
+)
 @click.option("--no-backup", is_flag=True, default=False, help="Skip auto backup.")
 def deploy(
     input_ucs,
@@ -641,14 +651,16 @@ def deploy(
 @cli.command()
 @click.option("--source-host", required=True)
 @click.option("--source-username", default="root")
-@click.option("--source-password", required=True)
+@click.option("--source-password", prompt=True, hide_input=True, required=True)
 @click.option("--source-admin-username", default="admin")
-@click.option("--source-admin-password", required=True)
+@click.option("--source-admin-password", prompt=True, hide_input=True, required=True)
 @click.option("--destination-host", required=True)
 @click.option("--destination-username", default="root")
-@click.option("--destination-password", required=True)
+@click.option("--destination-password", prompt=True, hide_input=True, required=True)
 @click.option("--destination-admin-username", default="admin")
-@click.option("--destination-admin-password", required=True)
+@click.option(
+    "--destination-admin-password", prompt=True, hide_input=True, required=True
+)
 @click.option(
     "--excluded-checks",
     default="",
