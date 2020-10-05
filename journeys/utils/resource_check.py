@@ -33,6 +33,22 @@ def ensure_if_minimum_resources_are_met_on_destination(
     return mprov_check_result
 
 
+def create_mprov_cfg_locally(config_path: str):
+    ucs_reader = UcsReader(extracted_ucs_dir=os.path.join(config_path))
+    local_mprov_cfg_path = "/tmp/mprov.cfg"
+
+    build_mprov_cfg(
+        mprov_path=local_mprov_cfg_path,
+        platform=ucs_reader.get_platform(),
+        provisioned_modules=ucs_reader.get_provisioned_modules(),
+        extramb=ucs_reader.get_config().bigdb.get(
+            section="Provision.extraMB", option="value"
+        ),
+    )
+
+    return local_mprov_cfg_path
+
+
 def build_mprov_cfg(mprov_path: str, platform: str, provisioned_modules: dict, extramb):
     with open(mprov_path, "w+") as cnf:
         cnf.write(f"provision.platform={platform}\n")

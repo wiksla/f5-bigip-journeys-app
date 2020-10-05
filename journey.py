@@ -39,6 +39,7 @@ from journeys.utils.device import get_image
 from journeys.utils.device import load_ucs
 from journeys.utils.device import put_file
 from journeys.utils.device import save_ucs
+from journeys.utils.resource_check import create_mprov_cfg_locally
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
@@ -415,7 +416,7 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
 
         click.echo("")
         click.echo(
-            "To automatically deploy your VELOS ready configutation to the Destination System, please run"
+            "To automatically deploy your VELOS ready configuration to the Destination System, please run"
         )
         click.echo(
             f"'journey.py deploy --input-ucs {output_ucs_name} --ucs-passphrase {ucs_passphrase} "
@@ -449,29 +450,40 @@ def prompt():
         click.echo(f"\\e[1;32mjourney({prompt}): \\e[0m")
 
 
+def prompt_password(ctx, param, value):
+    password = None
+    if ctx.params["host"] is not None:
+        password = click.prompt("password", hide_input=True)
+    return password
+
+
 @cli.command()
-@click.option("--host", required=True)
+@click.option("--host")
 @click.option(
     "--username", default="root", help="Username to use when connecting to a host."
 )
 @click.option(
     "--password",
-    prompt=True,
-    hide_input=True,
-    required=True,
+    callback=prompt_password,
     help="Password to use when connecting to a host.",
 )
 def resources(host, username, password):
     """ Check if the destination has enough resources to migrate the ucs. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
-
-        device = Device(host=host, ssh_username=username, ssh_password=password)
-        click.echo(
-            ensure_if_minimum_resources_are_met_on_destination(
-                config_path=controller.repo_path, device=device
+        if host and password:
+            device = Device(host=host, ssh_username=username, ssh_password=password)
+            click.echo(
+                ensure_if_minimum_resources_are_met_on_destination(
+                    config_path=controller.repo_path, device=device
+                )
             )
-        )
+        else:
+            click.echo(
+                f"mprov.cfg was created: {create_mprov_cfg_locally(config_path=controller.repo_path)}"
+            )
+            click.echo("Please, copy config file to destination system and run: ")
+            click.echo("mprov.pl --list --file=mprov.cfg")
 
 
 @cli.command()
