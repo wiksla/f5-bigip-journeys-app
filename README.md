@@ -234,21 +234,22 @@ Or use interactive container mode:
    
 ### Deployment and Validation
 If you're running the Journeys App in an environment where there is a connectivity to Source and Destination BIG-IP systems, you can use the Deployment and Validation feature to have the configuration deployed automatically on the Destination system and run a series of automated tests. 
-1. Prepare backup of the Destination System
-Before starting it's always recommended to create a backup of your existing Destination configuration. Loading VELOS-ready Source configuration on the Destination will overwrite it, so if anything goes wrong, you'll be able to use it and recreate the Destination configuration.
+
+1. Deploy output configuration to destination system
    ```
-   journey.py backup --destination-host <host_ip_or_fqdn> --destination-username <default_is_root> --destination-password <password>
+   journey.py deploy --input-ucs <ucs> --ucs-passphrase <ucs_passphrase> --destination-host <ip_or_fqdn> --destination-username <username> --destination-password <password> --destination-admin-username <admin_user> --destination-admin-password <admin_password>
    ```
-1. Load the output UCS to a Destination System
-   ```
-   load sys ucs <output_ucs_name> passphrase <passphrase> platform-migrate no-license keep-current-management-ip
-   ```
+`Backup`
+
+During the deployment process, the tool will automatically create a backup UCS on destination system. The file will be named:
+
+`auto_backup_from_%Y%m%d%H%M%S.ucs`
 1. Run diagnostics
 After loading the UCS to the Destination System, you can run a diagnose function that collects information relevant to your system condition and compares its state and configuration with the Source BIG-IP System.
    ```
    journey.py diagnose --source-host <ip_or_fqdn> --source-password <root_pass> --source-admin-password <admin_pass> --destination-host <ip_or_fqdn> --destination-password <root_password> --destination-admin-password <admin_password> 
    ```
-To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_checks_to_skip`. 
+To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_checks_to_skip>`.
 Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
 
 #### Diagnose Methods
