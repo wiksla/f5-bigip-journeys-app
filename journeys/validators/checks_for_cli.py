@@ -1,7 +1,10 @@
 import json
+import os
 from collections import OrderedDict
 from json import JSONDecodeError
 from pathlib import Path
+from time import gmtime
+from time import strftime
 from typing import Dict
 
 import click
@@ -16,6 +19,7 @@ from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
 from journeys.validators.exceptions import JourneysError
 from journeys.validators.ltm_checks import get_ltm_vs_status
+from journeys.workdir import WORKDIR
 
 PASSED = "PASSED"
 FAILED = "FAILED"
@@ -132,6 +136,34 @@ def exclude_checks(checks: Dict, excluded_checks: str):
             ",\neg. '[\"TMM status\"]'"
         )
         raise JourneysError(t_err)
+
+
+def run_auto_checks(destination: Device):
+    prefix = "autocheck_diagnose_output"
+    timestamp = strftime("%Y%m%d%H%M%S", gmtime())
+    output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
+    output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
+    check_success = True
+    with open(output_log, "w") as logfile:
+        kwargs = {"destination": destination, "output": logfile}
+        diagnose_result = run_diagnose(
+            checks=auto_checks, kwargs=kwargs, output_json=output_json,
+        )
+    fails = []
+    for check, result in diagnose_result.items():
+        if result["result"] == FAILED:
+            check_success = False
+            fails.append(check)
+    click.echo("Diagnostics finished.")
+    if check_success:
+        click.echo("No known issues have been found.")
+        click.echo("Please check output logs to do more detailed results evaluation.")
+    else:
+        click.echo(
+            f"Diagnostics failures found in {', '.join(fails)}. Please check output "
+            f"logs for details."
+        )
+    return check_success
 
 
 default_checks = OrderedDict()

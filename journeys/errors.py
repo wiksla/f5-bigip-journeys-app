@@ -75,15 +75,21 @@ class AS3InputDoesNotExistError(ControllerError):
         pass
 
 
-class SSHConnection(Exception):
+class UcsActionError(ControllerError):
+    def __init__(self, action_name="Ucs operation"):
+        self.action_name = action_name
+        pass
+
+
+class SSHConnectionError(Exception):
     pass
 
 
-class DeviceAuthenticationError(SSHConnection):
+class DeviceAuthenticationError(SSHConnectionError):
     def __init__(self, host: str, ssh_username: str):
         self.host = host
         self.ssh_username = ssh_username
 
 
-class NetworkConnectionError(SSHConnection):
+class NetworkConnectionError(SSHConnectionError):
     pass

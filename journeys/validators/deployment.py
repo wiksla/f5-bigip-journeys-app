@@ -2,6 +2,9 @@ import logging
 import re
 import time
 
+import click
+
+from journeys.errors import UcsActionError
 from journeys.utils.device import Device
 from journeys.utils.device import save_ucs
 from journeys.validators.exceptions import JourneysError
@@ -13,8 +16,32 @@ def run_backup(bigip: Device, ucs_passphrase: str, is_user_triggered=False) -> s
     prefix = "user" if is_user_triggered else "auto"
     timestamp = time.strftime("%Y%m%d%H%M%S", time.gmtime())
     ucs_name = f"{prefix}_backup_from_{timestamp}.ucs"
-    save_ucs(bigip, ucs_name, ucs_passphrase)
+    try:
+        save_ucs(bigip, ucs_name, ucs_passphrase)
+    except UcsActionError:
+        raise UcsActionError(action_name="Saving backup Ucs")
+
     return ucs_name
+
+
+def backup_over_cli(destination: Device, ucs_passphrase=""):
+    click.echo("Creating auto backup.")
+    backed_up = run_backup(destination, ucs_passphrase, is_user_triggered=True)
+    restore_command = format_restore_backup_command(
+        ucs=backed_up, ucs_passphrase=ucs_passphrase
+    )
+    click.echo(
+        "Backup created.\n In case of emergency you can restore it on the "
+        f"Destination System platform by running: \n {restore_command}'"
+    )
+
+
+def format_restore_backup_command(ucs: str, ucs_passphrase: str):
+    cmd = f"tmsh load sys ucs {ucs}"
+    if ucs_passphrase:
+        cmd += f" passphrase {ucs_passphrase}"
+
+    return cmd
 
 
 def get_mcp_status(bigip: Device) -> dict:

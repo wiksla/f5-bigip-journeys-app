@@ -1,4 +1,5 @@
 import inspect
+import logging
 import os
 import socket
 from typing import Union
@@ -6,6 +7,7 @@ from typing import Union
 import paramiko
 from f5.bigip import ManagementRoot
 from fabric import Connection
+from icontrol.exceptions import iControlUnexpectedHTTPError
 from invoke import Failure
 from invoke import ThreadException
 from invoke import UnexpectedExit
@@ -13,11 +15,13 @@ from paramiko.sftp_attr import SFTPAttributes
 
 from journeys.errors import DeviceAuthenticationError
 from journeys.errors import NetworkConnectionError
+from journeys.errors import UcsActionError
 from journeys.utils.image import Version
 from journeys.utils.image import parse_version_file
-from journeys.validators.exceptions import JourneysError
 
 REMOTE_UCS_DIRECTORY = "/var/local/ucs/"
+
+log = logging.getLogger(__name__)
 
 
 def format_ucs_load_command(ucs: str, ucs_passphrase: str):
@@ -29,14 +33,6 @@ def format_ucs_load_command(ucs: str, ucs_passphrase: str):
 
 def format_ucs_save_command(ucs: str, ucs_passphrase: str):
     cmd = f"tmsh save sys ucs {ucs}"
-    if ucs_passphrase:
-        cmd += f" passphrase {ucs_passphrase}"
-
-    return cmd
-
-
-def format_restore_backup_command(ucs: str, ucs_passphrase: str):
-    cmd = f"tmsh load sys ucs {ucs}"
     if ucs_passphrase:
         cmd += f" passphrase {ucs_passphrase}"
 
@@ -110,7 +106,13 @@ class Connector(Connection):
 
 class APIConnector:
     def __init__(self, host, api_username, api_password):
-        self.mgmt = self.mgmt = ManagementRoot(host, api_username, api_password)
+        try:
+            self.mgmt = ManagementRoot(host, api_username, api_password)
+        except iControlUnexpectedHTTPError as e:
+            log.error(e)
+            if e.response.status_code == 401:
+                raise DeviceAuthenticationError(host, api_username)
+            e.response.raise_for_status()
 
 
 class Device:
@@ -159,7 +161,9 @@ def save_ucs(device: Device, ucs_name: str, ucs_passphrase: str) -> str:
     try:
         device.ssh.run(cmd=cmd)
     except (UnexpectedExit, Failure, ThreadException) as err:
-        raise JourneysError(err)
+        log.error(err)
+        raise UcsActionError(action_name="Saving Ucs")
+
     if not ucs_name.endswith(".ucs"):
         ucs_name += ".ucs"
     return os.path.join(REMOTE_UCS_DIRECTORY, ucs_name)
@@ -171,7 +175,8 @@ def load_ucs(device: Device, ucs: str, ucs_passphrase: str) -> None:
     try:
         device.ssh.run(cmd=cmd)
     except (UnexpectedExit, Failure, ThreadException) as err:
-        raise JourneysError(err)
+        log.error(err)
+        raise UcsActionError(action_name="Loading Ucs")
 
 
 def get_image(device: Device) -> Version:

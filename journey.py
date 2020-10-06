@@ -10,6 +10,7 @@ from time import strftime
 
 import click
 from git.exc import GitError
+from requests import HTTPError
 
 from journeys import __version__ as journey_version
 from journeys.controller import MigrationController
@@ -27,12 +28,12 @@ from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import NotResolvingConflictError
 from journeys.errors import OutputAlreadyExistsError
+from journeys.errors import UcsActionError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.plugins import load_plugins
 from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
 from journeys.utils.device import delete_file
-from journeys.utils.device import format_restore_backup_command
 from journeys.utils.device import format_ucs_load_command
 from journeys.utils.device import get_file
 from journeys.utils.device import get_image
@@ -43,12 +44,11 @@ from journeys.utils.resource_check import create_mprov_cfg_locally
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
-from journeys.validators.checks_for_cli import FAILED
-from journeys.validators.checks_for_cli import auto_checks
 from journeys.validators.checks_for_cli import default_checks
 from journeys.validators.checks_for_cli import exclude_checks
+from journeys.validators.checks_for_cli import run_auto_checks
 from journeys.validators.checks_for_cli import run_diagnose
-from journeys.validators.deployment import run_backup
+from journeys.validators.deployment import backup_over_cli
 from journeys.validators.exceptions import JourneysError
 from journeys.workdir import WORKDIR
 
@@ -508,27 +508,31 @@ def download_ucs(host, username, password, ucs_passphrase, output):
         ucs_passphrase = "".join(
             random.choice(string.ascii_letters + string.digits) for i in range(10)
         )
+    with error_handler():
+        device = Device(host=host, ssh_username=username, ssh_password=password)
+        version = get_image(device=device)
 
-    device = Device(host=host, ssh_username=username, ssh_password=password)
-    version = get_image(device=device)
+        click.echo(f"BIG-IP Version: {version}")
 
-    click.echo(f"BIG-IP Version: {version}")
+        if version.is_velos_supported():
+            click.echo("BIG-IP version is supported by VELOS.")
+            ucs_remote_dir = save_ucs(
+                device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
+            )
 
-    if version.is_velos_supported():
-        click.echo("BIG-IP version is supported by VELOS.")
-        ucs_remote_dir = save_ucs(
-            device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
-        )
+            local_ucs_path = get_file(
+                device=device,
+                remote=ucs_remote_dir,
+                local=os.path.join(WORKDIR, output),
+            )
 
-        local_ucs_path = get_file(
-            device=device, remote=ucs_remote_dir, local=os.path.join(WORKDIR, output),
-        )
-
-        delete_file(device=device, remote=ucs_remote_dir)
-        click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
-        click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
-    else:
-        click.echo("Migration process does not support the provided BIG-IP Version.")
+            delete_file(device=device, remote=ucs_remote_dir)
+            click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
+            click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
+        else:
+            click.echo(
+                "Migration process does not support the provided BIG-IP Version."
+            )
 
 
 @cli.command()
@@ -542,25 +546,14 @@ def backup(
     ucs_passphrase, destination_username, destination_host, destination_password
 ):
     """ Do a system backup. As Always. """
-    destination = Device(
-        host=destination_host,
-        ssh_username=destination_username,
-        ssh_password=destination_password,
-    )
-    try:
-        backed_up = run_backup(destination, ucs_passphrase, is_user_triggered=True)
-    except JourneysError as err:
-        click.echo("\nBackup NOT created!!!\n")
-        click.echo(err)  # TODO: replace with logger
-        return
-    restore_command = format_restore_backup_command(
-        ucs=backed_up, ucs_passphrase=ucs_passphrase
-    )
-    click.echo(
-        "Backup created.\n In case of emergency you can restore it on the Destination System "
-        "platform by running: \n "
-        f"'{restore_command}'"
-    )
+    with error_handler():
+        destination = Device(
+            host=destination_host,
+            ssh_username=destination_username,
+            ssh_password=destination_password,
+        )
+
+        backup_over_cli(destination, ucs_passphrase)
 
 
 @cli.command()
@@ -594,70 +587,39 @@ def deploy(
         click.echo(f"Input file {input_ucs} does not exists.")
         return
 
-    destination = Device(
-        host=destination_host,
-        ssh_username=destination_username,
-        ssh_password=destination_password,
-        api_username=destination_admin_username,
-        api_password=destination_admin_password,
-    )
+    load_success = False
+    with error_handler():
+        destination = Device(
+            host=destination_host,
+            ssh_username=destination_username,
+            ssh_password=destination_password,
+            api_username=destination_admin_username,
+            api_password=destination_admin_password,
+        )
+        if no_backup:
+            click.echo("Auto backup skipped by user.")
+        else:
+            backup_over_cli(destination)
 
-    if no_backup:
-        click.echo("Auto backup skipped by user.")
-    else:
-        try:
-            backed_up = run_backup(
-                destination, ucs_passphrase="", is_user_triggered=False
-            )
-            restore_command = format_restore_backup_command(
-                ucs=backed_up, ucs_passphrase=""
-            )
-            click.echo(
-                "Backup created.\n In case of emergency you can restore it on "
-                "the Destination Platform platform by running: \n"
-                f"{restore_command}\n"
-            )
-        except JourneysError as err:
-            click.echo("\nBackup NOT created!!!\n")
-            log.debug(err)
-
-    try:
+        click.echo("Uploading UCS to the Destination Platform...")
         put_file(destination, os.path.join(WORKDIR, input_ucs), REMOTE_UCS_DIRECTORY)
+        click.echo("Done.")
+        click.echo("Deploying UCS on the Destination Platform...")
         load_ucs(destination, input_ucs, ucs_passphrase)
-    except JourneysError as c_err:
-        click.echo(f"Failed to deploy the ucs file! Encountered problem:\n" f"{c_err}")
-        return
+        click.echo("Done.")
+        load_success = True
 
     check_success = True
-    if autocheck:
-        prefix = "autocheck_diagnose_output"
-        timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-        output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
-        output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
-        with open(output_log, "w") as logfile:
-            kwargs = {"destination": destination, "output": logfile}
-            diagnose_result = run_diagnose(
-                checks=auto_checks, kwargs=kwargs, output_json=output_json,
-            )
-        fails = []
-        for check, result in diagnose_result.items():
-            if result["result"] == FAILED:
-                check_success = False
-                fails.append(check)
-        click.echo("Diagnostics finished.")
-        if check_success:
-            click.echo("No known issues have been found.")
-            click.echo(
-                "Please check output logs to do more detailed results evaluation."
-            )
-        else:
-            click.echo(
-                f"Diagnostics failures found in {', '.join(fails)}. Please check output logs for details."
-            )
+    if load_success and autocheck:
+        click.echo("Running auto checks:")
+        check_success = run_auto_checks(destination)
     click.echo("")
-    click.echo(
-        f"Deployment completed {'successfully' if check_success else 'with errors'}."
-    )
+    if load_success:
+        click.echo(
+            f"Deployment completed {'successfully' if check_success else 'with errors'}."
+        )
+    else:
+        click.echo("Deployment failed!")
 
 
 @cli.command()
@@ -886,13 +848,24 @@ def error_handler():
         click.echo("The specified AS3 file does not exist.")
 
     except DeviceAuthenticationError as e:
-        click.echo("Cannot authenticate to BIGIP check given credentials. ")
+        click.echo(
+            "Cannot authenticate to the Destination Platform, check given credentials. "
+        )
         click.echo(f"HOST: {e.host}")
         click.echo(f"USER: {e.ssh_username}")
     except NetworkConnectionError:
         click.echo(
             "There are some problems with you network connection please check it."
         )
+    except HTTPError as e:
+        click.echo(
+            f"Unexpected HTTP Error with status: {e.response.status_code} occured.\n"
+            f"Message: {e.response.text}"
+        )
+
+    except UcsActionError as e:
+        click.echo(f"{e.action_name} failed!")
+
     except NotResolvingConflictError:
         click.echo("Not resolving any conflict_info at this point.")
         click.echo(
