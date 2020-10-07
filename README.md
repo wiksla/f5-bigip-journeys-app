@@ -1,4 +1,4 @@
-# Migration utility for Classic BIG-IP system to VELOS platform. 
+# BIG-IP Journeys app - BIG-IP migration utility to new F5 platforms and architectures
 
 ----
 ## Contents:
@@ -10,9 +10,11 @@
 
 ----
 ## Description
-The tool allows migrating a configuration from BIG-IP 11.5.0 to 14.1.x software versions running on the source system. 
-Journeys App supports flagging of feature parity gaps with exemplary solutions implemented for:
+F5 BIG-IP Journeys app assists with migrating a configuration from BIG-IP versions 11.5.0 or higher to BIG-IP 14.1.x running on the VELOS platform. It allows:
++ flagging source configuration feature parity gaps and fixing them with custom or F5 recommended solutions
++ automated deployment of the updated configuration to VELOS VM tenant and post deployment validation validation
 
+List of supported features:
 + Compatibility level
 + Double Tagging
 + Hardware Class of Service
