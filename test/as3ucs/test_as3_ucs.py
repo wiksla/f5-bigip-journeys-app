@@ -23,3 +23,11 @@ def test_firewall_rule_list():
 
     for source_file, pattern_file in zip(source_files, pattern_files):
         process_as3_test_helper(source_file, "rule-list-2.json", pattern_file)
+
+
+def test_nat():
+    source_files = ["bigip-2.conf", "bigip-1.conf", "bigip-0.conf"]
+    pattern_files = ["nat-2.json", "nat-1.json", "nat-0.json"]
+
+    for source_file, pattern_file in zip(source_files, pattern_files):
+        process_as3_test_helper(source_file, "nat-2.json", pattern_file)

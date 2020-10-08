@@ -371,6 +371,12 @@ DEFAULT_DEPENDENCIES = [
         parent_types=[("net", "vlan"), ("net", "vlan-group")],
         dependency=FieldKeyToNameDependency(),
     ),
+    SubCollectionDependency(
+        child_types=[("security", "nat", "source-translation")],
+        field_name="egress-interfaces",
+        parent_types=[("net", "vlan")],
+        dependency=FieldKeyToNameDependency(),
+    ),
     NameToNameDependency(
         child_types=[("net", "fdb", "vlan")], parent_types=[("net", "vlan")]
     ),

@@ -39,6 +39,11 @@ class As3ucs:
 
         conflict_list = [
             (
+                config.fields.get_all(("security", "nat", "source-translation")),
+                ["egress-interfaces"],
+                As3ucs._handle_net_source_translation,
+            ),
+            (
                 config.fields.get_all(("ltm", "virtual")),
                 ["vlans"],
                 As3ucs._handle_ltm_vlans,
@@ -96,9 +101,19 @@ class As3ucs:
 
     @staticmethod
     def _handle_ltm_vlans(as3_node, source_field):
-        as3_key = "allowVlans"
+        As3ucs._process_vlan_array(as3_node, "allowVlans", "rejectVlans", source_field)
+
+    @staticmethod
+    def _handle_net_source_translation(as3_node, source_field):
+        As3ucs._process_vlan_array(
+            as3_node, "allowEgressInterfaces", "disallowEgressInterfaces", source_field
+        )
+
+    @staticmethod
+    def _process_vlan_array(as3_node, key_option1, key_option2, source_field):
+        as3_key = key_option1
         if as3_key not in as3_node:
-            as3_key = "rejectVlans"
+            as3_key = key_option2
             if as3_key not in as3_node:
                 return  # No vlans originally, nothing to do
         as3_node[as3_key] = As3ucs._render_vlan_array(source_field)

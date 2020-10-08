@@ -1,0 +1,22 @@
+{
+    "class": "ADC",
+    "Common": {
+        "class": "Tenant",
+        "Shared": {
+            "class": "Application",
+            "template": "shared",
+            "translationtest": {
+                "class": "NAT_Source_Translation",
+                "type": "static-nat",
+                "allowEgressInterfaces": [
+                    {
+                        "bigip": "/Common/vlan1"
+                    }
+                ],
+                "addresses": [
+                    "30.40.50.60"
+                ]
+            }
+        }
+    }
+}
