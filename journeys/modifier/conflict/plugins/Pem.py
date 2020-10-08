@@ -54,7 +54,7 @@ class Pem(Plugin):
             config=config,
             type_matcher=("sys", "provision", "pem"),
             field_name="level",
-            field_value="nominal",
+            field_value=["nominal", "minimum", "dedicated", "custom"],
         )
 
         self.irules = self.check_irules_status(config)
@@ -72,8 +72,8 @@ class Pem(Plugin):
                 int(obj_irule.parent.index(obj_irule)) - 1
             )  # First object above iRule
             for x in range(index, 1, -1):
-                obj_comment = mutable_config.fields.get(x)
                 try:
+                    obj_comment = mutable_config.fields.get(x)
                     comment = obj_comment.data["comment"]
 
                     if self.MSG_TYPE_2.format("") in comment:
@@ -115,8 +115,8 @@ class Pem(Plugin):
             obj.delete()
             if obj_id in self.dependency_map.reverse:
                 for related_id in self.dependency_map.reverse[obj_id]:
-                    self.dependency_map.resolutions[(related_id, obj_id)](
-                        mutable_config
+                    self.dependency_map.apply_resolution(
+                        mutable_config, related_id, obj_id
                     )
 
     def modify_objects(self, mutable_config: Config):
