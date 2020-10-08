@@ -108,7 +108,6 @@ CONFLICT_NAME = "VirtualWire"
 
 def test_virtual_wire_resolution_delete(test_solution):
     solution_name = "F5_Recommended_VirtualWire_delete_objects"
-
     controller = test_solution(
         conflict_name=CONFLICT_NAME, solution_name=solution_name, conf_file=config,
     )
@@ -126,3 +125,10 @@ def test_virtual_wire_resolution_delete(test_solution):
 
     node = controller.config.fields.get("net stp /Common/cist").fields["trunks"]
     assert node.value == ""
+
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
+        controller.config.fields.get("net vlan /Common/virtWire_vlan_4096_1_353")
+
+    node = controller.config.fields.get("net route-domain /Common/0").fields["vlans"]
+    assert "/Common/http-tunnel" in node.fields
+    assert "/Common/virtWire_vlan_4096_2_354" not in node.fields

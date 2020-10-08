@@ -555,7 +555,10 @@ class DependencyMap:
 
     def apply_resolution(self, config, parent_id, child_id):
         for func in self.resolutions[(parent_id, child_id)]:
-            func(config)
+            try:
+                func(config)
+            except KeyError:
+                pass
 
     def get_dependencies(self, obj_id: str) -> Set[str]:
         """ Build the set of id of objects that given obj uses/depends on"""

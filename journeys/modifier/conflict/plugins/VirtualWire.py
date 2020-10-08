@@ -31,6 +31,16 @@ class VirtualWire(Plugin):
             field_value="virtual-wire",
         )
 
+        self.virtwire_tagged_vlans = find_objects_with_field_value(
+            config=config,
+            type_matcher=("net", "vlan"),
+            field_name="tag",
+            field_value="4096",
+        )
+
+        # skip duplicates
+        self.virtwire_tagged_vlans -= self.vlans
+
         self.interfaces = find_objects_with_field_value(
             config=config,
             type_matcher=("net", "interface"),
@@ -39,7 +49,12 @@ class VirtualWire(Plugin):
         )
 
         super().__init__(
-            config, dependency_map, self.vlan_groups | self.vlans | self.interfaces
+            config,
+            dependency_map,
+            self.vlan_groups
+            | self.vlans
+            | self.interfaces
+            | self.virtwire_tagged_vlans,
         )
 
     def summary(self) -> List:
@@ -51,6 +66,8 @@ class VirtualWire(Plugin):
             product(self.interfaces, ["port-fwd-mode"]),
         ):
             summary.append(self.MSG_TYPE.format(obj_id, field_name))
+        for obj_id in self.virtwire_tagged_vlans:
+            summary.append(obj_id + ": Object uses a virtual-wire specific tag.")
 
         return summary
 
@@ -64,6 +81,10 @@ class VirtualWire(Plugin):
             product(self.interfaces, ["port-fwd-mode"]),
         ):
             comments[obj_id].append(self.MSG_TYPE.format(self.ID, field_name))
+        for obj_id in self.virtwire_tagged_vlans:
+            comments[obj_id].append(
+                self.ID + ": Object uses a virtual-wire specific tag."
+            )
 
         generate_dependency_comments(
             conflict_id=self.ID,
