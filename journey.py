@@ -458,14 +458,14 @@ def prompt_password(ctx, param, value):
 
 
 @cli.command()
-@click.option("--host")
+@click.option("--host", help="Destination host address.")
 @click.option(
-    "--username", default="root", help="Username to use when connecting to a host."
+    "--username", default="root", help="SSH username for the given host. Default: root"
 )
 @click.option(
     "--password",
     callback=prompt_password,
-    help="Password to use when connecting to a host.",
+    help="SSH password for the given host. Will prompt if not provided.",
 )
 def resources(host, username, password):
     """ Check if the destination has enough resources to migrate the ucs. """
@@ -489,14 +489,13 @@ def resources(host, username, password):
 @cli.command()
 @click.option("--host", required=True, help="Host to retrieve a ucs from.")
 @click.option(
-    "--username", default="root", help="Username to use when connecting to a host."
+    "--username", default="root", help="SSH username for the given host. Default: root"
 )
 @click.option(
     "--password",
     prompt=True,
     hide_input=True,
-    required=True,
-    help="Password to use when connecting to a host.",
+    help="SSH password for the given host. Will prompt if not provided.",
 )
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
@@ -539,9 +538,18 @@ def download_ucs(host, username, password, ucs_passphrase, output):
 @click.option(
     "--ucs-passphrase", default=None, help="Passphrase to decrypt the ucs archive."
 )
-@click.option("--destination-host", required=True)
-@click.option("--destination-username", default="root")
-@click.option("--destination-password", prompt=True, hide_input=True, required=True)
+@click.option("--destination-host", required=True, help="Destination host address.")
+@click.option(
+    "--destination-username",
+    default="root",
+    help="SSH username for the destination host. Default: root",
+)
+@click.option(
+    "--destination-password",
+    prompt=True,
+    hide_input=True,
+    help="SSH password for the destination host. Will prompt if not provided.",
+)
 def backup(
     ucs_passphrase, destination_username, destination_host, destination_password
 ):
@@ -562,12 +570,28 @@ def backup(
 )
 @click.option("--autocheck", is_flag=True, help="Run diagnostics after deployment")
 @click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
-@click.option("--destination-host", required=True)
-@click.option("--destination-username", default="root")
-@click.option("--destination-password", prompt=True, hide_input=True, required=True)
-@click.option("--destination-admin-username", default="admin")
+@click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
-    "--destination-admin-password", prompt=True, hide_input=True, required=True
+    "--destination-username",
+    default="root",
+    help="SSH username for the destination host. Default: root",
+)
+@click.option(
+    "--destination-password",
+    prompt=True,
+    hide_input=True,
+    help="SSH password for the destination host. Will prompt if not provided.",
+)
+@click.option(
+    "--destination-admin-username",
+    default="admin",
+    help="Admin username for the destination host. Default: admin",
+)
+@click.option(
+    "--destination-admin-password",
+    prompt=True,
+    hide_input=True,
+    help="Admin password for the destination host. Will prompt if not provided.",
 )
 @click.option("--no-backup", is_flag=True, default=False, help="Skip auto backup.")
 def deploy(
@@ -623,22 +647,56 @@ def deploy(
 
 
 @cli.command()
-@click.option("--source-host", required=True)
-@click.option("--source-username", default="root")
-@click.option("--source-password", prompt=True, hide_input=True, required=True)
-@click.option("--source-admin-username", default="admin")
-@click.option("--source-admin-password", prompt=True, hide_input=True, required=True)
-@click.option("--destination-host", required=True)
-@click.option("--destination-username", default="root")
-@click.option("--destination-password", prompt=True, hide_input=True, required=True)
-@click.option("--destination-admin-username", default="admin")
+@click.option("--source-host", required=True, help="Source host address.")
 @click.option(
-    "--destination-admin-password", prompt=True, hide_input=True, required=True
+    "--source-username",
+    default="root",
+    help="SSH username for the source host. Default: root",
+)
+@click.option(
+    "--source-password",
+    prompt=True,
+    hide_input=True,
+    help="SSH password for the source host. Will prompt if not provided.",
+)
+@click.option(
+    "--source-admin-username",
+    default="admin",
+    help="Admin username for the source host. Default: admin",
+)
+@click.option(
+    "--source-admin-password",
+    prompt=True,
+    hide_input=True,
+    help="Admin password for the source host. Will prompt if not provided.",
+)
+@click.option("--destination-host", required=True, help="Destination host address.")
+@click.option(
+    "--destination-username",
+    default="root",
+    help="SSH username for the destination host. Default: root",
+)
+@click.option(
+    "--destination-password",
+    prompt=True,
+    hide_input=True,
+    help="SSH password for the destination host. Will prompt if not provided.",
+)
+@click.option(
+    "--destination-admin-username",
+    default="admin",
+    help="Admin username for the destination host. Default: admin",
+)
+@click.option(
+    "--destination-admin-password",
+    prompt=True,
+    hide_input=True,
+    help="Admin password for the destination host. Will prompt if not provided.",
 )
 @click.option(
     "--excluded-checks",
     default="",
-    help="Add checks to exclude in a list" 'e.g. \'["TMM status", "Core dumps"]\'',
+    help='Add checks to exclude in a list, e.g. \'["TMM status", "Core dumps"]\'',
 )
 def diagnose(
     source_host,

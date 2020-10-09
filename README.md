@@ -188,7 +188,7 @@ Or use interactive container mode:
    1. automatically, by using Journeys App:
        1. download the ucs file from a live source BIG-IP system:
             ```
-            journey.py download-ucs --host <bigip host> --username <bigip username> --password <bigip password> --ucs-passphrase <passphrase> --output <ucs file>
+            journey.py download-ucs --host <bigip host> --username <bigip username> --ucs-passphrase <passphrase> --output <ucs file>
             ```
    >IMPORTANT for security reasons:
    >The account used should be a READ-ONLY and should have permission only to generate and fetch the ucs.
@@ -239,7 +239,7 @@ If you're running the Journeys App in an environment where there is a connectivi
 
 1. Deploy output configuration to destination system
    ```
-   journey.py deploy --input-ucs <ucs> --ucs-passphrase <ucs_passphrase> --destination-host <ip_or_fqdn> --destination-username <username> --destination-password <password> --destination-admin-username <admin_user> --destination-admin-password <admin_password>
+   journey.py deploy --input-ucs <ucs> --ucs-passphrase <ucs_passphrase> --destination-host <ip_or_fqdn> --destination-username <username> --destination-admin-username <admin_user>
    ```
 `Backup`
 
@@ -249,7 +249,7 @@ During the deployment process, the tool will automatically create a backup UCS o
 1. Run diagnostics
 After loading the UCS to the Destination System, you can run a diagnose function that collects information relevant to your system condition and compares its state and configuration with the Source BIG-IP System.
    ```
-   journey.py diagnose --source-host <ip_or_fqdn> --source-password <root_pass> --source-admin-password <admin_pass> --destination-host <ip_or_fqdn> --destination-password <root_password> --destination-admin-password <admin_password> 
+   journey.py diagnose --source-host <ip_or_fqdn> --destination-host <ip_or_fqdn>
    ```
 To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_checks_to_skip>`.
 Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
