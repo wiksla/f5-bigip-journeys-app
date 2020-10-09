@@ -2,16 +2,39 @@
 
 stages:
   - test
+  - prepare
   - build
-  - release
-
-## Disable until initial format/lint get applied
+  - post-build
 
 variables:
-
+  # regular go-semrel-gitlab image but with added f5 certs
+  SEMREL_CONTAINER: artifactory.f5net.com/velocity-platform-docker-dev/platform-semrel:1.1.0
   DOCKER_REGISTRY: 'artifactory.pdsea.f5net.com'
   JOURNEYS_DOCKER_BASE: f5-cxt-docker/journeys
-  JOURNEYS_TAG: $CI_COMMIT_REF_NAME
+  JOURNEYS_TAG: $CI_COMMIT_REF_NAME  
+  GSG_INITIAL_DEVELOPMENT: "true"
+  GSG_RELEASE_BRANCHES: "master"
+  GSG_PATCH_COMMIT_TYPES: fix,refactor,perf,docs,style,test,bug,bugfix
+  GSG_MINOR_COMMIT_TYPES: feat,feature,story
+  GSG_PRE_TMPL: '{{env "CI_COMMIT_REF_SLUG"}},{{env "CI_COMMIT_SHORT_SHA"}}'
+
+.only_source_changes:
+  only:
+    changes:
+      - journeys/**/*
+      - Dockerfile
+      - entrypoint.sh
+      - journey.py
+      - requirements.txt
+
+.base_retry:
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - missing_dependency_failure
+      - stuck_or_timeout_failure
+      - api_failure
 
 
 format-and-lint:
@@ -19,6 +42,8 @@ format-and-lint:
   image: python:3.8
   tags:
     - docker-executor
+  except:
+    - tags
   script:
     - pip install -r requirements.txt -r test-requirements.txt
     - make format
@@ -30,33 +55,98 @@ test:
   image: python:3.8
   tags:
     - docker-executor
+  except:
+    - tags
   script:
     - pip install -r requirements.txt -r test-requirements.txt
     - make test
 
+version:
+  stage: prepare
+  extends:
+    - .base_retry
+    - .only_source_changes
+  image: $SEMREL_CONTAINER
+  tags:
+    - docker-executor
+  except:
+    - tags
+    - web
+  only:
+    - master
+    - develop
+  script:
+    - release next-version --allow-current
+    - release next-version > .next-version || rm .next-version 
+  artifacts:
+    paths:
+    - .next-version
+
+ensure-version-bump:
+  stage: prepare
+  extends:
+    - .base_retry
+    - .only_source_changes
+  image: artifactory.f5net.com/velocity-platform-docker-dev/platform-semrel:1.1.0
+  tags:
+    - docker-executor
+  only:
+    refs:
+      - merge_requests
+    variables:
+      - $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /master/
+  script:
+    - release --ci-commit-ref-name master next-version
+
 build:
   stage: build
   image: docker
+  extends:
+    - .base_retry
+    - .only_source_changes
   tags:
     - docker-executor
   script:
-    - 'echo "__build_ref__ = \""${CI_BUILD_REF}"\"" >> journeys/__init__.py'
+    - |
+      if [[ -f .next-version ]]; then
+        export SEMVER=$(cat .next-version)
+        sed -i "s/__version__ = \".*\"/__version__ = \"v${SEMVER}\"/" journeys/__init__.py
+      fi
+    - sed -i "s/__build_ref__ = \".*\"/__build_ref__ = \"${CI_COMMIT_SHA}\"/" journeys/__init__.py
     - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
     - docker build -t ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} .
-    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
     - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
     - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
-    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
     - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
-
+    - |
+      if [[ -f .next-version ]]; then
+        docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${SEMVER}
+        docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${SEMVER}
+      fi
+    - |
+      if [[ "$CI_COMMIT_REF_NAME" == "master" ]]; then
+        docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
+        docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:latest
+      fi
+    - |
+      if [[ "$CI_COMMIT_REF_NAME" == "develop" ]]; then
+        docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:dev-latest
+        docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:dev-latest
+      fi
   only:
     - master
-  retry:
-    max: 2
+    - develop
+  except:
+    - tags
+    - web
+  artifacts:
+    paths:
+      - journeys/__init__.py
 
 pages:
   image: node
   stage: build
+  extends: .base_retry
   tags:
     - docker-executor
   script:
@@ -68,23 +158,38 @@ pages:
     paths:
     - public
   only:
-  - master
+    - master
+  except:
+    - tags
+    - web
 
-release:
-  stage: release
-  image: docker
+version-bump:
+  stage: post-build
+  extends:
+    - .base_retry
+    - .only_source_changes
+  image: $SEMREL_CONTAINER
   tags:
     - docker-executor
-  script:
-    - export RELEASE_TAG=`echo $CI_BUILD_REF_NAME | sed 's/v//g'`
-    - export RELEASE_CONTAINER=latest
-    - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
-    - docker pull ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_CONTAINER}
-    - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_CONTAINER} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
-    - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${RELEASE_TAG}
+  only:
+    - master
+  except:
+    - tags
+    - web
   dependencies:
     - build
-  only:
-    - /^v\d{1,}\.\d{1,}.*/i # v1.1 or v1.2beta etc
-  retry:
-    max: 2
+  script:
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+    - git remote set-url origin https://gitlab-ci-token:${GL_TOKEN}@gitswarm.f5net.com/cxt/journeys/f5-bigip-journey-velos.git
+    - |
+      if release next-version; then
+        # make a version commit on master
+        release changelog
+        release commit-and-tag __init__.py CHANGELOG.md
+        # update develop with the commit above
+        git stash
+        git checkout develop
+        git pull origin master
+        git push
+      fi
