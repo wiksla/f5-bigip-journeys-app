@@ -8,6 +8,10 @@ RUN apk --update --no-cache --virtual .build add gcc make musl-dev libffi-dev op
   pip install -U pip ; pip install -r /code/requirements.txt && \
   apk del .build
 COPY ./journeys /code/journeys/
-COPY ./journey.py ./entrypoint.sh /code/
+COPY ./journey.py ./entrypoint.sh ./manage.py /code/
 RUN ln -s /code/journey.py /usr/local/bin/
+RUN ln -s /code/manage.py /usr/local/bin/
+ENV DJANGO_SETTINGS_MODULE journeys.backend.settings
+ENV PYTHON_PATH /code
+EXPOSE 8000/tcp
 ENTRYPOINT ["/code/entrypoint.sh"]

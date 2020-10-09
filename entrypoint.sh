@@ -8,4 +8,8 @@ if [ "$1" = "--shell" ]; then
   exit
 fi
 
+if [ "$1" = "runserver" ]; then
+  exec manage.py "$@"
+fi
+
 journey.py $*

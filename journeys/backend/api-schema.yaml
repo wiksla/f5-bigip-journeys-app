@@ -3,11 +3,11 @@ info:
   version: 1.0.0
   title: Journey app backend
 servers:
-  - url: 'localhost'
+  - url: 'http://localhost:8000'
 paths:
   '/supported_features':
     get:
-      summary: Information about existing sessions
+      summary: Information about supported features
       operationId: get_supported_features
       tags:
         - '1. Before You Start'
@@ -21,8 +21,6 @@ paths:
                 required:
                   - items
                 properties:
-                  total_count:
-                    type: integer
                   items:
                     type: array
                     items:
@@ -65,7 +63,7 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/SessionDetails'
-  '/session/{session_id}':
+  '/sessions/{session_id}':
     summary: Information about given session
     get:
       summary: Get information about existing session
@@ -105,12 +103,8 @@ paths:
           schema:
             type: integer
       responses:
-        '200':
-          description: Session details
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/SessionDetails'
+        '204':
+          description: Session deleted
         '404':
           description: No session exists
           content:
@@ -119,7 +113,7 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/source':
+  '/sessions/{session_id}/source':
     post:
       summary: Provide configuration_source
       operationId: provide_source
@@ -173,56 +167,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/supported_destinations':
-    get:
-      summary: Get list of supported destination platforms and versions
-      operationId: list_supported_destinations
-      tags:
-        - '4. Destination BIG-IP System'
-      responses:
-        '200':
-          description: Sorted list of supported destination platforms and versions (descending order)
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/SupportedDestinations'
-        default:
-          $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/destination':
-    post:
-      summary: Set destination platform and version
-      operationId: set_destination
-      tags:
-       - '4. Destination BIG-IP System'
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        description: Destination platform and version
-        content:
-          'application/json':
-            schema:
-              $ref: '#/components/schemas/Destination'
-      responses:
-        '200':
-          description: Destination selected
-        '400':
-          description: Destination not valid
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/Error'
-        default:
-          $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/conflicts_report':
+  '/sessions/{session_id}/conflicts_report':
     get:
       summary: Get conflicts report
       operationId: generate_conflicts_report
       tags:
-        - '5. Configuration Analysis'
+        - '4. Configuration Analysis'
       parameters:
         - name: session_id
           in: path
@@ -239,30 +189,50 @@ paths:
                 format: binary
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/conflicts/{conflict_id}':
-    get:
-      summary: Get a conflict details
-      operationId: get_conflict_details
+  '/sessions/{session_id}/resolve_automatically':
+    post:
+      summary: Resolve all remaining conflicts automatically using recommended solutions
+      operationId: resolve_conflicts_automatically
       tags:
-        - '6. Resolve Conflicts'
+        - '5. Resolve Conflicts'
       parameters:
         - name: session_id
           in: path
           required: true
           schema:
             type: integer
-        - name: conflict_id
+      responses:
+        '200':
+          $ref: '#/components/responses/Changes'
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/sessions/{session_id}/current_conflict':
+    post:
+      summary: Set a conflict to resolve
+      operationId: set_current_conflict
+      tags:
+       - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
           in: path
           required: true
           schema:
-            type: string
+            type: integer
+      requestBody:
+        description: Conflict choosen to be resolve next
+        required: true
+        content:
+          'application/json':
+            schema:
+              type: object
+              required:
+                - conflict_id
+              properties:
+                conflict_id:
+                  type: string
       responses:
         '200':
-          description: Conflict details
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/ConflictDetails'
+          $ref: '#/components/responses/ConflictDetails'
         '404':
           description: Given conflict does not exist
           content:
@@ -271,33 +241,168 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/conflicts/{conflict_id}/resolution':
-    post:
-      summary: Provide conflict resolution
-      operationId: resolve_conflict
+    delete:
+      summary: Reverts setting current conflict
+      operationId: clear_current_conflict
       tags:
-        - '6. Resolve Conflicts'
+        - '5. Resolve Conflicts'
       parameters:
         - name: session_id
           in: path
           required: true
           schema:
             type: integer
-        - name: conflict_id
+      responses:
+        '200':
+          description: Current conflict cleared
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/sessions/{session_id}/files/{file_path}':
+    put:
+      summary: Provide updated file content
+      operationId: post_file_change
+      tags:
+        - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: file_path
           in: path
           required: true
           schema:
             type: string
       requestBody:
-        description: Conflict resolution
+        description: New content of a file
         required: true
+        content:
+          'multipart/form-data':
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Accepted
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    get:
+      summary: Get content of the file
+      operationId: get_file_content
+      tags:
+        - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            'application/octet-stream':
+              schema:
+                type: object
+                properties:
+                  file:
+                    type: string
+                    format: binary
+        '404':
+          description: File does not exists
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+    delete:
+      summary: Delete file
+      operationId: delete_file
+      tags:
+        - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+        '404':
+          description: File does not exists
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/sessions/{session_id}/branches/{branch_name}/files/{file_path}':
+    get:
+      summary: Get content of the file from a given branch
+      operationId: get_file_content_branch
+      tags:
+        - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: branch_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            'application/octet-stream':
+              schema:
+                type: object
+                properties:
+                  file:
+                    type: string
+                    format: binary
+        '404':
+          description: File does not exists
+        default:
+          $ref: '#/components/responses/UnexpectedError'
+  '/sessions/{session_id}/changes':
+    post:
+      summary: Provide content change
+      operationId: post_change
+      tags:
+        - '5. Resolve Conflicts'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
         content:
           'application/json':
             schema:
-              $ref: '#/components/schemas/Mitigation'
+              properties:
+                message:
+                  type: string
       responses:
         '200':
-          $ref: '#/components/responses/ConflictList'
+          $ref: '#/components/responses/Conflicts'
         '404':
           description: Given conflict does not exist
           content:
@@ -313,49 +418,10 @@ paths:
         default:
           $ref: '#/components/responses/UnexpectedError'
     get:
-      summary: Get the conflict resolution details
-      operationId: Get_conflict_resolution_details
+      summary: Get list of changes
+      operationId: get_changes_list
       tags:
-        - '7. Resolution Summary'
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: conflict_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          $ref: '#/components/schemas/ResolutionDetails'
-    delete:
-      summary: Revert conflict resolution
-      operationId: revert_resolved_conflict
-      tags:
-        - '7. Resolution Summary'
-      parameters:
-        - name: session_id
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: conflict_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          $ref: '#/components/responses/ConflictList'
-  '/session/{session_id}/resolve_automatically':
-    post:
-      summary: Resolve all remaining conflicts automatically using recommended solutions
-      operationId: resolve_conflicts_automatically
-      tags:
-        - '6. Resolve Conflicts'
+        - '6. Resolution Summary'
       parameters:
         - name: session_id
           in: path
@@ -364,15 +430,57 @@ paths:
             type: integer
       responses:
         '200':
-          $ref: '#/components/responses/Resolutions'
-        default:
-          $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/resolutions_report':
+          $ref: '#/components/responses/Changes'
+  '/sessions/{session_id}/changes/{change_id}':
     get:
-      summary: Get resolutions report
-      operationId: generate_resolutions_report
+      summary: Get the change details
+      operationId: Get_change_details
       tags:
-        - '7. Resolution Summary'
+        - '6. Resolution Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: change_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Change details
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/ChangeDetails'
+    delete:
+      summary: Revert content change
+      operationId: revert_change
+      tags:
+        - '6. Resolution Summary'
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: change_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/Conflicts'
+
+  '/sessions/{session_id}/changes_report':
+    get:
+      summary: Get changes report
+      operationId: generate_changes_report
+      tags:
+        - '6. Resolution Summary'
       parameters:
         - name: session_id
           in: path
@@ -381,7 +489,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Report about resolutions of conflicts found in the configration
+          description: Report about changes made in the configration
           content:
             'application/pdf':
               schema:
@@ -389,12 +497,12 @@ paths:
                 format: binary
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/output':
+  '/sessions/{session_id}/output':
     get:
       summary: Get output UCS/AS3
       operationId: generate_output
       tags:
-        - '8. Journey Summary'
+        - '7. Journey Summary'
       parameters:
         - name: session_id
           in: path
@@ -409,12 +517,12 @@ paths:
               schema:
                 type: string
                 format: binary
-  '/session/{session_id}/deployments/test_connection':
+  '/sessions/{session_id}/deployments/test_connection':
     post:
       summary: Test connection using credentials
       operationId: test_connection
       tags:
-        - '9. Deployment'
+        - '8. Deployment'
       parameters:
         - name: session_id
           in: path
@@ -450,7 +558,7 @@ paths:
       summary: Get list of supported destination validators
       operationId: list_supported_validators
       tags:
-        - '9. Deployment'
+        - '8. Deployment'
       responses:
         '200':
           description: List of supported deployment validators with the descriptions
@@ -460,12 +568,12 @@ paths:
                 $ref: '#/components/schemas/SupportedValidators'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployments':
+  '/sessions/{session_id}/deployments':
     post:
       summary: Deploy configuration to given system and validate the results
       operationId: start_deployment_operation
       tags:
-        - '9. Deployment'
+        - '8. Deployment'
       parameters:
         - name: session_id
           in: path
@@ -488,12 +596,12 @@ paths:
                 $ref: '#/components/schemas/Deployment'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployments/{deployment_id}':
+  '/sessions/{session_id}/deployments/{deployment_id}':
     get:
       summary: Get status of deployment operation
       operationId: get_deployment_operation_status
       tags:
-        - '10. Deployment Results'
+        - '9. Deployment Results'
       parameters:
         - name: session_id
           in: path
@@ -520,12 +628,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           $ref: '#/components/responses/UnexpectedError'
-  '/session/{session_id}/deployments/{deployment_id}/log':
+  '/sessions/{session_id}/deployments/{deployment_id}/log':
     get:
       summary: Get deployment operation's log file
       operationId: get_deployment_operation_log_file
       tags:
-        - '10. Deployment Results'
+        - '9. Deployment Results'
       parameters:
         - name: session_id
           in: path
@@ -557,12 +665,12 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/Error'
-  '/session/{session_id}/deployments/{deployment_id}/report':
+  '/sessions/{session_id}/deployments/{deployment_id}/report':
     get:
-      summary: Get resolutions report
+      summary: Get deployment report
       operationId: generate_deployment_report
       tags:
-        - '10. Deployment Results'
+        - '9. Deployment Results'
       parameters:
         - name: session_id
           in: path
@@ -598,7 +706,7 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
 components:
   responses:
-    ConflictList:
+    Conflicts:
       description: List of (Remaining) Conflicts to resolve
       content:
         application/json:
@@ -606,18 +714,24 @@ components:
             type: array
             items:
               $ref: '#/components/schemas/Conflict'
-    Resolutions:
-      description: List of conflicts and their resolutions
+    Changes:
+      description: List of changes made
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/Resolutions'
+            $ref: '#/components/schemas/Changes'
     UnexpectedError:
       description: Unexpected error
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    ConflictDetails:
+      description: Details of a conflict including mitigations
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ConflictDetails'
   schemas:
     SystemCredentials:
       type: object
@@ -638,20 +752,14 @@ components:
       type: object
       required:
         - path
-        - content
+        - url
       properties:
         path:
           type: string
-        content:
+          example: 'config/bigip.conf'
+        url:
           type: string
-      example:
-        path: 'config/bigip.conf'
-        content: >
-          #TMSH-VERSION: 14.1.2.4
-          apm oauth db-instance /Common/oauthdb {
-            description "Default OAuth DB."
-          }
-          ...
+          example: 'http://localhost/sessions/1/files/config/bigip.conf'
     Mitigation:
       type: object
       required:
@@ -660,6 +768,7 @@ components:
       properties:
         name:
           type: string
+          example: "SPDAG_delete_objects"
         files:
           type: array
           items:
@@ -686,7 +795,10 @@ components:
             type: string
           example:
             - '#SPDAG: Value of field cmp hash is not supported on target platform\nnet vlan /Common/vlan1 {\n  cmp-hash src-ip\n  tag 4094\n}'
-
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/File'
     ConflictDetails:
       allOf:
         - $ref: '#/components/schemas/Conflict'
@@ -698,64 +810,34 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Mitigation'
-    Diff:
+    Change:
       type: object
       required:
-        - path
-        - diff
-      properties:
-        path:
-          type: string
-        content:
-          type: string
-      example:
-        path: 'config/bigip.conf'
-        content: >
-          diff --git a/journeys/backend/api-schema.yaml b/journeys/backend/api-schema.yaml
-          index 98b8bbf..d298f8d 100644
-          --- a/journeys/backend/api-schema.yaml
-          +++ b/journeys/backend/api-schema.yaml
-    Resolution:
-      type: object
-      required:
-        - conflict_id
+        - id
+        - message
         - url
       properties:
-        conflict_id:
+        id:
+          type: string
+        message:
           type: string
         url:
           type: string
-          example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}/resolution'
-    ResolutionDetails:
+          example: 'http://localhost/sessions/{session_id}/changes/{change_id}'
+    ChangeDetails:
       allOf:
-        - $ref: '#/components/schemas/Resolution'
+        - $ref: '#/components/schemas/Change'
         - type: object
           required:
-            - diffs
+            - content
           properties:
-            diffs:
-              type: array
-              items:
-                $ref: '#/components/schemas/Diff'
-    SupportedDestinations:
-      type: object
-      required:
-        - platforms
-      properties:
-        platforms:
-          type: array
-          items:
-            type: object
-            required:
-              - name
-              - versions
-            properties:
-              name:
-                type: string
-              versions:
-                type: array
-                items:
-                  type: string
+            content:
+              type: string
+              example: >
+                diff --git a/journeys/backend/api-schema.yaml b/journeys/backend/api-schema.yaml
+                index 98b8bbf..d298f8d 100644
+                --- a/journeys/backend/api-schema.yaml
+                +++ b/journeys/backend/api-schema.yaml
     SupportedValidators:
       type: object
       required:
@@ -765,35 +847,40 @@ components:
           type: array
           items:
             type: object
+            required:
+             - name
+             - description
+             - require_source
+             - require_admin
             properties:
               name:
                 type: string
               description:
                 type: string
+              require_source:
+                type: boolean
+              require_admin:
+                type: boolean
     Source:
       type: object
+      required:
+       - has_ucs
+       - has_as3
       properties:
-        type:
-          type: string
-          enum: ['ucs', 'as3', 'live']
-        data:
-          type: object
-          additionalProperties: true
-    Destination:
-      type: object
-      properties:
-        platform:
-          type: string
-        version:
-          type: string
+        has_ucs:
+          type: boolean
+        has_as3:
+          type: boolean
+        credentials:
+          $ref: '#/components/schemas/SystemCredentials'
     Conflicts:
       type: array
       items:
         $ref: '#/components/schemas/Conflict'
-    Resolutions:
+    Changes:
       type: array
       items:
-        $ref: '#/components/schemas/Resolution'
+        $ref: '#/components/schemas/Change'
     Deployment:
       type: object
       required:
@@ -859,18 +946,18 @@ components:
         - type: object
           required:
             - source
-            - destination
             - conflicts
-            - resolutions
+            - changes
           properties:
             source:
               $ref: '#/components/schemas/Source'
-            destination:
-              $ref: '#/components/schemas/Destination'
             conflicts:
               $ref: '#/components/schemas/Conflicts'
-            resolutions:
-              $ref: '#/components/schemas/Resolutions'
+            current_conflict:
+              type: string
+              nullable: true
+            changes:
+              $ref: '#/components/schemas/Changes'
             instructions:
               type: object
               properties:
