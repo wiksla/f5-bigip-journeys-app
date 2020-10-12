@@ -731,40 +731,43 @@ def diagnose(
     excluded_checks,
 ):
     """ Run diagnosis and comparison checks for Source and Destination Platforms. """
-    source = Device(
-        host=source_host,
-        ssh_username=source_username,
-        ssh_password=source_password,
-        api_username=source_admin_username,
-        api_password=source_admin_password,
-    )
-    destination = Device(
-        host=destination_host,
-        ssh_username=destination_username,
-        ssh_password=destination_password,
-        api_username=destination_admin_username,
-        api_password=destination_admin_password,
-    )
-    prefix = "diagnose_output"
-    timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-    output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
-    output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
-
-    if excluded_checks:
-        try:
-            checks = exclude_checks(default_checks, excluded_checks)
-        except JourneysError as err:
-            checks = default_checks
-            log.debug(err)
-    else:
-        checks = default_checks
-
-    with open(output_log, "w") as logfile:
-        kwargs = {"destination": destination, "source": source, "output": logfile}
-        run_diagnose(
-            checks=checks, kwargs=kwargs, output_json=output_json,
+    with error_handler():
+        source = Device(
+            host=source_host,
+            ssh_username=source_username,
+            ssh_password=source_password,
+            api_username=source_admin_username,
+            api_password=source_admin_password,
         )
-    click.echo(f"Finished. Check {output_log} and {output_json} for details.")
+        destination = Device(
+            host=destination_host,
+            ssh_username=destination_username,
+            ssh_password=destination_password,
+            api_username=destination_admin_username,
+            api_password=destination_admin_password,
+        )
+        prefix = "diagnose_output"
+        timestamp = strftime("%Y%m%d%H%M%S", gmtime())
+        output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
+        output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
+
+        if excluded_checks:
+            try:
+                checks = exclude_checks(default_checks, excluded_checks)
+            except JourneysError as err:
+                checks = default_checks
+                log.debug(err)
+        else:
+            checks = default_checks
+
+        with open(output_log, "w") as logfile:
+            kwargs = {"destination": destination, "source": source, "output": logfile}
+            run_diagnose(
+                checks=checks, kwargs=kwargs, output_json=output_json,
+            )
+        click.echo(f"Finished. Check {output_log} and {output_json} for details.")
+        return
+    click.echo("\nFailed to run diagnosis on the Destination Device!")
 
 
 def print_conflicts_info(conflicts):
