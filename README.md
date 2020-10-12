@@ -255,7 +255,7 @@ To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_che
 Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
 
 #### Diagnose Methods
-- **MCP status check**
+##### MCP status check
 
 Area:| error detection
 -----|-----
@@ -263,49 +263,49 @@ Area:| error detection
 Checks if values of returned fields are correct. 
 This method uses `tmsh show sys mcp-state field-fmt` that can be executed manually. 
 
-- **TMM status**
+##### TMM status
 
 Area:| resource management
 -----|-----
 
 Function logs status of TMM. Requires manual evaluation.
 
-- **Prompt state**
+##### Prompt state
 
 Area:| error detection
 -----|-----
 
 Checks if prompt state is in active mode. 
 
-- **Core dumps detection**
+##### Core dumps detection
 
 Area:| error detection
 -----|-----
 
 Checks if diagnostic core dumps were created. 
 
-- **Database Comparison**
+##### Database Comparison
 
 Area:| config migration
 -----|-----
 
 Compares two system DBs getting them from iControl endpoint for sys db. Requires manual evaluation. 
 
-- **Memory footprint Comparison**
+##### Memory footprint Comparison
 
 Area:| information, resource management
 -----|-----
 
 Compares information from `tmsh show sys provision` for both systems. Requires manual evaluation.
 
-- **Version Comparison**
+##### Version Comparison
 
 Area:| information
 -----|-----
 
 Compares information from `tmsh show sys version` for both systems. Requires manual evaluation.
 
-- **Local Traffic Manager (LTM) module comparison checks**
+##### Local Traffic Manager (LTM) module comparison checks
 
 Area:| config migration, resource management
 -----|-----
@@ -313,6 +313,39 @@ Area:| config migration, resource management
 Check lists of all defined LTM nodes and Virtual Servers configured in the new system. 
 If both devices are on-line, it will check conformance of both configuration and resource availability.
 Requires manual evaluation.
+
+##### Log Watcher check
+
+Area:| error detection
+-----|-----
+
+Log watcher check runs only together with UCS deployment to the Destination Platform using
+`journey.py deploy <attributes...>`. This check looks for "ERR" and "CRIT" phrases (case insensitive).
+that appear in log during UCS deployment process. Current scope of log files lookup table:
+- /var/log/ltm"
+- /var/log/apm"
+- /var/log/gtm"
+- /var/log/tmm"
+- /var/log/liveinstall.log
+- /var/log/asm"
+- /var/log/ts/bd.log
+- /var/log/ts/asm_config_server.log
+- /var/log/ts/pabnagd.log
+- /var/log/ts/db_upgrade.log
+- /var/log/daemon.log
+- /var/log/kern.log
+- /var/log/messages
+
+If you see log watcher output includes only some of these files, it means rest of them does not appear on your system (they may be not provisioned). 
+Sample output:
+```json
+Log watcher output:
+{
+    "/var/log/ltm": [],
+}
+```
+Empty list as a value means no lines containing "ERR" and "CRIT" phrases were found, there still may be any information about potential problems in logs. 
+Therefore this check requires manual evaluation. 
 
 ## Contributions
 

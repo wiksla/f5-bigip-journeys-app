@@ -44,12 +44,14 @@ from journeys.utils.resource_check import create_mprov_cfg_locally
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
+from journeys.validators.checks_for_cli import auto_checks
 from journeys.validators.checks_for_cli import default_checks
 from journeys.validators.checks_for_cli import exclude_checks
 from journeys.validators.checks_for_cli import run_auto_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import backup_over_cli
 from journeys.validators.exceptions import JourneysError
+from journeys.validators.log_watcher import LogWatcher
 from journeys.workdir import WORKDIR
 
 log = logging.getLogger(__name__)
@@ -568,7 +570,12 @@ def backup(
 @click.option(
     "--ucs-passphrase", required=True, help="Passphrase to decrypt the ucs archive."
 )
-@click.option("--autocheck", is_flag=True, help="Run diagnostics after deployment")
+@click.option(
+    "--no-autocheck",
+    is_flag=True,
+    default=False,
+    help="Run diagnostics after deployment",
+)
 @click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
 @click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
@@ -597,7 +604,7 @@ def backup(
 def deploy(
     input_ucs,
     ucs_passphrase,
-    autocheck,
+    no_autocheck,
     destination_host,
     destination_username,
     destination_password,
@@ -612,6 +619,7 @@ def deploy(
         return
 
     load_success = False
+
     with error_handler():
         destination = Device(
             host=destination_host,
@@ -620,6 +628,9 @@ def deploy(
             api_username=destination_admin_username,
             api_password=destination_admin_password,
         )
+    click.echo("Starting Log Watcher check...")
+    lw = LogWatcher(destination)
+    with error_handler(), lw:
         if no_backup:
             click.echo("Auto backup skipped by user.")
         else:
@@ -634,16 +645,24 @@ def deploy(
         load_success = True
 
     check_success = True
-    if load_success and autocheck:
-        click.echo("Running auto checks:")
-        check_success = run_auto_checks(destination)
-    click.echo("")
+
     if load_success:
+        if not no_autocheck:
+            checks = auto_checks.copy()
+            checks.update({"Log watcher": lw.get_log_watcher_result})
+            click.echo("Running auto checks:")
+            check_success = run_auto_checks(destination, checks)
+        else:
+            click.echo(
+                "Autocheck skipped by user!\n"
+                "In case of problems, check log files for errors, especially /var/log/ltm."
+                "and use journeys.py diagnose option. "
+            )
         click.echo(
-            f"Deployment completed {'successfully' if check_success else 'with errors'}."
+            f"\nDeployment completed {'successfully' if check_success else 'with errors'}."
         )
     else:
-        click.echo("Deployment failed!")
+        click.echo("\nDeployment failed!")
 
 
 @cli.command()
@@ -911,10 +930,8 @@ def error_handler():
         )
         click.echo(f"HOST: {e.host}")
         click.echo(f"USER: {e.ssh_username}")
-    except NetworkConnectionError:
-        click.echo(
-            "There are some problems with you network connection please check it."
-        )
+    except NetworkConnectionError as e:
+        click.echo(f"Network connection encountered: {str(e)}")
     except HTTPError as e:
         click.echo(
             f"Unexpected HTTP Error with status: {e.response.status_code} occured.\n"

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from collections import OrderedDict
 from json import JSONDecodeError
@@ -24,6 +25,9 @@ from journeys.workdir import WORKDIR
 PASSED = "PASSED"
 FAILED = "FAILED"
 USER_EVALUATION = "FOR_USER_EVALUATION"
+
+
+log = logging.getLogger(__name__)
 
 
 def cli_mcp_status_check(destination: Device, output, **kwargs) -> Dict:
@@ -85,7 +89,7 @@ def cli_memory_footprint_check(source: Device, destination: Device, output) -> D
 
 def cli_ltm_vs_check(destination: Device, output, **kwargs) -> Dict:
     vs_status = get_ltm_vs_status(device=destination)
-    click.echo(vs_status, file=output)
+    click.echo(f"VS status:\n{json.dumps(vs_status, indent=4)}", file=output)
     return {"result": USER_EVALUATION, "value": vs_status}
 
 
@@ -138,7 +142,7 @@ def exclude_checks(checks: Dict, excluded_checks: str):
         raise JourneysError(t_err)
 
 
-def run_auto_checks(destination: Device):
+def run_auto_checks(destination: Device, checks: OrderedDict):
     prefix = "autocheck_diagnose_output"
     timestamp = strftime("%Y%m%d%H%M%S", gmtime())
     output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
@@ -147,8 +151,16 @@ def run_auto_checks(destination: Device):
     with open(output_log, "w") as logfile:
         kwargs = {"destination": destination, "output": logfile}
         diagnose_result = run_diagnose(
-            checks=auto_checks, kwargs=kwargs, output_json=output_json,
+            checks=checks, kwargs=kwargs, output_json=output_json,
         )
+        try:
+            click.echo(
+                f"Log watcher output:\n"
+                f"{json.dumps(diagnose_result['Log watcher']['value'], indent=4)}",
+                file=logfile,
+            )
+        except KeyError:
+            log.error("No results from Log Watcher.")
     fails = []
     for check, result in diagnose_result.items():
         if result["result"] == FAILED:

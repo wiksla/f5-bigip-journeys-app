@@ -69,6 +69,7 @@ class SSHConnector:
 
 def _connector_func_decorator(func_, retry):
     def decorator(*args, **kwargs):
+        errors = []
         for i in range(retry):
             try:
                 return func_(*args, **kwargs)
@@ -76,14 +77,20 @@ def _connector_func_decorator(func_, retry):
                 raise DeviceAuthenticationError(
                     host=args[0].host, ssh_username=args[0].user
                 )
-            except (
-                paramiko.SSHException,
-                socket.error,
-                ConnectionResetError,
-                socket.error,
-            ):
+            except FileNotFoundError:
+                raise
+            except PermissionError:
+                raise
+            except (paramiko.SSHException, socket.error, ConnectionResetError,) as e:
+                errors.append(e)
+                log.debug(f"Could not connect because of {e}")
                 continue
         else:
+            log.error(
+                f"Connection failed!!\n"
+                f"Following erorrs spotted: \n"
+                f"{[repr(err) for err in errors]}"
+            )
             raise NetworkConnectionError()
 
     return decorator
