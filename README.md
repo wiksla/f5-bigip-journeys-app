@@ -30,7 +30,6 @@ List of supported features:
 
 + can cause migration failure:
     + PEM [2]
-    + CGNAT
 
 + reside outside a ucs file to be migrated, eg. in a host ucs (not in a guest ucs):
     + Crypto/Compression Guest Isolation (affects vCMP guests only)
