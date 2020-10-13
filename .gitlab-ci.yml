@@ -158,7 +158,7 @@ pages:
     paths:
     - public
   only:
-    - master
+    - develop
   except:
     - tags
     - web
