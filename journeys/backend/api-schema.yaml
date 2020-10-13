@@ -141,9 +141,13 @@ paths:
                 as3_file:
                   type: string
                   format: binary
-          'application/json':
-            schema:
-              $ref: '#/components/schemas/SystemCredentials'
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                host:
+                  type: string
       responses:
         '200':
           description: Success

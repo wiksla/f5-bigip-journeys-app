@@ -1,4 +1,3 @@
-from django.core.exceptions import SuspiciousOperation
 from django.core.files.storage import FileSystemStorage
 from django.http import FileResponse
 from django.http import HttpResponseBadRequest
@@ -45,40 +44,42 @@ class SessionsViewSet(
 
     @action(detail=True, methods=["post"])
     def source(self, request, pk):
+
         session = models.Session.objects.get(pk=pk)  # pylint: disable=E1101
         system_credentials = None
-        if request.content_type == "application/json":
-            system_credentials_serializer = serializers.SystemCredentialsSerializer(
-                data=request.data
-            )
-            system_credentials_serializer.is_valid(raise_exception=True)
-            system_credentials = system_credentials_serializer.save()
-            try:
-                as3_file = None
-                ucs_file, ucs_passphrase = logic.download_ucs(
-                    session=session, system_credentials=system_credentials
-                )
-            except JourneysError as e:
-                raise SuspiciousOperation(e)
-        elif request.content_type.startswith("multipart/form-data"):
-            form = forms.SourceForm(request.POST, request.FILES)
-            form.full_clean()
-            if form.errors:
-                raise SuspiciousOperation(form.errors)
-            fs = FileSystemStorage(location=session.working_directory)
+
+        form = forms.SourceForm(request.POST, request.FILES)
+        form.is_valid()
+        if form.errors:
+            # TODO: Fill response content
+            return HttpResponseBadRequest()
+        fs = FileSystemStorage(location=session.working_directory)
+
+        as3_file = (
+            fs.save(form.cleaned_data["as3_file"].name, form.cleaned_data["as3_file"])
+            if "as3_file" in form.cleaned_data and form.cleaned_data["as3_file"]
+            else None
+        )
+
+        if "ucs_file" in form.cleaned_data and form.cleaned_data["ucs_file"]:
             ucs_file = fs.save(
                 form.cleaned_data["ucs_file"].name, form.cleaned_data["ucs_file"]
             )
-            ucs_passphrase = form.cleaned_data["ucs_passphrase"]
-            as3_file = (
-                fs.save(
-                    form.cleaned_data["as3_file"].name, form.cleaned_data["as3_file"]
-                )
-                if form.cleaned_data["as3_file"]
-                else None
-            )
+            ucs_passphrase = form.cleaned_data.get("ucs_passphrase", None)
         else:
-            return HttpResponseBadRequest()
+            system_credentials = models.SystemCredentials(
+                username=form.cleaned_data["username"],
+                password=form.cleaned_data["password"],
+                host=form.cleaned_data["host"],
+            )
+            try:
+                ucs_file, ucs_passphrase = logic.download_ucs(
+                    session=session, system_credentials=system_credentials
+                )
+                system_credentials.save()
+            except JourneysError:
+                # TODO: Fill response content
+                return HttpResponseBadRequest()
 
         clear = True  # request.GET.get("clear", False)
 
@@ -132,7 +133,8 @@ class SessionFilesViewSet(viewsets.GenericViewSet):
         form = forms.FileUploadFrom(data=request.POST, files=request.FILES)
         form.full_clean()
         if form.errors:
-            raise SuspiciousOperation(form.errors)
+            # TODO: Fill response content
+            return HttpResponseBadRequest()
         fs = FileSystemStorage(location=controller.repo_path)
 
         if fs.exists(file_path):
@@ -213,6 +215,7 @@ class SessionChangesViewSet(
         try:
             logic.process(session=session, commit_name=message)
         except ConflictNotResolvedError:
+            # TODO: Fill response content
             return HttpResponseBadRequest()
 
         return Response()
