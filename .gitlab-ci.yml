@@ -186,9 +186,9 @@ version-bump:
       if release next-version; then
         # make a version commit on master
         release changelog
-        release commit-and-tag __init__.py CHANGELOG.md
+        release commit-and-tag journeys/__init__.py CHANGELOG.md
         # update develop with the commit above
-        git stash
+        git checkout . && git clean -fdx
         git checkout develop
         git pull origin master
         git push
