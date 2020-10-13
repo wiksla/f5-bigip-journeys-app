@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
+from journeys.errors import JourneysError
 from journeys.validators.core_watcher import list_cores
-from journeys.validators.exceptions import JourneysError
 
 
 @patch(

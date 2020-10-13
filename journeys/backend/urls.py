@@ -15,8 +15,6 @@ Including another URLconf
 """
 from django.urls import include
 from django.urls import path
-
-# from django.contrib import admin
 from rest_framework_nested import routers
 
 from . import views

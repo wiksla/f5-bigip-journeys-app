@@ -6,11 +6,11 @@ from re import Pattern
 from typing import Dict
 from typing import List
 
+from journeys.errors import JourneysError
 from journeys.utils.device import Device
 from journeys.utils.device import get_file
 from journeys.utils.device import stat_file
 from journeys.validators.checks_for_cli import USER_EVALUATION
-from journeys.validators.exceptions import JourneysError
 from journeys.workdir import WORKDIR
 
 log = logging.getLogger(__name__)

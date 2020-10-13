@@ -15,6 +15,7 @@ from journeys.errors import ArchiveOpenError
 from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DifferentConflictError
+from journeys.errors import JourneysError
 from journeys.errors import LocalChangesDetectedError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
@@ -108,7 +109,7 @@ class MigrationController:
             )
         except ReadError:
             raise ArchiveOpenError()
-        except RuntimeError:
+        except JourneysError:
             raise ArchiveDecryptError()
         self.shelf["input_ucs_name"] = os.path.basename(input_ucs)
         self.shelf["files_metadata"] = files_metadata

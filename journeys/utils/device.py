@@ -14,7 +14,7 @@ from invoke import UnexpectedExit
 from paramiko.sftp_attr import SFTPAttributes
 
 from journeys.errors import DeviceAuthenticationError
-from journeys.errors import NetworkConnectionError
+from journeys.errors import SSHConnectionError
 from journeys.errors import UcsActionError
 from journeys.utils.image import Version
 from journeys.utils.image import parse_version_file
@@ -83,15 +83,12 @@ def _connector_func_decorator(func_, retry):
                 raise
             except (paramiko.SSHException, socket.error, ConnectionResetError,) as e:
                 errors.append(e)
-                log.debug(f"Could not connect because of {e}")
+                log.debug(f"Connection error: {e}. Retrying.. [{i}/{retry}].")
                 continue
         else:
-            log.error(
-                f"Connection failed!!\n"
-                f"Following erorrs spotted: \n"
-                f"{[repr(err) for err in errors]}"
+            raise SSHConnectionError(
+                f"SSH connection retry unsuccessful. Latest error: {errors[-1]}"
             )
-            raise NetworkConnectionError()
 
     return decorator
 

@@ -10,8 +10,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from journeys.errors import ConflictNotResolvedError
+from journeys.errors import JourneysError
 from journeys.modifier.conflict.plugins import load_plugins
-from journeys.validators.exceptions import JourneysError
 
 from . import forms
 from . import logic

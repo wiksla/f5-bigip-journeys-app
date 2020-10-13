@@ -7,8 +7,7 @@ from typing import List
 import requests
 from requests.exceptions import ConnectionError
 
-from journeys.validators.exceptions import JourneysConnectionError
-from journeys.validators.exceptions import JourneysError
+from journeys.errors import JourneysError
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 
@@ -135,15 +134,12 @@ class IHealthConnector:
         )
 
     def _authenticate(self, credentials):
-        http_status_code = self.session.post(
+        response = self.session.post(
             url=self.AUTH_URL,
             data=json.dumps(credentials),
             headers=self.CONTENT_TYPE_HEADER,
         )
-        if http_status_code.status_code != 200:
-            raise JourneysConnectionError(
-                "Authentication error: Wrong username or password."
-            )
+        response.raise_for_status()
 
 
 def get_ihealth_handler(ihealth_username, ihealth_password, log=None) -> IHealthClient:

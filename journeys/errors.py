@@ -1,7 +1,13 @@
 from typing import List
 
 
-class ControllerError(RuntimeError):
+class JourneysError(Exception):
+    """Base for journeys errors."""
+
+    pass
+
+
+class ControllerError(JourneysError):
     pass
 
 
@@ -81,7 +87,7 @@ class UcsActionError(ControllerError):
         pass
 
 
-class SSHConnectionError(Exception):
+class SSHConnectionError(JourneysError):
     pass
 
 
@@ -91,5 +97,9 @@ class DeviceAuthenticationError(SSHConnectionError):
         self.ssh_username = ssh_username
 
 
-class NetworkConnectionError(SSHConnectionError):
-    pass
+class InputError(JourneysError):
+    """Signifies an issue with user-specified configuration."""
+
+    def __init__(self, msg: str):
+        msg = f"Invalid input: {msg}"
+        super().__init__(msg)

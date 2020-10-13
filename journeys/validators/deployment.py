@@ -4,10 +4,10 @@ import time
 
 import click
 
+from journeys.errors import JourneysError
 from journeys.errors import UcsActionError
 from journeys.utils.device import Device
 from journeys.utils.device import save_ucs
-from journeys.validators.exceptions import JourneysError
 
 log = logging.getLogger(__name__)
 

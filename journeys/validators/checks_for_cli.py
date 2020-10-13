@@ -10,6 +10,7 @@ from typing import Dict
 
 import click
 
+from journeys.errors import JourneysError
 from journeys.utils.device import Device
 from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
@@ -18,7 +19,6 @@ from journeys.validators.core_watcher import list_cores
 from journeys.validators.deployment import get_mcp_status
 from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
-from journeys.validators.exceptions import JourneysError
 from journeys.validators.ltm_checks import get_ltm_vs_status
 from journeys.workdir import WORKDIR
 

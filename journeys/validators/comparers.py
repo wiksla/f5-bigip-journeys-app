@@ -8,10 +8,10 @@ from pyparsing import Word
 from pyparsing import alphas
 from pyparsing import nums
 
+from journeys.errors import InputError
 from journeys.utils.device import Device
 from journeys.validators.ciphersuites_handler import get_ciphersuites_from_devices
 from journeys.validators.cron_check import get_crontabs
-from journeys.validators.exceptions import InputError
 
 
 def tmsh_compare_as_html(cmd: str, first: Device, second: Device, **kwargs):

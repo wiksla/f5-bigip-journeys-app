@@ -6,9 +6,9 @@ from contextlib import suppress
 
 from journeys.backend import models
 
+from .. import errors
 from ..controller import MigrationController
 from ..utils import device as device_module
-from ..validators import exceptions
 
 _controller = None
 
@@ -52,7 +52,7 @@ def download_ucs(
     if check_version:
         version = device_module.get_image(device=device)
         if not version.is_velos_supported():
-            raise exceptions.JourneysError(
+            raise errors.JourneysError(
                 f"Target system version {version} is not supported by VELOS"
             )
 

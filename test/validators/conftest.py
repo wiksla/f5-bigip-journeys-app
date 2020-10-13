@@ -13,13 +13,15 @@ from paramiko import SFTPAttributes
 
 from journeys.utils.device import Device
 from journeys.utils.device import SSHConnector
-from journeys.validators.exceptions import TestConfigurationError
 
 TEST_DATA_ROOT = (
     Path(__file__).parent.parent.parent.resolve() / "test" / "validators" / "test_data"
 )
 TEST_OUTPUT_ROOT = (
-    Path(__file__).parent.parent.parent.resolve() / "test" / "validators" "test_output"
+    Path(__file__).parent.parent.parent.resolve()
+    / "test"
+    / "validators"
+    / "test_output"
 )
 
 mocked_device_a = "bigip"
@@ -55,6 +57,12 @@ commands_set = {
 
 if not Path(TEST_OUTPUT_ROOT).exists():
     Path(TEST_OUTPUT_ROOT).mkdir()
+
+
+class TestConfigurationError(Exception):
+    """Signifies a misconfigured test."""
+
+    pass
 
 
 class DeviceTestData:

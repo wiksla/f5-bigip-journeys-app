@@ -8,6 +8,8 @@ from contextlib import redirect_stdout
 
 import gnupg
 
+from journeys.errors import JourneysError
+
 log = logging.getLogger(__name__)
 
 
@@ -25,7 +27,7 @@ def untar_file(archive_file, output_dir, archive_passphrase=None):
             )
 
             if not crypt.ok:
-                raise RuntimeError("Failed to decrypt archive")
+                raise JourneysError("Failed to decrypt archive")
 
     with tarfile.open(decrypted_archive_file) as tar:
         members = tar.getmembers()
@@ -95,7 +97,7 @@ def tar_file(
                 output=archive_file,
             )
             if not crypt.ok:
-                raise RuntimeError("Failed to encrypt archive")
+                raise JourneysError("Failed to encrypt archive")
 
         os.remove(decrypted_archive_file)
 

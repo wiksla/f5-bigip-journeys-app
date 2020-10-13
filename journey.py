@@ -21,13 +21,14 @@ from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DeviceAuthenticationError
 from journeys.errors import DifferentConflictError
+from journeys.errors import JourneysError
 from journeys.errors import LocalChangesDetectedError
-from journeys.errors import NetworkConnectionError
 from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import NotResolvingConflictError
 from journeys.errors import OutputAlreadyExistsError
+from journeys.errors import SSHConnectionError
 from journeys.errors import UcsActionError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.plugins import load_plugins
@@ -50,7 +51,6 @@ from journeys.validators.checks_for_cli import exclude_checks
 from journeys.validators.checks_for_cli import run_auto_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import backup_over_cli
-from journeys.validators.exceptions import JourneysError
 from journeys.validators.log_watcher import LogWatcher
 from journeys.workdir import WORKDIR
 
@@ -933,8 +933,8 @@ def error_handler():
         )
         click.echo(f"HOST: {e.host}")
         click.echo(f"USER: {e.ssh_username}")
-    except NetworkConnectionError as e:
-        click.echo(f"Network connection encountered: {str(e)}")
+    except SSHConnectionError as e:
+        click.echo(f"Connection error encountered: {str(e)}")
     except HTTPError as e:
         click.echo(
             f"Unexpected HTTP Error with status: {e.response.status_code} occured.\n"
