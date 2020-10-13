@@ -1,4 +1,5 @@
 import configparser
+import logging
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_NOT_SUPPORTED
@@ -6,6 +7,8 @@ from journeys.modifier.conflict.plugins.Plugin import Plugin
 from journeys.modifier.conflict.plugins.Plugin import find_objects_with_field_name
 from journeys.modifier.conflict.plugins.Plugin import find_objects_with_field_value
 from journeys.modifier.dependency import DependencyMap
+
+log = logging.getLogger(__name__)
 
 
 class SPVA(Plugin):
@@ -51,9 +54,9 @@ class SPVA(Plugin):
 
     def build_dependencies(self):
         for obj_id in self.objects:
-            self.dependencies.update(
-                self.dependency_map.get_dependencies(obj_id=obj_id)
-            )
+            dependencies = self.dependency_map.get_dependencies(obj_id=obj_id)
+            log.debug(f"Plugin: {self.ID} | Object: {obj_id}  | {dependencies}")
+            self.dependencies.update(dependencies)
 
     def render_files(self):
         files_to_render = super().render_files()

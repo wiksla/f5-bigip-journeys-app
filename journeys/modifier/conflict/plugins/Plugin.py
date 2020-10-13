@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Dict
 from typing import Iterable
@@ -14,6 +15,8 @@ from journeys.modifier.dependency import DependencyMap
 FIELD_VALUE_NOT_SUPPORTED: str = "{}: Value of field {} is not supported on target platform"
 FIELD_NOT_SUPPORTED: str = "{}: Field {} is not supported on target platform"
 TYPE_NOT_SUPPORTED: str = "{}: Type {} is not supported on target platform"
+
+log = logging.getLogger(__name__)
 
 
 def generate_dependency_comments(
@@ -103,7 +106,9 @@ class Plugin:
 
     def build_dependencies(self):
         for obj_id in self.objects:
-            self.dependencies.update(self.dependency_map.get_dependents(obj_id=obj_id))
+            dependencies = self.dependency_map.get_dependents(obj_id=obj_id)
+            log.debug(f"Plugin: {self.ID} | Object: {obj_id}  | {dependencies}")
+            self.dependencies.update(dependencies)
 
     def render_files(self):
         files_to_render = set()
