@@ -199,6 +199,9 @@ class SubCollectionDependency(BaseDependency):
         def delete(parent):
             parent.fields[obj.key].fields[self.field_name].delete()
 
+        def delete_obj(parent):
+            parent.fields[obj.key].delete()
+
         def nested_all(parent):
             # handle a case where there might be multiple dependencies to the same
             # target object in a single collection - iterate over them all
@@ -220,6 +223,8 @@ class SubCollectionDependency(BaseDependency):
             return nested_all
         elif self.resolution == "nested_with_cleanup":
             return nested_with_cleanup
+        elif self.resolution == "delete_obj":
+            return delete_obj
         else:
             return delete
 
@@ -447,6 +452,7 @@ DEFAULT_DEPENDENCIES = [
         field_name="profiles",
         parent_types=[("pem", "profile")],
         dependency=FieldKeyToNameDependency(),
+        resolution="delete_obj",
     ),
     SubCollectionDependency(
         child_types=[("security", "dos", "network-whitelist")],

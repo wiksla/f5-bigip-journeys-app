@@ -57,10 +57,9 @@ class Pem(Plugin):
             field_value=["nominal", "minimum", "dedicated", "custom"],
         )
 
-        self.irules = self.check_irules_status(config)
 
         super().__init__(
-            config, dependency_map, self.pem | self.provision | self.irules,
+            config, dependency_map, self.pem | self.provision,
         )
 
     def check_irules_status(self, mutable_config: Config):
@@ -124,6 +123,13 @@ class Pem(Plugin):
             obj = mutable_config.fields.get(obj_id)
             field = obj.fields["level"]
             field.value = "none"
+
+    def render_files(self):
+        files_to_render = set()
+        for obj_id in self.pem | self.provision | self.irules | self.dependencies:
+            obj = self.config.fields.get(obj_id)
+            files_to_render.add(obj.file)
+        return files_to_render
 
     def adjust_objects(self, mutable_config: Config):
         self.delete_objects(mutable_config)
