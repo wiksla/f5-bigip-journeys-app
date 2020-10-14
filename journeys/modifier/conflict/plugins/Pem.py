@@ -57,31 +57,9 @@ class Pem(Plugin):
             field_value=["nominal", "minimum", "dedicated", "custom"],
         )
 
-
         super().__init__(
             config, dependency_map, self.pem | self.provision,
         )
-
-    def check_irules_status(self, mutable_config: Config):
-        irules_not_processed = set()
-
-        for obj in self.irules:
-            obj_irule = mutable_config.fields.get(obj)
-            index = (
-                int(obj_irule.parent.index(obj_irule)) - 1
-            )  # First object above iRule
-            for x in range(index, 1, -1):
-                try:
-                    obj_comment = mutable_config.fields.get(x)
-                    comment = obj_comment.data["comment"]
-
-                    if self.MSG_TYPE_2.format("") in comment:
-                        break  # Already processed
-                except KeyError:
-                    irules_not_processed.add(obj)
-                    break  # No comments
-
-        return irules_not_processed
 
     def comment_objects(self, mutable_config: Config, only_irules=False):
         comments = defaultdict(list)
