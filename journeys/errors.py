@@ -75,11 +75,6 @@ class NotResolvingConflictError(ControllerError):
     pass
 
 
-class AS3InputDoesNotExistError(ControllerError):
-    def __init__(self):
-        pass
-
-
 class UcsActionError(ControllerError):
     def __init__(self, action_name="Ucs operation"):
         self.action_name = action_name
@@ -102,3 +97,21 @@ class InputError(JourneysError):
     def __init__(self, msg: str):
         msg = f"Invalid input: {msg}"
         super().__init__(msg)
+
+
+class InputFileNotExistError(ControllerError, InputError):
+    def __init__(self, input_name: str, file_ext=""):
+        msg = f'File "{input_name}" not found!'
+        if file_ext:
+            msg = f"{file_ext} {msg}"
+        super().__init__(msg)
+
+
+class AS3InputDoesNotExistError(InputFileNotExistError):
+    def __init__(self, input_name):
+        super().__init__(input_name=input_name, file_ext="AS3")
+
+
+class UcsInputDoesNotExistError(InputFileNotExistError):
+    def __init__(self, input_name):
+        super().__init__(input_name=input_name, file_ext="UCS")

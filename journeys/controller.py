@@ -25,6 +25,7 @@ from journeys.errors import NotAllConflictResolvedError
 from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import OutputAlreadyExistsError
+from journeys.errors import UcsInputDoesNotExistError
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.ucs_ops import tar_file
@@ -82,7 +83,10 @@ class MigrationController:
         log.info("Initializing git repository.")
 
         self._handle_ucs_input(input_ucs=input_ucs, ucs_passphrase=ucs_passphrase)
-        self._handle_as3_input(as3_path=as3_path)
+        if as3_path:
+            self._handle_as3_input(as3_path=as3_path)
+        else:
+            self.shelf["input_as3_name"] = None
 
         self._add_shelf_file_to_gitignore()
         log.info("Preparing the initial commit.")
@@ -111,6 +115,8 @@ class MigrationController:
             _, files_metadata = untar_file(
                 input_ucs, output_dir=self.repo_path, archive_passphrase=ucs_passphrase,
             )
+        except FileNotFoundError:
+            raise UcsInputDoesNotExistError(input_ucs)
         except ReadError:
             raise ArchiveOpenError()
         except JourneysError:
@@ -119,12 +125,11 @@ class MigrationController:
         self.shelf["files_metadata"] = files_metadata
 
     def _handle_as3_input(self, as3_path):
-        self.shelf["input_as3_name"] = None
-        if as3_path is not None:
-            if not os.path.exists(as3_path):
-                raise AS3InputDoesNotExistError
+        try:
             self.shelf["input_as3_name"] = os.path.basename(as3_path)
             shutil.copyfile(as3_path, self.as3_ucs_path)
+        except FileNotFoundError:
+            raise AS3InputDoesNotExistError(as3_path)
 
     def _add_shelf_file_to_gitignore(self):
         git_ignore_file = os.path.join(self.repo_path, ".gitignore")

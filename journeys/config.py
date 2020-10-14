@@ -11,6 +11,7 @@ from typing import Iterable
 from typing import Optional
 from typing import Union
 
+from journeys.errors import InputFileNotExistError
 from journeys.parser import build_files
 from journeys.parser import parse_file
 from journeys.parser.builder import build
@@ -572,8 +573,11 @@ class BigDB:
         self.config.read(self.path)
 
     def save(self):
-        with open(self.path, "w") as cnf:
-            self.config.write(cnf, space_around_delimiters=False)
+        try:
+            with open(self.path, "w") as cnf:
+                self.config.write(cnf, space_around_delimiters=False)
+        except FileNotFoundError:
+            raise InputFileNotExistError(self.path)
 
     def set(self, section: str, option: str, value: str):
         self.config.set(section=section, option=option, value=value)

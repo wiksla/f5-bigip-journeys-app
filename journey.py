@@ -21,6 +21,7 @@ from journeys.errors import AS3InputDoesNotExistError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DeviceAuthenticationError
 from journeys.errors import DifferentConflictError
+from journeys.errors import InputFileNotExistError
 from journeys.errors import JourneysError
 from journeys.errors import LocalChangesDetectedError
 from journeys.errors import NotAllConflictResolvedError
@@ -993,6 +994,8 @@ def error_handler():
         click.echo(
             "To start the conflict resolution process, run 'journey.py resolve <conflict_id>'."
         )
+    except InputFileNotExistError as e:
+        click.echo(e)
 
 
 def process_and_print_output(controller: MigrationController, commit_name: str = None):
