@@ -274,6 +274,11 @@ def show(mitigation):
             raise NotResolvingConflictError()
         try:
             click.echo(repo.git.show(mitigation))
+            click.echo("")
+            click.echo(
+                f"In order to apply the mitigation, run 'journey.py use {mitigation}'"
+            )
+
         except GitError:
             click.echo("Given mitigation is not valid")
 
@@ -285,6 +290,15 @@ def diff():
         controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
         click.echo(repo.git.diff())
+        click.echo("")
+        if controller.current_conflict:
+            click.echo(
+                "In order to check if current changes have resolved the conflict, run 'journey.py migrate'"
+            )
+        else:
+            click.echo(
+                "In order to save current changes, run 'journey.py migrate --message <name-for-given-changes>'"
+            )
 
 
 @cli.command()
@@ -530,6 +544,11 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             delete_file(device=device, remote=ucs_remote_dir)
             click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
             click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
+            click.echo("")
+            click.echo(
+                "In order to start processing of downloaded ucs, run "
+                f"'journey.py start {local_ucs_path.local} --ucs-passphrase {ucs_passphrase}'"
+            )
         else:
             click.echo(
                 "Migration process does not support the provided BIG-IP Version."
