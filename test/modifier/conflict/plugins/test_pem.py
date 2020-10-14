@@ -127,7 +127,7 @@ def test_pem_modify(test_solution):
         controller.config.fields.get(("pem"))
 
     with pytest.raises(KeyError, match=r"Requested key.*not found"):
-        controller.config.fields.get("ltm virtual /Common/pem_http_virt")
+        controller.config.fields.get(("ltm", "rule"))
 
-    obj_irule = controller.config.fields.get(1)
-    assert obj_irule.data["comment"]
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
+        controller.config.fields.get("ltm virtual /Common/pem_http_virt")

@@ -58,28 +58,27 @@ class Pem(Plugin):
         )
 
         super().__init__(
-            config, dependency_map, self.pem | self.provision,
+            config, dependency_map, self.pem | self.provision | self.irules,
         )
 
-    def comment_objects(self, mutable_config: Config, only_irules=False):
+    def comment_objects(self, mutable_config: Config):
         comments = defaultdict(list)
 
         for obj_id in self.irules:
             comments[obj_id].append(self.MSG_TYPE_2.format(self.ID))
 
-        if not only_irules:
-            for obj_id in self.pem:
-                comments[obj_id].append(self.MSG_TYPE_1.format(self.ID, self.MSG_INFO))
+        for obj_id in self.pem:
+            comments[obj_id].append(self.MSG_TYPE_1.format(self.ID, self.MSG_INFO))
 
-            for obj_id in self.provision:
-                comments[obj_id].append(self.MSG_TYPE_3.format(self.ID))
+        for obj_id in self.provision:
+            comments[obj_id].append(self.MSG_TYPE_3.format(self.ID))
 
-            generate_dependency_comments(
-                conflict_id=self.ID,
-                dependency_map=self.dependency_map,
-                obj_id=self.all_objects,
-                comments=comments,
-            )
+        generate_dependency_comments(
+            conflict_id=self.ID,
+            dependency_map=self.dependency_map,
+            obj_id=self.all_objects,
+            comments=comments,
+        )
 
         for obj_id, comment_list in comments.items():
             obj = mutable_config.fields.get(obj_id)
@@ -87,7 +86,7 @@ class Pem(Plugin):
                 obj.insert_before(args=["#"]).data["comment"] = comment
 
     def delete_objects(self, mutable_config: Config):
-        for obj_id in self.pem:
+        for obj_id in self.pem | self.irules:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
             if obj_id in self.dependency_map.reverse:
@@ -102,17 +101,9 @@ class Pem(Plugin):
             field = obj.fields["level"]
             field.value = "none"
 
-    def render_files(self):
-        files_to_render = set()
-        for obj_id in self.pem | self.provision | self.irules | self.dependencies:
-            obj = self.config.fields.get(obj_id)
-            files_to_render.add(obj.file)
-        return files_to_render
-
     def adjust_objects(self, mutable_config: Config):
         self.delete_objects(mutable_config)
         self.modify_objects(mutable_config)
-        self.comment_objects(mutable_config=mutable_config, only_irules=True)
 
     def mitigations(self):
         return {
