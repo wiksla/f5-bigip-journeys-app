@@ -187,7 +187,7 @@ class Field:
         instead of None.
         Return self to allow further chaining."""
         if "block" not in self.data:
-            self.data["block"] = {}
+            self.data["block"] = []
 
     def delete_block(self):
         """Remove a block with any contents from the field, leaving only args."""
