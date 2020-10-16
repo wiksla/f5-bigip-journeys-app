@@ -797,17 +797,15 @@ components:
             type: string
           example:
             - 'net vlan /Common/vlan1': {
+              file: "bigip_base.conf",
               comment: 'Value of field cmp-hash is not supported on target platform',
               object: 'net vlan /Common/vlan1 {\n    cmp-hash src-ip\n    tag 4094\n}'
               }
             - 'net vlan /Common/vlan2': {
+              file: "bigip_base.conf",
               comment: 'Value of field cmp hash is not supported on target platform',
               object: 'net vlan /Common/vlan2 {\n    cmp-hash dst-ip\n    tag 4094\n}'
               }
-        files:
-          type: array
-          items:
-            $ref: '#/components/schemas/File'
     ConflictDetails:
       allOf:
         - $ref: '#/components/schemas/Conflict'
@@ -815,6 +813,10 @@ components:
           required:
             - mitigations
           properties:
+            files:
+              type: array
+              items:
+                $ref: '#/components/schemas/File'
             mitigations:
               type: array
               items:
@@ -963,8 +965,9 @@ components:
             conflicts:
               $ref: '#/components/schemas/Conflicts'
             current_conflict:
-              type: string
               nullable: true
+              allOf:
+                - $ref: '#/components/schemas/ConflictDetails'
             changes:
               $ref: '#/components/schemas/Changes'
             instructions:

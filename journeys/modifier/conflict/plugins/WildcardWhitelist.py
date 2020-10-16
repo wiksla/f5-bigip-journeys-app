@@ -59,8 +59,10 @@ class WildcardWhitelist(Plugin):
             product([self.MSG_TYPE_1], self.to_remove, ["extended-entries"]),
             product([self.MSG_TYPE_2], self.to_change, ["level"]),
         ):
+            obj = self.config.fields.get(obj_id)
             object_info[obj_id] = {
+                "file": obj.file,
                 "comment": msg.format(field_name),
-                "object": str(self.config.fields.get(obj_id)),
+                "object": str(obj),
             }
         return object_info

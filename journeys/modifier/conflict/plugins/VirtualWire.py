@@ -62,9 +62,11 @@ class VirtualWire(Plugin):
             product(self.vlans, ["fwd-mode"]),
             product(self.interfaces, ["port-fwd-mode"]),
         ):
+            obj = self.config.fields.get(obj_id)
             object_info[obj_id] = {
+                "file": obj.file,
                 "comment": self.MSG_TYPE.format(field_name),
-                "object": str(self.config.fields.get(obj_id)),
+                "object": str(obj),
             }
 
         for obj_id in self.virtwire_tagged_vlans:

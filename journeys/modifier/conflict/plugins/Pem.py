@@ -112,9 +112,11 @@ class Pem(Plugin):
             product([self.MSG_TYPE_2], self.irules, [""]),
             product([self.MSG_TYPE_3], self.provision, [""]),
         ):
+            obj = self.config.fields.get(obj_id)
             object_info[obj_id] = {
+                "file": obj.file,
                 "comment": msg.format(field_name),
-                "object": str(self.config.fields.get(obj_id)),
+                "object": str(obj),
             }
 
         return object_info

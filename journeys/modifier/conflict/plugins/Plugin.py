@@ -144,13 +144,16 @@ class Plugin:
         ]
 
     def generate_object_info(self) -> Dict:
-        return {
-            obj_id: {
+        object_info = {}
+
+        for obj_id in self.objects:
+            obj = self.config.fields.get(obj_id)
+            object_info[obj_id] = {
+                "file": obj.file,
                 "comment": self.MSG_TYPE.format(self.MSG_INFO),
-                "object": str(self.config.fields.get(obj_id)),
+                "object": str(obj),
             }
-            for obj_id in self.objects
-        }
+        return object_info
 
     def delete_objects(self, mutable_config: Config):
         for obj_id in self.objects:
