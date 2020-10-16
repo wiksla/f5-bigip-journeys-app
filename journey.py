@@ -95,12 +95,12 @@ def cli():
 @cli.command()
 def first_step():
     click.echo(
-        "In order to start processing of an existing ucs file, please use 'journey.py start' command."
+        "In order to start processing of an existing UCS file, please use 'journey.py start' command."
     )
     click.echo("Run 'journey.py start --help' for more details.")
     click.echo("")
     click.echo(
-        "To download a ucs from the Source System, please use 'journey.py download-ucs' command."
+        "To download a UCS from the Source System, please use 'journey.py download-ucs' command."
     )
     click.echo("Run 'journey.py download-ucs --help' for more details.")
 
@@ -195,7 +195,7 @@ def prerequisites():
 @cli.command()
 @click.argument("ucs")
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
-@click.option("--ucs-passphrase", default="", help="Passphrase to decrypt ucs archive.")
+@click.option("--ucs-passphrase", default="", help="Passphrase to decrypt UCS archive.")
 @click.option(
     "--as3-path",
     help="Path to the AS3 declaration corresponding to this configuration.",
@@ -212,7 +212,7 @@ def start(ucs, clear, ucs_passphrase, as3_path):
         version = controller.ucs_reader.get_version()
         if not version.is_velos_supported():
             click.echo(
-                f"Migration from the provided ucs version {version.version} is not supported."
+                f"Migration from the provided UCS version {version.version} is not supported."
             )
             return
         process_and_print_output(controller=controller)
@@ -403,19 +403,19 @@ def revert(step):
 
 @cli.command()
 @click.option("--output", default=None, help="Use given filename instead of default.")
-@click.option("--ucs-passphrase", default="", help="Passphrase to encrypt ucs archive.")
+@click.option("--ucs-passphrase", default="", help="Passphrase to encrypt UCS archive.")
 @click.option(
     "--output-as3", default=None, help="Use given filename instead of default for as3."
 )
 @click.option(
     "--force",
     is_flag=True,
-    help="Generate output ucs even if not all conflict_info have been resolved.",
+    help="Generate output UCS even if not all conflict_info have been resolved.",
 )
 @click.option(
     "--overwrite",
     is_flag=True,
-    help="Generate output ucs even if a file with given name already exists.",
+    help="Generate output UCS even if a file with given name already exists.",
 )
 def generate(output, ucs_passphrase, output_as3, force, overwrite):
     """ Generate output UCS. """
@@ -436,7 +436,7 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
         output_ucs_name = os.path.basename(output_ucs_path)
 
         click.echo(
-            f"Output (VELOS ready) ucs configuration has been stored as {output_ucs_path}."
+            f"Output (VELOS ready) UCS configuration has been stored as {output_ucs_path}."
         )
         click.echo(f"It has been encrypted using the passphrase '{ucs_passphrase}'.")
         if output_as3_path:
@@ -457,7 +457,7 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
         click.echo("Run 'journey.py deploy --help' for more details.")
         click.echo("")
         click.echo(
-            "To deploy your VELOS ready ucs configuration manually, "
+            "To deploy your VELOS ready UCS configuration manually, "
             f"please upload the generated output to '{REMOTE_UCS_DIRECTORY}' "
             "on the Destination System"
         )
@@ -499,7 +499,7 @@ def prompt_password(ctx, param, value):
     help="SSH password for the given host. Will prompt if not provided.",
 )
 def resources(host, username, password):
-    """ Check if the destination has enough resources to migrate the ucs. """
+    """ Check if the destination has enough resources to migrate the UCS. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         if host and password:
@@ -518,7 +518,7 @@ def resources(host, username, password):
 
 
 @cli.command()
-@click.option("--host", required=True, help="Host to retrieve a ucs from.")
+@click.option("--host", required=True, help="Host to retrieve a UCS from.")
 @click.option(
     "--username", default="root", help="SSH username for the given host. Default: root"
 )
@@ -529,11 +529,11 @@ def resources(host, username, password):
     help="SSH password for the given host. Will prompt if not provided.",
 )
 @click.option(
-    "--ucs-passphrase", default=None, help="Passphrase to encrypt ucs archive."
+    "--ucs-passphrase", default=None, help="Passphrase to encrypt UCS archive."
 )
 @click.option("--output", default="ex.ucs", help="Output filename.")
 def download_ucs(host, username, password, ucs_passphrase, output):
-    """ Download a ucs from a live system. """
+    """ Download a UCS from a live system. """
     if not ucs_passphrase:
         ucs_passphrase = "".join(
             random.choice(string.ascii_letters + string.digits) for i in range(10)
@@ -557,11 +557,11 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             )
 
             delete_file(device=device, remote=ucs_remote_dir)
-            click.echo(f"Downloaded ucs is available locally: {local_ucs_path.local}.")
+            click.echo(f"Downloaded UCS is available locally: {local_ucs_path.local}.")
             click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
             click.echo("")
             click.echo(
-                "In order to start processing of downloaded ucs, run "
+                "In order to start processing of downloaded UCS, run "
                 f"'journey.py start {local_ucs_path.local} --ucs-passphrase {ucs_passphrase}'"
             )
         else:
@@ -572,7 +572,7 @@ def download_ucs(host, username, password, ucs_passphrase, output):
 
 @cli.command()
 @click.option(
-    "--ucs-passphrase", default=None, help="Passphrase to decrypt the ucs archive."
+    "--ucs-passphrase", default=None, help="Passphrase to decrypt the UCS archive."
 )
 @click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
@@ -602,7 +602,7 @@ def backup(
 
 @cli.command()
 @click.option(
-    "--ucs-passphrase", required=True, help="Passphrase to decrypt the ucs archive."
+    "--ucs-passphrase", required=True, help="Passphrase to decrypt the UCS archive."
 )
 @click.option(
     "--no-autocheck",
@@ -610,7 +610,7 @@ def backup(
     default=False,
     help="Run diagnostics after deployment",
 )
-@click.option("--input-ucs", required=True, help="Filename for generated ucs file.")
+@click.option("--input-ucs", required=True, help="Filename for generated UCS file.")
 @click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
     "--destination-username",
@@ -824,7 +824,7 @@ def print_conflicts_info(conflicts):
 def print_no_conflict_info(history):
     click.echo("No conflicts have been found.")
     click.echo("")
-    click.echo("To generate an output ucs, please run 'journey.py generate'")
+    click.echo("To generate an output UCS, please run 'journey.py generate'")
 
     if not history:
         return
@@ -894,7 +894,7 @@ def error_handler():
     except AlreadyInitializedError as e:
         click.echo("Migration process has already been started.")
         click.echo(
-            f"To start processing a new ucs file, run 'journey.py start {e.input} --clear'"
+            f"To start processing a new UCS file, run 'journey.py start {e.input} --clear'"
         )
 
     except ArchiveOpenError:
@@ -915,11 +915,11 @@ def error_handler():
     except NotInitializedError:
         click.echo("The migration process has not been started yet.")
         click.echo(
-            "To start a new Migration process, please run 'journey.py start <ucs>'"
+            "To start a new Migration process, please run 'journey.py start <UCS file>'"
         )
         click.echo("")
         click.echo(
-            "To download a ucs from the Source System, please use 'journey.py download-ucs' command."
+            "To download a UCS from the Source System, please use 'journey.py download-ucs' command."
         )
         click.echo("Run 'journey download-ucs --help' for more details.")
 
