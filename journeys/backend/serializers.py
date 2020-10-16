@@ -100,9 +100,14 @@ class ChangeSerializer(serializers.ModelSerializer):
 
 
 class ChangeDetailsSerializer(ChangeSerializer):
+    diffs = serializers.SerializerMethodField("get_diffs")
+
+    def get_diffs(self, change):
+        return change.diffs
+
     class Meta:
         model = models.Change
-        fields = ["id", "message", "url", "content"]
+        fields = ["id", "message", "url", "diffs"]
 
 
 class SystemCredentialsSerializer(serializers.ModelSerializer):

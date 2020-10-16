@@ -85,7 +85,15 @@ class Change(models.Model):
     )
     message = models.CharField(max_length=512)
     commit = models.CharField(max_length=64)
-    content = models.TextField()
+    diffs_json = models.TextField()
+
+    @property
+    def diffs(self):
+        return json.loads(self.diffs_json)
+
+    @diffs.setter
+    def diffs(self, diffs_json):
+        self.diffs_json = json.dumps(diffs_json)
 
 
 class Deployment(models.Model):

@@ -1,9 +1,13 @@
+import difflib
 import logging
 import os
 import shelve
 import shutil
 from tarfile import ReadError
+from typing import Dict
+from typing import List
 
+from git import GitCommandError
 from git import Repo
 from gitdb.exc import BadName
 
@@ -405,3 +409,35 @@ class MigrationController:
         return set(self.repo.heads).difference(
             {self.repo.heads.master, self.repo.heads.initial}
         )
+
+    def get_modified_files(self, commit: str) -> List[str]:
+        try:
+            return self.repo.git.diff_tree(
+                ["--no-commit-id", "--name-only", "-r", commit]
+            ).splitlines()
+        except GitCommandError as e:
+            raise JourneysError(e.stderr)
+
+    def get_changes_from_commit(self, commit) -> Dict:
+        return {
+            filename: self.get_file_changes(filename, commit)
+            for filename in self.get_modified_files(commit)
+        }
+
+    def get_file_changes(self, filename, commit):
+        previous_ver = self.repo.git.show(f"{commit}~1:{filename}").splitlines()
+        current_ver = self.repo.git.show(f"{commit}:{filename}").splitlines()
+        diff = difflib.SequenceMatcher(a=previous_ver, b=current_ver).get_opcodes()
+        ret_list = []
+        for change, old_start, old_end, new_start, new_end in diff:
+            if change in ["delete", "insert", "replace"]:
+                ret_list.append(
+                    {
+                        "change_type": change,
+                        "previous_text": previous_ver[old_start:old_end],
+                        "current_text": current_ver[new_start:new_end],
+                        "previous_line": old_start + 1,
+                        "current_line": new_start + 1,
+                    }
+                )
+        return ret_list

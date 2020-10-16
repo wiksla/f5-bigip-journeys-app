@@ -459,6 +459,52 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/ChangeDetails'
+              examples:
+                2 files example:
+                  value: |-
+                    {
+                      "foo/file_1":
+                        [
+                          {
+                            "change_type": "delete",
+                            "previous_text": ["list", "of", "lines", "to", "delete"],
+                            "current_text": [],
+                            "previous_line": 1,
+                            "current_line": 1,
+                          },
+                          {
+                            "change_type": "insert",
+                            "previous_text": [],
+                            "current_text": ["list", "of", "lines", "to", "insert"],
+                            "previous_line": 3,
+                            "current_line": 4,
+                          },
+                          {
+                            "change_type": "replace",
+                            "previous_text": ["kota"],
+                            "current_text": ["psa],
+                            "previous_line": 5,
+                            "current_line": 5,
+                          },
+                        ],
+                    "bar/file_2":
+                        [
+                          {
+                            "change_type": "delete",
+                            "previous_text": ["Hello"],
+                            "current_text": [],
+                            "previous_line": 20,
+                            "current_line": 20,
+                          },
+                          {
+                            "change_type": "replace",
+                            "previous_text": ["world"],
+                            "current_text": ["worms"],
+                            "previous_line": 21,
+                            "current_line": 21,
+                          },
+                        ]
+                    }
     delete:
       summary: Revert content change
       operationId: revert_change

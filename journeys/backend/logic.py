@@ -111,7 +111,7 @@ def process(session: models.Session, commit_name=None, first_run: bool = False):
             session=session,
             commit=commit,
             message=controller.repo.head.commit.message,
-            content=controller.repo.git.show(commit),
+            diffs=controller.get_changes_from_commit(commit),
         ).save()
 
     if session.current_conflict:
