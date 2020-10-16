@@ -459,52 +459,6 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/ChangeDetails'
-              examples:
-                2 files example:
-                  value: |-
-                    {
-                      "foo/file_1":
-                        [
-                          {
-                            "change_type": "delete",
-                            "previous_text": ["list", "of", "lines", "to", "delete"],
-                            "current_text": [],
-                            "previous_line": 1,
-                            "current_line": 1,
-                          },
-                          {
-                            "change_type": "insert",
-                            "previous_text": [],
-                            "current_text": ["list", "of", "lines", "to", "insert"],
-                            "previous_line": 3,
-                            "current_line": 4,
-                          },
-                          {
-                            "change_type": "replace",
-                            "previous_text": ["kota"],
-                            "current_text": ["psa],
-                            "previous_line": 5,
-                            "current_line": 5,
-                          },
-                        ],
-                    "bar/file_2":
-                        [
-                          {
-                            "change_type": "delete",
-                            "previous_text": ["Hello"],
-                            "current_text": [],
-                            "previous_line": 20,
-                            "current_line": 20,
-                          },
-                          {
-                            "change_type": "replace",
-                            "previous_text": ["world"],
-                            "current_text": ["worms"],
-                            "previous_line": 21,
-                            "current_line": 21,
-                          },
-                        ]
-                    }
     delete:
       summary: Revert content change
       operationId: revert_change
@@ -888,13 +842,60 @@ components:
           required:
             - content
           properties:
-            content:
-              type: string
-              example: >
-                diff --git a/journeys/backend/api-schema.yaml b/journeys/backend/api-schema.yaml
-                index 98b8bbf..d298f8d 100644
-                --- a/journeys/backend/api-schema.yaml
-                +++ b/journeys/backend/api-schema.yaml
+            diffs:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+              example:
+                foo/file_1:
+                  - change_type: delete
+                    previous_text:
+                      - list
+                      - of
+                      - lines
+                      - to
+                      - delete
+                    current_text: []
+                    previous_line: 1
+                    current_line: 1
+                  - change_type: insert
+                    previous_text: []
+                    current_text:
+                      - list
+                      - of
+                      - lines
+                      - to
+                      - insert
+                    previous_line: 3
+                    current_line: 4
+                  - change_type: replace
+                    previous_text:
+                      - previous
+                      - list
+                      - of
+                      - lines
+                    current_text:
+                      - current
+                      - list
+                      - of
+                      - lines
+                    previous_line: 5
+                    current_line: 5
+                bar/file_2:
+                  - change_type: delete
+                    previous_text:
+                      - Hello
+                    current_text: []
+                    previous_line: 20
+                    current_line: 20
+                  - change_type: replace
+                    previous_text:
+                      - world
+                    current_text:
+                      - worms
+                    previous_line: 21
+                    current_line: 21
     SupportedValidators:
       type: object
       required:
