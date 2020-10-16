@@ -125,7 +125,10 @@ def process(session: models.Session, commit_name=None, first_run: bool = False):
     models.Conflict.objects.filter(session=session).delete()  # pylint: disable=E1101
     for conflict in conflicts.values():
         models.Conflict(
-            name=conflict.id, summary="\n".join(conflict.summary), session=session
+            name=conflict.id,
+            summary="\n".join(conflict.summary),
+            affected_objects=conflict.affected_objects,
+            session=session,
         ).save()
 
 

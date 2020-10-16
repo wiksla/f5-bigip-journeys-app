@@ -39,12 +39,21 @@ class Session(models.Model):
 class Conflict(models.Model):
     name = models.CharField(max_length=32)
     summary = models.CharField(max_length=4096)
+    affected_objects_json = models.TextField()
     session = models.ForeignKey(
         to=Session, related_name="conflicts", on_delete=models.PROTECT
     )
 
     class Meta:
         unique_together = (("name", "session"),)
+
+    @property
+    def affected_objects(self):
+        return json.loads(self.affected_objects_json)
+
+    @affected_objects.setter
+    def affected_objects(self, affected_objects):
+        self.affected_objects_json = json.dumps(affected_objects)
 
 
 class Mitigation(models.Model):

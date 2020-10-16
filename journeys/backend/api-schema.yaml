@@ -782,7 +782,6 @@ components:
       required:
         - id
         - summary
-        - url
       properties:
         id:
           type: string
@@ -790,15 +789,21 @@ components:
         summary:
           type: string
           example: 'net vlan example_vlan: Value of field cmp hash is not supported on target platform'
-        url:
-          type: string
-          example: 'http://localhost/sessions/{session_id}/conflicts/{conflict_id}'
-        objects:
-          type: array
+        affected_objects:
+          type: object
+          additionalProperties:
+            true
           items:
             type: string
           example:
-            - '#SPDAG: Value of field cmp hash is not supported on target platform\nnet vlan /Common/vlan1 {\n  cmp-hash src-ip\n  tag 4094\n}'
+            - 'net vlan /Common/vlan1': {
+              comment: 'Value of field cmp-hash is not supported on target platform',
+              object: 'net vlan /Common/vlan1 {\n    cmp-hash src-ip\n    tag 4094\n}'
+              }
+            - 'net vlan /Common/vlan2': {
+              comment: 'Value of field cmp hash is not supported on target platform',
+              object: 'net vlan /Common/vlan2 {\n    cmp-hash dst-ip\n    tag 4094\n}'
+              }
         files:
           type: array
           items:
