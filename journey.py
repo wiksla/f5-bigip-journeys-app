@@ -85,9 +85,24 @@ def cli():
             - Source Classic BIG-IP version cannot be higher than VELOS BIG-IP VM tenant version\n
     Run 'journey.py features' and 'journey.py prerequisites' for useful information
     before staring the migration process.
+
+    Run 'journey.py first-step' for information on how to start the migration process.
     """
     setup_logging()
     log.info(f"Processing command: {sys.argv}")
+
+
+@cli.command()
+def first_step():
+    click.echo(
+        "In order to start processing of an existing ucs file, please use 'journey.py start' command."
+    )
+    click.echo("Run 'journey.py start --help' for more details.")
+    click.echo("")
+    click.echo(
+        "To download a ucs from the Source System, please use 'journey.py download-ucs' command."
+    )
+    click.echo("Run 'journey.py download-ucs --help' for more details.")
 
 
 @cli.command()
@@ -904,7 +919,7 @@ def error_handler():
         )
         click.echo("")
         click.echo(
-            "To download a ucs from the Source System, please use 'journey download-ucs' command."
+            "To download a ucs from the Source System, please use 'journey.py download-ucs' command."
         )
         click.echo("Run 'journey download-ucs --help' for more details.")
 
