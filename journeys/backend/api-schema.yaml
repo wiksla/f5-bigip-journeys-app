@@ -829,7 +829,7 @@ components:
         - url
       properties:
         id:
-          type: string
+          type: integer
         message:
           type: string
         url:
