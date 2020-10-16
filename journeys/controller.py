@@ -73,7 +73,7 @@ class MigrationController:
     def initialize(self, input_ucs, ucs_passphrase, as3_path=None):
 
         if self._is_repo_initialized():
-            raise AlreadyInitializedError(input=input_ucs)
+            raise AlreadyInitializedError()
 
         log.info("Initializing git repository.")
 

@@ -57,6 +57,10 @@ from journeys.workdir import WORKDIR
 log = logging.getLogger(__name__)
 
 
+def passed_params():
+    return " ".join(sys.argv[1:])
+
+
 def setup_logging(level=logging.DEBUG):
     log_file = os.path.join(WORKDIR, "journeys.log")
 
@@ -897,17 +901,17 @@ def print_destination_system_prerequisites():
 def error_handler():
     try:
         yield
-    except AlreadyInitializedError as e:
+    except AlreadyInitializedError:
         click.echo("Migration process has already been started.")
         click.echo(
-            f"To start processing a new UCS file, run 'journey.py start {e.input} --clear'"
+            f"To start processing a new UCS file, run 'journey.py {passed_params()} --clear'."
         )
 
     except ArchiveOpenError:
         click.echo("Failed to open the archive.")
         click.echo("")
         click.echo(
-            "If the archive is encrypted, please rerun with --ucs-passphrase <passphrase> parameter."
+            f"If the archive is encrypted, please run 'journey.py {passed_params()} --ucs-passphrase <passphrase>'."
         )
 
     except ArchiveDecryptError:
@@ -952,11 +956,11 @@ def error_handler():
         click.echo("Unresolved conflicts have been detected.")
         click.echo("")
         click.echo("To start resolving them, please run 'journey.py migrate' command")
-        click.echo("Or rerun the command with '--force' flag")
+        click.echo(f"Or run 'journey.py {passed_params()} --force'.")
     except OutputAlreadyExistsError as e:
         click.echo(f"File '{e.output}' already exists.")
         click.echo(
-            "To overwrite the file, please rerun the command with '--overwrite' flag"
+            f"To overwrite the file, please run 'journey.py {passed_params()} --overwrite'."
         )
     except LocalChangesDetectedError as e:
         click.echo("Local changes detected in the following files:")

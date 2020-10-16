@@ -12,8 +12,7 @@ class ControllerError(JourneysError):
 
 
 class AlreadyInitializedError(ControllerError):
-    def __init__(self, input):
-        self.input = input
+    pass
 
 
 class ArchiveOpenError(ControllerError):
