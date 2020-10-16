@@ -54,8 +54,27 @@ class Pem(Plugin):
             field_value=["nominal", "minimum", "dedicated", "custom"],
         )
 
+        conflict_objects = None
+
+        # each conf can have a few empty fields which don't mean that pem is enabled
+        # ignore the conflict if that is the case
+        if not self.provision and not self.irules:
+            ignored = {
+                "pem global-settings gx",
+                "pem global-settings analytics",
+                "pem global-settings policy",
+            }
+            for obj in self.pem:
+                if obj not in ignored or len(config.fields[obj].fields) != 0:
+                    break
+            else:
+                conflict_objects = set()
+
+        if conflict_objects is None:
+            conflict_objects = self.pem | self.provision | self.irules
+
         super().__init__(
-            config, dependency_map, self.pem | self.provision | self.irules,
+            config, dependency_map, conflict_objects,
         )
 
     def delete_objects(self, mutable_config: Config):
