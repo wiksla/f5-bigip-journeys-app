@@ -12,9 +12,9 @@ from journeys.config import Field
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.dependency import DependencyMap
 
-FIELD_VALUE_NOT_SUPPORTED: str = "{}: Value of field {} is not supported on target platform"
-FIELD_NOT_SUPPORTED: str = "{}: Field {} is not supported on target platform"
-TYPE_NOT_SUPPORTED: str = "{}: Type {} is not supported on target platform"
+FIELD_VALUE_NOT_SUPPORTED: str = "Value of field {} is not supported on target platform"
+FIELD_NOT_SUPPORTED: str = "Field {} is not supported on target platform"
+TYPE_NOT_SUPPORTED: str = "Type {} is not supported on target platform"
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +104,8 @@ class Plugin:
         self.build_dependencies()
         self.all_objects = self.objects | self.dependencies
 
+        self.object_info = self.generate_object_info()
+
     def build_dependencies(self):
         for obj_id in self.objects:
             dependencies = self.dependency_map.get_dependents(obj_id=obj_id)
@@ -118,10 +120,10 @@ class Plugin:
         return files_to_render
 
     def comment_objects(self, mutable_config: Config, dependency=True):
-        comments = defaultdict(list)
-
-        for obj_id in self.objects:
-            comments[obj_id].append(self.MSG_TYPE.format(self.ID, self.MSG_INFO))
+        comments = defaultdict(
+            list,
+            {k: [f"{self.ID}: {v['comment']}"] for k, v in self.object_info.items()},
+        )
 
         if dependency:
             generate_dependency_comments(
@@ -137,7 +139,18 @@ class Plugin:
                 obj.insert_before(args=["#"]).data["comment"] = comment
 
     def summary(self) -> List:
-        return [self.MSG_TYPE.format(obj_id, self.MSG_INFO) for obj_id in self.objects]
+        return [
+            f"{obj_id}: " + info["comment"] for obj_id, info in self.object_info.items()
+        ]
+
+    def generate_object_info(self) -> Dict:
+        return {
+            obj_id: {
+                "comment": self.MSG_TYPE.format(self.MSG_INFO),
+                "object": str(self.config.fields.get(obj_id)),
+            }
+            for obj_id in self.objects
+        }
 
     def delete_objects(self, mutable_config: Config):
         for obj_id in self.objects:
@@ -155,6 +168,7 @@ class Plugin:
         return Conflict(
             id=self.ID,
             summary=self.summary(),
+            affected_objects=self.object_info,
             files_to_render=self.render_files(),
             mitigations=self.mitigations(),
         )

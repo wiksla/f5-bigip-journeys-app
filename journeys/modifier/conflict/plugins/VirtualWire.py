@@ -1,13 +1,10 @@
-from collections import defaultdict
 from itertools import chain
 from itertools import product
-from typing import List
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_VALUE_NOT_SUPPORTED
 from journeys.modifier.conflict.plugins.Plugin import Plugin
 from journeys.modifier.conflict.plugins.Plugin import find_objects_with_field_value
-from journeys.modifier.conflict.plugins.Plugin import generate_dependency_comments
 from journeys.modifier.dependency import DependencyMap
 
 
@@ -57,43 +54,23 @@ class VirtualWire(Plugin):
             | self.virtwire_tagged_vlans,
         )
 
-    def summary(self) -> List:
-        summary = []
+    def generate_object_info(self) -> dict:
+        object_info = {}
 
         for obj_id, field_name in chain(
             product(self.vlan_groups, ["mode"]),
             product(self.vlans, ["fwd-mode"]),
             product(self.interfaces, ["port-fwd-mode"]),
         ):
-            summary.append(self.MSG_TYPE.format(obj_id, field_name))
+            object_info[obj_id] = {
+                "comment": self.MSG_TYPE.format(field_name),
+                "object": str(self.config.fields.get(obj_id)),
+            }
+
         for obj_id in self.virtwire_tagged_vlans:
-            summary.append(obj_id + ": Object uses a virtual-wire specific tag.")
+            object_info[obj_id] = {
+                "comment": "Object uses a virtual-wire specific tag.",
+                "object": str(self.config.fields.get(obj_id)),
+            }
 
-        return summary
-
-    def comment_objects(self, mutable_config: Config):
-
-        comments = defaultdict(list)
-
-        for obj_id, field_name in chain(
-            product(self.vlan_groups, ["mode"]),
-            product(self.vlans, ["fwd-mode"]),
-            product(self.interfaces, ["port-fwd-mode"]),
-        ):
-            comments[obj_id].append(self.MSG_TYPE.format(self.ID, field_name))
-        for obj_id in self.virtwire_tagged_vlans:
-            comments[obj_id].append(
-                self.ID + ": Object uses a virtual-wire specific tag."
-            )
-
-        generate_dependency_comments(
-            conflict_id=self.ID,
-            dependency_map=self.dependency_map,
-            obj_id=self.objects,
-            comments=comments,
-        )
-
-        for obj_id, comment_list in comments.items():
-            obj = mutable_config.fields.get(obj_id)
-            for comment in comment_list:
-                obj.insert_before(args=["#"]).data["comment"] = comment
+        return object_info

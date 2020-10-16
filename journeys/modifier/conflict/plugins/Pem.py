@@ -1,8 +1,6 @@
-from collections import defaultdict
 from itertools import chain
 from itertools import product
 from typing import Iterable
-from typing import List
 from typing import Set
 from typing import Tuple
 from typing import Union
@@ -12,7 +10,6 @@ from journeys.modifier.conflict.plugins.Plugin import TYPE_NOT_SUPPORTED
 from journeys.modifier.conflict.plugins.Plugin import Plugin
 from journeys.modifier.conflict.plugins.Plugin import find_object_with_type_match
 from journeys.modifier.conflict.plugins.Plugin import find_objects_with_field_value
-from journeys.modifier.conflict.plugins.Plugin import generate_dependency_comments
 from journeys.modifier.dependency import DependencyMap
 
 
@@ -42,8 +39,8 @@ class Pem(Plugin):
     IRULES_CMDS = ["CLASSIFICATION::", "CLASSIFY::", "PEM::", "PSC::"]
 
     MSG_TYPE_1: str = TYPE_NOT_SUPPORTED
-    MSG_TYPE_2: str = "{}: Not supported command in iRule object"
-    MSG_TYPE_3: str = "{}: pem module in not supported"
+    MSG_TYPE_2: str = "Unsupported command in iRule object"
+    MSG_TYPE_3: str = "Pem module is not supported"
 
     def __init__(self, config: Config, dependency_map: DependencyMap):
         self.pem = find_object_with_type_match(config=config, type_matcher=("pem",))
@@ -60,30 +57,6 @@ class Pem(Plugin):
         super().__init__(
             config, dependency_map, self.pem | self.provision | self.irules,
         )
-
-    def comment_objects(self, mutable_config: Config):
-        comments = defaultdict(list)
-
-        for obj_id in self.irules:
-            comments[obj_id].append(self.MSG_TYPE_2.format(self.ID))
-
-        for obj_id in self.pem:
-            comments[obj_id].append(self.MSG_TYPE_1.format(self.ID, self.MSG_INFO))
-
-        for obj_id in self.provision:
-            comments[obj_id].append(self.MSG_TYPE_3.format(self.ID))
-
-        generate_dependency_comments(
-            conflict_id=self.ID,
-            dependency_map=self.dependency_map,
-            obj_id=self.all_objects,
-            comments=comments,
-        )
-
-        for obj_id, comment_list in comments.items():
-            obj = mutable_config.fields.get(obj_id)
-            for comment in comment_list:
-                obj.insert_before(args=["#"]).data["comment"] = comment
 
     def delete_objects(self, mutable_config: Config):
         for obj_id in self.pem | self.irules:
@@ -112,14 +85,17 @@ class Pem(Plugin):
             "mitigations": {"adjust_objects": self.adjust_objects},
         }
 
-    def summary(self) -> List:
-        summary = []
+    def generate_object_info(self) -> dict:
+        object_info = {}
 
         for msg, obj_id, field_name in chain(
             product([self.MSG_TYPE_1], self.pem, [self.MSG_INFO]),
             product([self.MSG_TYPE_2], self.irules, [""]),
             product([self.MSG_TYPE_3], self.provision, [""]),
         ):
-            summary.append(msg.format(obj_id, field_name))
+            object_info[obj_id] = {
+                "comment": msg.format(field_name),
+                "object": str(self.config.fields.get(obj_id)),
+            }
 
-        return summary
+        return object_info

@@ -238,6 +238,9 @@ class Field:
         suffix = " {..}" if self.fields else ""
         return f"<{self.__class__.__name__} id {id(self)}: {self.id}{suffix}>"
 
+    def __str__(self):
+        return build([self.data])
+
 
 class TopLevelField(Field):
     @property
