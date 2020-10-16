@@ -176,7 +176,7 @@ class SessionBranchesFilesViewSet(viewsets.GenericViewSet):
 
 
 class SessionConflictsViewSet(
-    mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet,
+    mixins.ListModelMixin, viewsets.GenericViewSet,
 ):
     def get_queryset(self):
         return models.Conflict.objects.filter(  # pylint: disable=E1101

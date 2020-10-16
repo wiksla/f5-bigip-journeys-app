@@ -30,23 +30,17 @@ class SourceSerializer(serializers.ModelSerializer):
 class ConflictSerializer(serializers.ModelSerializer):
 
     id = serializers.SerializerMethodField("get_name")
-    url = serializers.SerializerMethodField("get_url")
     affected_objects = serializers.SerializerMethodField("get_affected_objects")
 
     def get_name(self, conflict):
         return conflict.name
-
-    def get_url(self, conflict):
-        request = self.context["request"]
-        base_url = f"/sessions/{conflict.session.id}/conflicts/{conflict.id}"
-        return request.build_absolute_uri(base_url)
 
     def get_affected_objects(self, conflict):
         return conflict.affected_objects
 
     class Meta:
         model = models.Conflict
-        fields = ["id", "summary", "url", "affected_objects"]
+        fields = ["id", "summary", "affected_objects"]
 
 
 class FileSerializer(serializers.ModelSerializer):
@@ -88,7 +82,7 @@ class ConflictDetailsSerializer(ConflictSerializer):
 
     class Meta:
         model = models.Conflict
-        fields = ["id", "summary", "url", "affected_objects", "files", "mitigations"]
+        fields = ["id", "summary", "affected_objects", "files", "mitigations"]
 
 
 class ChangeSerializer(serializers.ModelSerializer):
