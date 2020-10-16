@@ -202,6 +202,12 @@ def prerequisites():
 )
 def start(ucs, clear, ucs_passphrase, as3_path):
     """ Start migration process. """
+
+    root, ext = os.path.splitext(ucs)
+    if ext != ".ucs":
+        click.echo(f"Invalid ucs file input, '{ucs}' should have '.ucs' extension")
+        return
+
     with error_handler():
         controller = MigrationController(
             working_directory=WORKDIR, clear=clear, allow_empty=True
