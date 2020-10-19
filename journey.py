@@ -480,7 +480,8 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
 
 
 @cli.command(hidden=True)
-def prompt():
+@click.option("--colors", is_flag=True)
+def prompt(colors):
     with error_handler():
 
         try:
@@ -489,7 +490,12 @@ def prompt():
         except NotInitializedError:
             prompt = "Not started"
 
-        click.echo(f"\\e[1;32mjourney({prompt}): \\e[0m")
+        prompt = f"journey({prompt}): "
+
+        if colors:
+            prompt = f"\\e[1;32m{prompt}\\e[0m"
+
+        click.echo(prompt)
 
 
 def prompt_password(ctx, param, value):
