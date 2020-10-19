@@ -78,7 +78,7 @@ def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
 def cli_compare_db_check(source: Device, destination: Device, output) -> Dict:
     db_diff = compare_db(first=source, second=destination)
     click.echo(f"Sys DB diff:\n{db_diff.pretty()}", file=output)
-    return {"result": USER_EVALUATION}
+    return {"result": USER_EVALUATION, "value": db_diff.to_json()}
 
 
 def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
