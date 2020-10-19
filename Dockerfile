@@ -7,10 +7,14 @@ COPY requirements.txt /code/
 RUN apk --update --no-cache --virtual .build add gcc make musl-dev libffi-dev openssl-dev && \
   pip install -U pip ; pip install -r /code/requirements.txt && \
   apk del .build
+
 COPY ./journeys /code/journeys/
-COPY ./journey.py ./entrypoint.sh ./manage.py /code/
-RUN ln -s /code/journey.py /usr/local/bin/
+COPY ./journey ./entrypoint.sh ./manage.py /code/
+
+RUN ln -s /code/journey /usr/local/bin/
 RUN ln -s /code/manage.py /usr/local/bin/
+RUN echo 'eval "$(_JOURNEY_COMPLETE=source_bash journey)"' >> /root/.bashrc
+
 ENV DJANGO_SETTINGS_MODULE journeys.backend.settings
 ENV PYTHON_PATH /code
 EXPOSE 8000/tcp

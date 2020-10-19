@@ -2,7 +2,7 @@
 export ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 .PHONY = format lint test
-sources = journeys test journey.py
+sources = journeys test journey
 
 format:
 	isort --recursive $(sources)

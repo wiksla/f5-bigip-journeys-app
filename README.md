@@ -122,20 +122,20 @@ Preparing a temporary folder:
 1. `cp <ucs_file> .`
 
 Run commands one by one starting a separate docker container
-1. `alias journey.py="docker run --rm -v /tmp/journeys:/migrate journeys"`
-1. `journey.py start spdag.ucs`
-1. `journey.py resolve SPDAG`
-1. `journey.py use SPDAG_change_value_to_default`
-1. `journey.py migrate`
-1. `journey.py generate`
+1. `alias journey ="docker run --rm -v /tmp/journeys:/migrate journeys"`
+1. `journey start spdag.ucs`
+1. `journey resolve SPDAG`
+1. `journey use SPDAG_change_value_to_default`
+1. `journey migrate`
+1. `journey generate`
 
 Or use interactive container mode:
 1. `docker run -it --rm -v /tmp/journeys:/migrate journeys --shell`
-1. `journey.py migrate spdag.ucs`
-1. `journey.py resolve SPDAG`
-1. `journey.py use SPDAG_change_value_to_default`
-1. `journey.py migrate`
-1. `journey.py generate`
+1. `journey migrate spdag.ucs`
+1. `journey resolve SPDAG`
+1. `journey use SPDAG_change_value_to_default`
+1. `journey migrate`
+1. `journey generate`
 
 ----
 ## Usage
@@ -168,11 +168,11 @@ Or use interactive container mode:
     1. Non-Interactive mode
         1. On Linux-based hosts:
              ```
-             alias journey.py="docker run --rm -v $(pwd):/migrate f5devcentral/journeys:latest"
+             alias journey="docker run --rm -v $(pwd):/migrate f5devcentral/journeys:latest"
              ```
         1. On Windows:
              ```
-             doskey journey.py=docker run --rm -v %cd%:/migrate f5devcentral/journeys:latest
+             doskey journey=docker run --rm -v %cd%:/migrate f5devcentral/journeys:latest
              ```
 
 ### Source configuration
@@ -185,7 +185,7 @@ Or use interactive container mode:
    1. automatically, by using Journeys App:
        1. download the ucs file from a live source BIG-IP system:
             ```
-            journey.py download-ucs --host <bigip host> --username <bigip username> --ucs-passphrase <passphrase> --output <ucs file>
+            journey download-ucs --host <bigip host> --username <bigip username> --ucs-passphrase <passphrase> --output <ucs file>
             ```
    >IMPORTANT for security reasons:
    >The account used should be a READ-ONLY and should have permission only to generate and fetch the ucs.
@@ -193,7 +193,7 @@ Or use interactive container mode:
 
 ### Running the tool
    ```
-   journey.py start <ucs file> --ucs-passphrase <passphrase>
+   journey start <ucs file> --ucs-passphrase <passphrase>
    ```
    After the command is run, the tool searches for conflicts in a given source configuration.
 
@@ -201,7 +201,7 @@ Or use interactive container mode:
 
    It is also possible to pass AS3 declaration in addition to UCS.
    ```
-   journey.py start <ucs file> --ucs-passphrase <passphrase> --as3-path <as3 declaration>
+   journey start <ucs file> --ucs-passphrase <passphrase> --as3-path <as3 declaration>
    ```
    The tool will track changes made by resolving the conflicts and apply them to AS3 declaration.
 
@@ -209,11 +209,11 @@ Or use interactive container mode:
    If at least one conflict has been detected, the tool will print the entire list.
    1. One-by-one
    ``` 
-   journey.py resolve <conflict_tag>
+   journey resolve <conflict_tag>
    ```
    1. Resolve all conflicts and apply F5 recommended changes to each
    ```
-   journey.py resolve-all
+   journey resolve-all
    ```
    After the command is run, the tool will generate git branches with proposed conflict mitigations. 
    Detailed instructions about resolving conflicts are printed by the tool.
@@ -222,13 +222,13 @@ Or use interactive container mode:
    Once all conflicts are resolved, the following command will generate an output UCS file.
    NOTE: File will have entries fixed for VELOS parity but is still in the source BIG-IP version.
    ```
-   journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase>
+   journey generate --output <output_ucs_name> --ucs-passphrase <passphrase>
    ```
    `AS3 support`
 
    If AS3 declaration was passed to start method, the tool will also generate it.
    ```
-   journey.py generate --output <output_ucs_name> --ucs-passphrase <passphrase> --output-as3 <output_as3_name>
+   journey generate --output <output_ucs_name> --ucs-passphrase <passphrase> --output-as3 <output_as3_name>
    ```
    
 ### Deployment and Validation
@@ -236,7 +236,7 @@ If you're running the Journeys App in an environment where there is a connectivi
 
 1. Deploy output configuration to destination system
    ```
-   journey.py deploy --input-ucs <ucs> --ucs-passphrase <ucs_passphrase> --destination-host <ip_or_fqdn> --destination-username <username> --destination-admin-username <admin_user>
+   journey deploy --input-ucs <ucs> --ucs-passphrase <ucs_passphrase> --destination-host <ip_or_fqdn> --destination-username <username> --destination-admin-username <admin_user>
    ```
 `Backup`
 
@@ -246,7 +246,7 @@ During the deployment process, the tool will automatically create a backup UCS o
 1. Run diagnostics
 After loading the UCS to the Destination System, you can run a diagnose function that collects information relevant to your system condition and compares its state and configuration with the Source BIG-IP System.
    ```
-   journey.py diagnose --source-host <ip_or_fqdn> --destination-host <ip_or_fqdn>
+   journey diagnose --source-host <ip_or_fqdn> --destination-host <ip_or_fqdn>
    ```
 To skip desired diagnose methods, use option `--exclude-checks <JSON_list_of_checks_to_skip>`.
 Please note that some methods just gather data and require user's evaluation. For details check [Diagnose Methods](#diagnose-methods) section.
@@ -317,7 +317,7 @@ Area:| error detection
 -----|-----
 
 Log watcher check runs only together with UCS deployment to the Destination Platform using
-`journey.py deploy <attributes...>`. This check looks for "ERR" and "CRIT" phrases (case insensitive).
+`journey deploy <attributes...>`. This check looks for "ERR" and "CRIT" phrases (case insensitive).
 that appear in log during UCS deployment process. Current scope of log files lookup table:
 - /var/log/ltm"
 - /var/log/apm"

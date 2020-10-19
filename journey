@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import glob
 import logging
 import os
 import random
@@ -88,10 +89,10 @@ def cli():
             - Source Classic BIG-IP configuration must be in version 11.5.0 or higher.\n
             - Source Classic BIG-IP versions lower than 11.5.0 are not supported\n
             - Source Classic BIG-IP version cannot be higher than VELOS BIG-IP VM tenant version\n
-    Run 'journey.py features' and 'journey.py prerequisites' for useful information
+    Run 'journey features' and 'journey prerequisites' for useful information
     before staring the migration process.
 
-    Run 'journey.py first-step' for information on how to start the migration process.
+    Run 'journey first-step' for information on how to start the migration process.
     """
     setup_logging()
     log.info(f"Processing command: {sys.argv}")
@@ -100,14 +101,14 @@ def cli():
 @cli.command()
 def first_step():
     click.echo(
-        "In order to start processing of an existing UCS file, please use 'journey.py start' command."
+        "In order to start processing of an existing UCS file, please use 'journey start' command."
     )
-    click.echo("Run 'journey.py start --help' for more details.")
+    click.echo("Run 'journey start --help' for more details.")
     click.echo("")
     click.echo(
-        "To download a UCS from the Source System, please use 'journey.py download-ucs' command."
+        "To download a UCS from the Source System, please use 'journey download-ucs' command."
     )
-    click.echo("Run 'journey.py download-ucs --help' for more details.")
+    click.echo("Run 'journey download-ucs --help' for more details.")
 
 
 @cli.command()
@@ -197,8 +198,12 @@ def prerequisites():
     print_destination_system_prerequisites()
 
 
+def get_usc_files(ctx, args, incomplete):
+    return [k for k in glob.glob("*.ucs") if incomplete in k]
+
+
 @cli.command()
-@click.argument("ucs")
+@click.argument("ucs", type=click.STRING, autocompletion=get_usc_files)
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
 @click.option("--ucs-passphrase", default="", help="Passphrase to decrypt UCS archive.")
 @click.option(
@@ -237,7 +242,7 @@ def migrate(ucs, message):
     # TODO: remove after release
     if ucs:
         click.echo("Ucs argument is deprecated.")
-        click.echo("In order to start a new Migration process, run 'journey.py start'")
+        click.echo("In order to start a new Migration process, run 'journey start'")
 
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
@@ -268,7 +273,7 @@ def resolve(conflict_id):
 def abort():
     """ Abort resolving current conflict.
         Call to this command effectively reverts the state of the migration process
-        to a moment before calling 'journey.py resolve'.
+        to a moment before calling 'journey resolve'.
     """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
@@ -302,7 +307,7 @@ def show(mitigation):
             click.echo(repo.git.show(mitigation))
             click.echo("")
             click.echo(
-                f"In order to apply the mitigation, run 'journey.py use {mitigation}'"
+                f"In order to apply the mitigation, run 'journey use {mitigation}'"
             )
 
         except GitError:
@@ -319,11 +324,11 @@ def diff():
         click.echo("")
         if controller.current_conflict:
             click.echo(
-                "In order to check if current changes have resolved the conflict, run 'journey.py migrate'"
+                "In order to check if current changes have resolved the conflict, run 'journey migrate'"
             )
         else:
             click.echo(
-                "In order to save current changes, run 'journey.py migrate --message <name-for-given-changes>'"
+                "In order to save current changes, run 'journey migrate --message <name-for-given-changes>'"
             )
 
 
@@ -343,7 +348,7 @@ def use(mitigation):
             click.echo(
                 "Local changes detected. Clean it before using one of provided mitigations"
             )
-            click.echo("To clean local changes, run 'journey.py cleanup'.")
+            click.echo("To clean local changes, run 'journey cleanup'.")
             return
         try:
             repo.git.merge(mitigation)
@@ -382,7 +387,7 @@ def history(details):
 
         click.echo("")
         click.echo(
-            "In order to revert conflict_info resolution, run 'journey.py revert <step name>'."
+            "In order to revert conflict_info resolution, run 'journey revert <step name>'."
         )
         click.echo("")
         click.echo(
@@ -403,7 +408,7 @@ def revert(step):
         except IndexError:
             click.echo("Given step was not found.")
             click.echo(
-                "To display all changes applied to this point, please run 'journey.py history'"
+                "To display all changes applied to this point, please run 'journey history'"
             )
             return
 
@@ -461,11 +466,11 @@ def generate(output, ucs_passphrase, output_as3, force, overwrite):
             "To automatically deploy your VELOS ready configuration to the Destination System, please run"
         )
         click.echo(
-            f"'journey.py deploy --input-ucs {output_ucs_name} --ucs-passphrase {ucs_passphrase} "
+            f"'journey deploy --input-ucs {output_ucs_name} --ucs-passphrase {ucs_passphrase} "
             "--destination-host <host> --destination-username <username> --destination-password <password> "
             "--destination-admin-username <admin user> --destination-admin-password <admin password>'."
         )
-        click.echo("Run 'journey.py deploy --help' for more details.")
+        click.echo("Run 'journey deploy --help' for more details.")
         click.echo("")
         click.echo(
             "To deploy your VELOS ready UCS configuration manually, "
@@ -579,7 +584,7 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             click.echo("")
             click.echo(
                 "In order to start processing of downloaded UCS, run "
-                f"'journey.py start {local_ucs_path.local} --ucs-passphrase {ucs_passphrase}'"
+                f"'journey start {local_ucs_path.local} --ucs-passphrase {ucs_passphrase}'"
             )
         else:
             click.echo(
@@ -833,25 +838,25 @@ def print_conflicts_info(conflicts):
                 break
             click.echo(f"\t{line}")
     click.echo("")
-    click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
-    click.echo(f"Example 'journey.py resolve {conflict_name}'")
+    click.echo("Please run 'journey resolve <Conflict>' to apply sample fixes.")
+    click.echo(f"Example 'journey resolve {conflict_name}'")
     click.echo("")
     click.echo(
-        "To resolve all conflicts automatically, please run 'journey.py resolve-all'"
+        "To resolve all conflicts automatically, please run 'journey resolve-all'"
     )
 
 
 def print_no_conflict_info(history):
     click.echo("No conflicts have been found.")
     click.echo("")
-    click.echo("To generate an output UCS, please run 'journey.py generate'")
+    click.echo("To generate an output UCS, please run 'journey generate'")
 
     if not history:
         return
 
     click.echo("")
     click.echo(
-        "To review the history or changes, please run 'journey.py history' or 'journey.py history --details'"
+        "To review the history or changes, please run 'journey history' or 'journey history --details'"
     )
 
 
@@ -872,20 +877,20 @@ def print_conflict_resolution_help(
     for mitigation_branch in mitigation_branches:
         click.echo(f"\t{mitigation_branch}")
     click.echo("")
-    click.echo("To review the mitigation content, run 'journey.py show <mitigation>'")
-    click.echo(f"Example 'journey.py show {mitigation_branch}'")
+    click.echo("To review the mitigation content, run 'journey show <mitigation>'")
+    click.echo(f"Example 'journey show {mitigation_branch}'")
     click.echo("")
-    click.echo("To review issues found, run 'journey.py diff'")
+    click.echo("To review issues found, run 'journey diff'")
     click.echo("")
-    click.echo("To apply proposed changes, please run " "'journey.py use <mitigation>'")
-    click.echo(f"Example 'journey.py use {mitigation_branch}'")
+    click.echo("To apply proposed changes, please run " "'journey use <mitigation>'")
+    click.echo(f"Example 'journey use {mitigation_branch}'")
     click.echo("")
 
     click.echo(
-        "Please note, that files can be also edited manually, followed by running 'journey.py migrate' command."
+        "Please note, that files can be also edited manually, followed by running 'journey migrate' command."
     )
     click.echo("")
-    click.echo("To abort resolving current conflict, run 'journey.py abort'")
+    click.echo("To abort resolving current conflict, run 'journey abort'")
 
 
 def print_destination_system_prerequisites():
@@ -914,14 +919,14 @@ def error_handler():
     except AlreadyInitializedError:
         click.echo("Migration process has already been started.")
         click.echo(
-            f"To start processing a new UCS file, run 'journey.py {passed_params()} --clear'."
+            f"To start processing a new UCS file, run 'journey {passed_params()} --clear'."
         )
 
     except ArchiveOpenError:
         click.echo("Failed to open the archive.")
         click.echo("")
         click.echo(
-            f"If the archive is encrypted, please run 'journey.py {passed_params()} --ucs-passphrase <passphrase>'."
+            f"If the archive is encrypted, please run 'journey {passed_params()} --ucs-passphrase <passphrase>'."
         )
 
     except ArchiveDecryptError:
@@ -935,11 +940,11 @@ def error_handler():
     except NotInitializedError:
         click.echo("The migration process has not been started yet.")
         click.echo(
-            "To start a new Migration process, please run 'journey.py start <UCS file>'"
+            "To start a new Migration process, please run 'journey start <UCS file>'"
         )
         click.echo("")
         click.echo(
-            "To download a UCS from the Source System, please use 'journey.py download-ucs' command."
+            "To download a UCS from the Source System, please use 'journey download-ucs' command."
         )
         click.echo("Run 'journey download-ucs --help' for more details.")
 
@@ -956,7 +961,7 @@ def error_handler():
     except DifferentConflictError as e:
         click.echo(
             f"Conflict {e.conflict_id} resolution already in progress."
-            "Finish it by calling 'journey.py migrate' first before starting a new one."
+            "Finish it by calling 'journey migrate' first before starting a new one."
         )
     except UnknownConflictError as e:
         click.echo(
@@ -965,19 +970,19 @@ def error_handler():
     except NotAllConflictResolvedError:
         click.echo("Unresolved conflicts have been detected.")
         click.echo("")
-        click.echo("To start resolving them, please run 'journey.py migrate' command")
-        click.echo(f"Or run 'journey.py {passed_params()} --force'.")
+        click.echo("To start resolving them, please run 'journey migrate' command")
+        click.echo(f"Or run 'journey {passed_params()} --force'.")
     except OutputAlreadyExistsError as e:
         click.echo(f"File '{e.output}' already exists.")
         click.echo(
-            f"To overwrite the file, please run 'journey.py {passed_params()} --overwrite'."
+            f"To overwrite the file, please run 'journey {passed_params()} --overwrite'."
         )
     except LocalChangesDetectedError as e:
         click.echo("Local changes detected in the following files:")
         for path in e.uncommitted:
             click.echo(f"\t{path}")
-        click.echo('Run \'journey.py migrate --message "<message>" to apply changes.')
-        click.echo("Run 'journey.py cleanup' to discard changes.")
+        click.echo('Run \'journey migrate --message "<message>" to apply changes.')
+        click.echo("Run 'journey cleanup' to discard changes.")
     except AS3InputDoesNotExistError:
         click.echo("The specified AS3 file does not exist.")
 
@@ -1001,7 +1006,7 @@ def error_handler():
     except NotResolvingConflictError:
         click.echo("Not resolving any conflict_info at this point.")
         click.echo(
-            "To start the conflict resolution process, run 'journey.py resolve <conflict_id>'."
+            "To start the conflict resolution process, run 'journey resolve <conflict_id>'."
         )
     except InputFileNotExistError as e:
         click.echo(e)
