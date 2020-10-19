@@ -827,7 +827,10 @@ def print_conflicts_info(conflicts):
         click.echo("")
         click.echo(f"{conflict.id}:")
         conflict_name = conflict.id
-        for line in conflict.summary:
+        for (idx, line) in enumerate(sorted(conflict.summary)):
+            if idx >= 20:
+                click.echo(f"And {len(conflict.summary) - idx} more...")
+                break
             click.echo(f"\t{line}")
     click.echo("")
     click.echo("Please run 'journey.py resolve <Conflict>' to apply sample fixes.")
