@@ -18,7 +18,7 @@ def _escape(string):
         if char != "\\":
             yield char
         prev = char
-    if char == "\\":
+    if char == "\\" and prev != "\\\\":
         yield char
 
 
@@ -37,12 +37,11 @@ def _needs_quotes(string):
     if char.isspace() or char in ("{", "}", ";", '"', "'", "#", "|"):
         return True
 
-    expanding = False
     for char in chars:
-        if char.isspace() or char in ("{", ";", '"', "'", "#", "|"):
+        if char.isspace() or char in ("{", ";", '"', "'", "#", "|", "\\}", "\\{"):
             return True
 
-    return char in ("\\", "$") or expanding
+    return char == "\\"
 
 
 def _enquote(arg):
