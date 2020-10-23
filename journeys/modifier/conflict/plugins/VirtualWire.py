@@ -73,7 +73,7 @@ class VirtualWire(Plugin):
             object_info[obj_id] = {
                 "file": obj.file,
                 "comment": "Object uses a virtual-wire specific tag.",
-                "object": str(self.config.fields.get(obj_id)),
+                "object": str(self.config.fields.get(obj_id)).splitlines(),
             }
 
         return object_info
