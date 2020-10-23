@@ -11,7 +11,6 @@ from git import GitCommandError
 from git import Repo
 from gitdb.exc import BadName
 
-from journeys.as3ucs.as3ucs import As3ucs
 from journeys.config import Config
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
@@ -28,6 +27,7 @@ from journeys.errors import OutputAlreadyExistsError
 from journeys.errors import UcsInputDoesNotExistError
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.handler import ConflictHandler
+from journeys.utils.as3_ops import load_declaration
 from journeys.utils.ucs_ops import tar_file
 from journeys.utils.ucs_ops import untar_file
 from journeys.utils.ucs_reader import UcsReader
@@ -55,6 +55,7 @@ class MigrationController:
 
         self.ucs_reader = None
         self.config = None
+        self.as3_declaration = None
         self.conflict_handler = None
 
         self._ensure_is_master()
@@ -139,17 +140,20 @@ class MigrationController:
     def _reformat_input(self):
         self._read_config()
         log.info("Preparing the reformat commit.")
-        self.config.build(dirname=self.config_path)
-
-        if self.as3_ucs_path:
-            as3_decl = As3ucs(self.as3_ucs_path)
-            as3_decl.save_declaration(self.as3_ucs_path)
+        self.conflict_handler.render(dirname=self.config_path)
 
     def _read_config(self):
         log.info(f"Reading and parsing the configuration from {self.repo_path}.")
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
-        self.conflict_handler = ConflictHandler(config=self.config)
+        if self.as3_ucs_path:
+            self.as3_declaration = load_declaration(self.as3_ucs_path)
+
+        self.conflict_handler = ConflictHandler(
+            config=self.config,
+            as3_declaration=self.as3_declaration,
+            as3_ucs_path=self.as3_ucs_path,
+        )
 
     @property
     def current_conflict(self):
@@ -283,16 +287,11 @@ class MigrationController:
     ):
         self.repo.create_head(branch_name).checkout()
 
-        modified_config = self.conflict_handler.render(
+        self.conflict_handler.render(
             dirname=self.config_path,
             conflict=conflict_info,
             mitigation_func=mitigation_func,
         )
-
-        if self.as3_ucs_path:
-            as3ucs: As3ucs = As3ucs(self.as3_ucs_path)
-            as3ucs.process_ucs_changes(modified_config)
-            as3ucs.save_declaration(self.as3_ucs_path)
 
         self.repo.git.add(u=True)
         self.repo.index.commit(branch_name)

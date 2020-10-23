@@ -1,4 +1,3 @@
-import json
 import re
 
 from journeys.config import Config
@@ -7,9 +6,8 @@ from journeys.config import FieldCollection
 
 
 class As3ucs:
-    def __init__(self, input_as3: str):
-        with open(input_as3) as as3file:
-            self.data = json.load(as3file)
+    def __init__(self, declaration):
+        self.data = declaration
         self.partitions = []
         self.pointer = self.data
         if "declaration" in self.pointer:
@@ -71,13 +69,6 @@ class As3ucs:
                         source_field = As3ucs._find_subfield(fields, conflict[1])
                         if source_field is not None:
                             conflict[2](as3_node, source_field)
-
-    def save_declaration(self, path: str):
-        with open(path, "w") as as3file:
-            json.dump(self.data, as3file, indent=2)
-
-    def get_declaration_string(self):
-        return json.dumps(self.data, sort_keys=True, indent=2)
 
     def _get_as3_node(self, obj_name):
         as3_tree_keys = obj_name.split("/")
