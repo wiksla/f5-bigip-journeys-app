@@ -71,6 +71,7 @@ class VirtualWire(Plugin):
 
         for obj_id in self.virtwire_tagged_vlans:
             object_info[obj_id] = {
+                "file": obj.file,
                 "comment": "Object uses a virtual-wire specific tag.",
                 "object": str(self.config.fields.get(obj_id)),
             }
