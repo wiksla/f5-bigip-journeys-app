@@ -1,4 +1,5 @@
 import configparser
+from typing import Dict
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_VALUE_NOT_SUPPORTED
@@ -13,7 +14,13 @@ class VLANMACassignment(Plugin):
     MSG_TYPE: str = FIELD_VALUE_NOT_SUPPORTED
     MSG_INFO: str = "share-single-mac"
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
 
         super().__init__(
             config,
@@ -24,6 +31,8 @@ class VLANMACassignment(Plugin):
                 field_name="share-single-mac",
                 field_value=["vmw-compat"],
             ),
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
         )
 
     @staticmethod
@@ -36,14 +45,18 @@ class VLANMACassignment(Plugin):
         except configparser.NoOptionError:
             return False
 
-    def set_vlan_mac_assignment_to_unique(self, mutable_config: Config):
+    def set_vlan_mac_assignment_to_unique(
+        self, mutable_config: Config, mutable_as3_declaration: Dict
+    ):
         share_single_mac = self._find_value_field(mutable_config=mutable_config)
         share_single_mac.value = "unique"
         mutable_config.bigdb.set(
             section="Vlan.MacAssignment", option="value", value="unique"
         )
 
-    def set_vlan_mac_assignment_to_global(self, mutable_config: Config):
+    def set_vlan_mac_assignment_to_global(
+        self, mutable_config: Config, mutable_as3_declaration: Dict
+    ):
         share_single_mac = self._find_value_field(mutable_config=mutable_config)
         share_single_mac.value = "global"
         mutable_config.bigdb.set(

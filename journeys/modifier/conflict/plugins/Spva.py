@@ -1,5 +1,6 @@
 import configparser
 import logging
+from typing import Dict
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_NOT_SUPPORTED
@@ -16,7 +17,13 @@ class SPVA(Plugin):
     MSG_TYPE: str = FIELD_NOT_SUPPORTED
     MSG_INFO: str = "address-list"
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
         self.to_remove = find_objects_with_field_name(
             config=config,
             type_matcher=("security", "dos", "network-whitelist"),
@@ -43,7 +50,13 @@ class SPVA(Plugin):
         else:
             self.to_check = self.to_remove
 
-        super().__init__(config, dependency_map, self.to_check)
+        super().__init__(
+            config,
+            dependency_map,
+            self.to_check,
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
+        )
 
     @staticmethod
     def _check_if_dos_forcewdos_was_enabled(config):
@@ -63,7 +76,7 @@ class SPVA(Plugin):
         files_to_render.add(self.config.bigdb.FILENAME)
         return files_to_render
 
-    def delete_objects(self, mutable_config: Config):
+    def delete_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
         for obj_id in self.all_objects:
             obj = mutable_config.fields.get(obj_id)
             for field in obj.fields:
@@ -75,14 +88,20 @@ class SPVA(Plugin):
 
         self.set_compatibility_lvl(mutable_config=mutable_config, value="0")
 
-    def comment_objects(self, mutable_config: Config):
-        super().comment_objects(mutable_config=mutable_config, dependency=False)
+    def comment_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
+        super().comment_objects(
+            mutable_config=mutable_config,
+            mutable_as3_declaration=mutable_as3_declaration,
+            dependency=False,
+        )
 
     def set_compatibility_lvl(self, mutable_config: Config, value):
         level = self._find_level_field(mutable_config=mutable_config)
         level.value = value
 
-    def compatibility_lvl_to_1(self, mutable_config: Config):
+    def compatibility_lvl_to_1(
+        self, mutable_config: Config, mutable_as3_declaration: Dict
+    ):
         self.set_compatibility_lvl(mutable_config=mutable_config, value="1")
         mutable_config.bigdb.set(section="Dos.ForceSWdos", option="value", value="true")
 

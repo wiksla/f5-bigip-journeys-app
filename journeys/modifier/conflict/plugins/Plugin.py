@@ -88,16 +88,30 @@ def find_object_with_type_match(
     return objects
 
 
+def find_as3_object(declaration, obj_tuple):
+    ret = declaration
+    for part in obj_tuple:
+        ret = ret[part]
+    return ret
+
+
 class Plugin:
     ID: str = None
     MSG_TYPE: str = None
     MSG_INFO: str = None
 
     def __init__(
-        self, config: Config, dependency_map: DependencyMap, objects: Set,
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        objects: Set,
+        as3_declaration: Dict = None,
+        as3_file_name: str = None,
     ):
         self.dependency_map = dependency_map
         self.config = config
+        self.as3_declaration = as3_declaration
+        self.as3_file_name = as3_file_name
 
         self.objects = objects
         self.dependencies = set()
@@ -114,12 +128,21 @@ class Plugin:
 
     def render_files(self):
         files_to_render = set()
+
+        for obj_id, info in self.object_info.items():
+            try:
+                files_to_render.add(info["file"])
+            except KeyError:
+                print("aa")
+
         for obj_id in self.all_objects:
             obj = self.config.fields.get(obj_id)
             files_to_render.add(obj.file)
         return files_to_render
 
-    def comment_objects(self, mutable_config: Config, dependency=True):
+    def comment_objects(
+        self, mutable_config: Config, mutable_as3_declaration: Dict, dependency=True
+    ):
         comments = defaultdict(
             list,
             {k: [f"{self.ID}: {v['comment']}"] for k, v in self.object_info.items()},
@@ -134,9 +157,22 @@ class Plugin:
             )
 
         for obj_id, comment_list in comments.items():
-            obj = mutable_config.fields.get(obj_id)
-            for comment in comment_list:
-                obj.insert_before(args=["#"]).data["comment"] = comment
+            try:
+                obj = mutable_config.fields.get(obj_id)
+                for comment in comment_list:
+                    obj.insert_before(args=["#"]).data["comment"] = comment
+            except KeyError:
+                # AS3 objects might also be found in comments
+                continue
+
+        for obj_id, info in self.object_info.items():
+            try:
+                find_as3_object(mutable_as3_declaration, obj_id.split("/"))[
+                    "AA_F5_INCOMPATIBLE"
+                ] = info["comment"]
+            except (TypeError, KeyError):
+                # UCS config objects
+                continue
 
     def summary(self) -> List:
         return [
@@ -155,7 +191,7 @@ class Plugin:
             }
         return object_info
 
-    def delete_objects(self, mutable_config: Config):
+    def delete_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
         for obj_id in self.objects:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
@@ -166,7 +202,7 @@ class Plugin:
                     )
 
     def get_conflict(self) -> Conflict:
-        if not self.objects:
+        if not self.object_info:
             return None
         return Conflict(
             id=self.ID,

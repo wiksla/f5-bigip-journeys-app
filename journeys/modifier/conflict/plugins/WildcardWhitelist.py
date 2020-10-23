@@ -1,5 +1,6 @@
 from itertools import chain
 from itertools import product
+from typing import Dict
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_NOT_SUPPORTED
@@ -15,7 +16,13 @@ class WildcardWhitelist(Plugin):
     MSG_TYPE_1: str = FIELD_NOT_SUPPORTED
     MSG_TYPE_2: str = FIELD_VALUE_NOT_SUPPORTED
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
         self.to_remove = find_objects_with_field_name(
             config=config,
             type_matcher=("security", "dos", "network-whitelist"),
@@ -28,7 +35,13 @@ class WildcardWhitelist(Plugin):
             field_value="2",
         )
 
-        super().__init__(config, dependency_map, self.to_remove | self.to_change)
+        super().__init__(
+            config,
+            dependency_map,
+            self.to_remove | self.to_change,
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
+        )
 
     def change_value_to_default(self, mutable_config: Config):
         for obj_id in self.to_change:
@@ -36,14 +49,17 @@ class WildcardWhitelist(Plugin):
             field = obj.fields["level"]
             field.value = "0"
 
-    def delete_objects(self, mutable_config: Config):
+    def delete_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
         for obj_id in self.to_remove:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
 
-    def adjust_objects(self, mutable_config: Config):
-        self.delete_objects(mutable_config)
-        self.change_value_to_default(mutable_config)
+    def adjust_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
+        self.delete_objects(
+            mutable_config=mutable_config,
+            mutable_as3_declaration=mutable_as3_declaration,
+        )
+        self.change_value_to_default(mutable_config=mutable_config)
 
     def mitigations(self):
         return {

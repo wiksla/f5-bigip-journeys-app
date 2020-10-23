@@ -1,5 +1,6 @@
 from itertools import chain
 from itertools import product
+from typing import Dict
 from typing import Iterable
 from typing import Set
 from typing import Tuple
@@ -8,9 +9,11 @@ from typing import Union
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import TYPE_NOT_SUPPORTED
 from journeys.modifier.conflict.plugins.Plugin import Plugin
+from journeys.modifier.conflict.plugins.Plugin import find_as3_object
 from journeys.modifier.conflict.plugins.Plugin import find_object_with_type_match
 from journeys.modifier.conflict.plugins.Plugin import find_objects_with_field_value
 from journeys.modifier.dependency import DependencyMap
+from journeys.utils.as3_ops import stringify_declaration
 
 
 def find_objects_with_string_in_key(
@@ -41,8 +44,16 @@ class Pem(Plugin):
     MSG_TYPE_1: str = TYPE_NOT_SUPPORTED
     MSG_TYPE_2: str = "Unsupported command in iRule object"
     MSG_TYPE_3: str = "Pem module is not supported"
+    AS3_MSG_TYPE_1: str = "This object is incompatible with the destination platform"
+    AS3_MSG_TYPE_2: str = "This pointer references an object that is incompatible with the destination platform"
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
         self.pem = find_object_with_type_match(config=config, type_matcher=("pem",))
         self.irules = find_objects_with_string_in_key(
             config=config, type_matcher=("ltm", "rule"), string_matcher=self.IRULES_CMDS
@@ -73,11 +84,15 @@ class Pem(Plugin):
         if conflict_objects is None:
             conflict_objects = self.pem | self.provision | self.irules
 
-        super().__init__(
-            config, dependency_map, conflict_objects,
+        self.as3_pem_objects, self.as3_pem_object_pointers = self.find_as3_pem_objects(
+            as3_declaration
         )
 
-    def delete_objects(self, mutable_config: Config):
+        super().__init__(
+            config, dependency_map, conflict_objects, as3_declaration, as3_file_name
+        )
+
+    def delete_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
         for obj_id in self.pem | self.irules:
             obj = mutable_config.fields.get(obj_id)
             obj.delete()
@@ -87,15 +102,23 @@ class Pem(Plugin):
                         mutable_config, related_id, obj_id
                     )
 
+        for tenant, app, obj in self.as3_pem_objects:
+            mutable_as3_declaration[tenant][app].pop(obj)
+        for tenant, app, obj, pointer in self.as3_pem_object_pointers:
+            mutable_as3_declaration[tenant][app][obj].pop(pointer)
+
     def modify_objects(self, mutable_config: Config):
         for obj_id in self.provision:
             obj = mutable_config.fields.get(obj_id)
             field = obj.fields["level"]
             field.value = "none"
 
-    def adjust_objects(self, mutable_config: Config):
-        self.delete_objects(mutable_config)
-        self.modify_objects(mutable_config)
+    def adjust_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
+        self.delete_objects(
+            mutable_config=mutable_config,
+            mutable_as3_declaration=mutable_as3_declaration,
+        )
+        self.modify_objects(mutable_config=mutable_config)
 
     def mitigations(self):
         return {
@@ -119,4 +142,119 @@ class Pem(Plugin):
                 "object": str(obj),
             }
 
+        for msg, obj_tuple in chain(
+            product([self.AS3_MSG_TYPE_1], self.as3_pem_objects),
+            product([self.AS3_MSG_TYPE_2], self.as3_pem_object_pointers),
+        ):
+            obj_id = "/".join(obj_tuple)
+
+            object_info[obj_id] = {
+                "file": self.as3_file_name,
+                "comment": msg,
+                "object": stringify_declaration(
+                    find_as3_object(self.as3_declaration, obj_tuple)
+                ),
+            }
+
         return object_info
+
+    def find_as3_pem_objects(self, as3_declaration: Dict):
+        as3_pem_objects = []
+        as3_pem_object_pointers = []
+
+        if not as3_declaration:
+            return as3_pem_objects, as3_pem_object_pointers
+
+        data = as3_declaration
+
+        # TODO: Do we need pointer?
+        pointer = data
+        if "declaration" in pointer:
+            pointer = pointer["declaration"]
+
+        def check_matching_type(_obj, class_type):
+            return (
+                isinstance(_obj, dict)
+                and "class" in _obj
+                and _obj["class"] in class_type
+            )
+
+        for tenant, cur_tenant in as3_declaration.items():
+            if not check_matching_type(cur_tenant, {"Tenant"}):
+                continue
+            for app, cur_app in cur_tenant.items():
+                if not check_matching_type(cur_app, {"Application"}):
+                    continue
+                for obj, cur_obj in cur_app.items():
+                    if check_matching_type(cur_obj, self.AS3_PEM_CLASSES):
+                        as3_pem_objects.append((tenant, app, obj))
+                    elif check_matching_type(cur_obj, self.AS3_VS_CLASSES):
+                        for pointer in self.AS3_VS_POINTERS:
+                            if pointer in cur_obj:
+                                as3_pem_object_pointers.append(
+                                    (tenant, app, obj, pointer)
+                                )
+
+        return as3_pem_objects, as3_pem_object_pointers
+
+    AS3_PEM_CLASSES = {
+        "Bandwidth_Control_Policy",
+        "Bandwidth_Control_Policy_Category",
+        "Enforcement_Diameter_Endpoint_Profile",
+        "Enforcement_Format_Script",
+        "Enforcement_Forwarding_Endpoint",
+        "Enforcement_Forwarding_Endpoint_Hash_Settings",
+        "Enforcement_Interception_Endpoint",
+        "Enforcement_iRule",
+        "Enforcement_Listener",
+        "Enforcement_Policy",
+        "Enforcement_Profile",
+        "Enforcement_Radius_AAA_Profile",
+        "Enforcement_Radius_AAA_Profile_password",
+        "Enforcement_Radius_AAA_Profile_sharedSecret",
+        "Enforcement_Rule",
+        "Enforcement_Rule_Classification_Filter",
+        "Enforcement_Rule_DTOS_Tethering",
+        "Enforcement_Rule_Flow_Filter",
+        "Enforcement_Rule_Forwarding",
+        "Enforcement_Rule_Forwarding_Endpoint",
+        "Enforcement_Rule_Forwarding_HTTP",
+        "Enforcement_Rule_Forwarding_ICAP",
+        "Enforcement_Rule_Forwarding_Route_To_Network",
+        "Enforcement_Rule_Insert_Content",
+        "Enforcement_Rule_Modify_HTTP_Header",
+        "Enforcement_Rule_QOS",
+        "Enforcement_Rule_Quota",
+        "Enforcement_Rule_Ran_Congestion",
+        "Enforcement_Rule_Report_Destination_HSL",
+        "Enforcement_Rule_URL_Categorization_Filter",
+        "Enforcement_Rule_Usage_Gx",
+        "Enforcement_Rule_Usage_Hsl",
+        "Enforcement_Rule_Usage_Radius",
+        "Enforcement_Rule_Usage_Reporting",
+        "Enforcement_Rule_Usage_Reporting_Transaction",
+        "Enforcement_Rule_Usage_Reporting_Volume",
+        "Enforcement_Rule_Usage_Sd",
+        "Enforcement_Service_Chain_Endpoint",
+        "Enforcement_Service_Chain_Endpoint_Service_Endpoint",
+        "Enforcement_Subscriber_Management_Profile",
+        "Enforcement_Subscriber_Management_Profile_DHCP",
+    }
+
+    AS3_VS_CLASSES = {
+        "Service_Forwarding",
+        "Service_Generic",
+        "Service_HTTP",
+        "Service_HTTPS",
+        "Service_L4",
+        "Service_SCTP",
+        "Service_TCP",
+        "Service_UDP",
+    }
+
+    AS3_VS_POINTERS = (
+        "profileDiameterEndpoint",
+        "profileEnforcement",
+        "profileSubscriberManagement",
+        "policyBandwidthControl",
+    )

@@ -1,4 +1,5 @@
 import configparser
+from typing import Dict
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_VALUE_NOT_SUPPORTED
@@ -12,7 +13,13 @@ class CompatibilityLevel(Plugin):
     MSG_TYPE: str = FIELD_VALUE_NOT_SUPPORTED
     MSG_INFO: str = "level"
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
         self.compatibility_lvl_is_2 = find_objects_with_field_value(
             config=config,
             type_matcher=("sys", "compatibility-level"),
@@ -36,6 +43,8 @@ class CompatibilityLevel(Plugin):
             config=config,
             dependency_map=dependency_map,
             objects=self.compatibility_lvl_is_1 or self.compatibility_lvl_is_2,
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
         )
 
     @staticmethod
@@ -50,11 +59,15 @@ class CompatibilityLevel(Plugin):
         files_to_render.add(self.config.bigdb.FILENAME)
         return files_to_render
 
-    def set_compatibility_lvl_to_0(self, mutable_config: Config):
+    def set_compatibility_lvl_to_0(
+        self, mutable_config: Config, mutable_as3_declaration: Dict
+    ):
         level = self._find_level_field(mutable_config=mutable_config)
         level.value = "0"
 
-    def set_compatibility_lvl_to_1(self, mutable_config: Config):
+    def set_compatibility_lvl_to_1(
+        self, mutable_config: Config, mutable_as3_declaration: Dict
+    ):
         level = self._find_level_field(mutable_config=mutable_config)
         level.value = "1"
         mutable_config.bigdb.set(section="Dos.ForceSWdos", option="value", value="true")
@@ -64,13 +77,16 @@ class CompatibilityLevel(Plugin):
             obj = mutable_config.fields.get(obj_id)
             return obj.fields["level"]
 
-    def comment_objects(self, mutable_config: Config):
+    def comment_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):
         if self.compatibility_lvl_is_1:
             CompatibilityLevel.MSG_TYPE = (
                 "{}: sys compatibility {} 1 require [Dos.ForceSWdos] "
                 "'value' set to 'true' (BigDB.dat)."
             )
-        super().comment_objects(mutable_config=mutable_config)
+        super().comment_objects(
+            mutable_config=mutable_config,
+            mutable_as3_declaration=mutable_as3_declaration,
+        )
 
     def mitigations(self) -> dict:
         return {

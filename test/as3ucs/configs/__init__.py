@@ -1,7 +1,7 @@
 import os
 
-from journeys.as3ucs.as3ucs import As3ucs
 from journeys.config import Config
+from journeys.modifier.conflict.as3ucs import As3ucs
 from journeys.utils.as3_ops import load_declaration
 from journeys.utils.as3_ops import stringify_declaration
 

@@ -1,5 +1,6 @@
 from itertools import chain
 from itertools import product
+from typing import Dict
 
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import FIELD_VALUE_NOT_SUPPORTED
@@ -12,7 +13,13 @@ class VirtualWire(Plugin):
     ID: str = "VirtualWire"
     MSG_TYPE: str = FIELD_VALUE_NOT_SUPPORTED
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
 
         self.vlan_groups = find_objects_with_field_value(
             config=config,
@@ -52,6 +59,8 @@ class VirtualWire(Plugin):
             | self.vlans
             | self.interfaces
             | self.virtwire_tagged_vlans,
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
         )
 
     def generate_object_info(self) -> dict:

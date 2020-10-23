@@ -1,3 +1,4 @@
+from typing import Dict
 from typing import Set
 from typing import Tuple
 
@@ -36,7 +37,13 @@ class CGNAT(Plugin):
 
     MSG_TYPE: str = TYPE_NOT_SUPPORTED
 
-    def __init__(self, config: Config, dependency_map: DependencyMap):
+    def __init__(
+        self,
+        config: Config,
+        dependency_map: DependencyMap,
+        as3_declaration: Dict,
+        as3_file_name: str,
+    ):
 
         self.cgnat_enabled = find_objects_with_field_name(
             config=config,
@@ -66,4 +73,6 @@ class CGNAT(Plugin):
             | self.lsn_pools
             | self.ltm_profile_pcp
             | self.ltm_virtual_pool_type_lsn,
+            as3_declaration=as3_declaration,
+            as3_file_name=as3_file_name,
         )
