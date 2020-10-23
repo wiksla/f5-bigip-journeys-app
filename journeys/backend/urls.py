@@ -50,4 +50,5 @@ urlpatterns = [
     path("", include(sessions_router.urls)),
     path("", include(sessions_branches_router.urls)),
     path(r"supported_features", views.get_supported_features),
+    path(r"supported_validators", views.get_supported_validators),
 ]

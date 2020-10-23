@@ -19,7 +19,7 @@ EXPECTED_PROMPT_STATES = [
     "TimeLimitedModulesActive",
 ]
 PROMPT_ERR_MSG = (
-    f"Prompt is not one of expected: {EXPECTED_PROMPT_STATES}."
+    f"Prompt is not one of expected: {EXPECTED_PROMPT_STATES}. "
     f"Log onto destination device and check state."
 )
 

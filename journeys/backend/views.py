@@ -12,6 +12,7 @@ from journeys.errors import ConflictNotResolvedError
 from journeys.errors import JourneysError
 from journeys.modifier.conflict.plugins import load_plugins
 
+from ..validators.checks_for_cli import supported_checks
 from . import forms
 from . import logic
 from . import models
@@ -21,6 +22,21 @@ from . import serializers
 def get_supported_features(request):
     plugins = load_plugins()
     return JsonResponse({"items": [plugin.ID for plugin in plugins]})
+
+
+def get_supported_validators(request):
+    return JsonResponse(
+        {
+            "validators": {
+                check.name: {
+                    "require_source": check.require_source,
+                    "require_admin": check.require_admin,
+                    "description": check.description,
+                }
+                for check in supported_checks.values()
+            }
+        }
+    )
 
 
 class SessionsViewSet(
@@ -111,7 +127,6 @@ class SessionsViewSet(
 
 
 class SessionFilesViewSet(viewsets.GenericViewSet):
-
     lookup_value_regex = r".+"
     lookup_url_kwarg = "file_path"
 
@@ -160,7 +175,6 @@ class SessionBranchesViewSet(viewsets.GenericViewSet):
 
 
 class SessionBranchesFilesViewSet(viewsets.GenericViewSet):
-
     lookup_value_regex = r".+"
     lookup_url_kwarg = "file_path"
 

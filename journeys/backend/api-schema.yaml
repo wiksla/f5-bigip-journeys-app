@@ -7,7 +7,7 @@ servers:
 paths:
   '/supported_features':
     get:
-      summary: Information about supported features
+      summary: Get list of supported features
       operationId: get_supported_features
       tags:
         - '1. Before You Start'
@@ -559,8 +559,8 @@ paths:
           $ref: '#/components/responses/UnexpectedError'
   '/supported_validators':
     get:
-      summary: Get list of supported destination validators
-      operationId: list_supported_validators
+      summary: Get list of supported deployment validators
+      operationId: get_supported_validators
       tags:
         - '8. Deployment'
       responses:
@@ -570,6 +570,53 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/SupportedValidators'
+              examples:
+                validators:
+                  value:
+                    validators:
+                      MCP status:
+                        require_source: false
+                        require_admin: false
+                        description: "Checks if values of returned fields are correct. This method uses
+                          `tmsh showsys mcp-state field-fmt` "
+                      TMM status:
+                        require_source: false
+                        require_admin: false
+                        description: Logs status of TMM. Requires manual evaluation.
+                      Prompt state:
+                        require_source: false
+                        require_admin: false
+                        description: Checks if prompt state is in active mode.
+                      Core dumps:
+                        require_source: false
+                        require_admin: false
+                        description: Checks if diagnostic core dumps were created.
+                      DB compare:
+                        require_source: true
+                        require_admin: true
+                        description: Compares two system DBs getting them from iControl endpoint for sys
+                          db. Requires manual evaluation.
+                      Memory footprint:
+                        require_source: false
+                        require_admin: false
+                        description: "Compares information from `tmsh show sys provision` for both
+                          systems. Requires manual evaluation. "
+                      Version check:
+                        require_source: false
+                        require_admin: true
+                        description: Compares information from `tmsh show sys version` for both systems.
+                          Requires manual evaluation.
+                      LTM VS check:
+                        require_source: false
+                        require_admin: true
+                        description: Check lists of all defined LTM nodes and Virtual Servers configured
+                          in the new system.
+                      Log watcher:
+                        require_source: false
+                        require_admin: true
+                        description: Check looks for `ERR` and `CRIT` phrases (case insensitive) that
+                          appear in log during UCS deployment process.
+
         default:
           $ref: '#/components/responses/UnexpectedError'
   '/sessions/{session_id}/deployments':

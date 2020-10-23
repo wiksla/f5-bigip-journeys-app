@@ -115,3 +115,11 @@ class AS3InputDoesNotExistError(InputFileNotExistError):
 class UcsInputDoesNotExistError(InputFileNotExistError):
     def __init__(self, input_name):
         super().__init__(input_name=input_name, file_ext="UCS")
+
+
+class ValidationError(JourneysError):
+    pass
+
+
+class CoreDumpValidatorError(ValidationError):
+    pass
