@@ -11,6 +11,18 @@ from journeys.utils.device import save_ucs
 
 log = logging.getLogger(__name__)
 
+EXPECTED_PROMPT_STATES = [
+    "Active",
+    "ForcedOffline",
+    "Standby",
+    "Peer Time Out of Sync",
+    "TimeLimitedModulesActive",
+]
+PROMPT_ERR_MSG = (
+    f"Prompt is not one of expected: {EXPECTED_PROMPT_STATES}."
+    f"Log onto destination device and check state."
+)
+
 
 def run_backup(bigip: Device, ucs_passphrase: str, is_user_triggered=False) -> str:
     prefix = "user" if is_user_triggered else "auto"
@@ -66,8 +78,8 @@ def get_tmm_global_status(bigip: Device) -> dict:
 
 
 def wait_for_prompt_state(
-    device: Device, states=None, timeout=480, valid_states_required=5, interval=4
-) -> bool:
+    device: Device, timeout=480, valid_states_required=5, interval=4
+) -> str:
     """Wait for desired /var/prompt/ps1 state.
     valid_state_count was introduced to ensure that desired state is stable.
     :param device:
@@ -77,33 +89,26 @@ def wait_for_prompt_state(
     :param interval
     :return: True for success or False otherwise.
     """
-    states = states or [
-        "Active",
-        "ForcedOffline",
-        "Standby",
-        "Peer Time Out of Sync",
-        "TimeLimitedModulesActive",
-    ]
     end_time = time.time() + timeout
     valid_state_count = 0
     while time.time() < end_time:
         prompt_state = _get_prompt_status(device)
         log.debug("Prompt State: {}".format(prompt_state))
-        if prompt_state in states:
+        if prompt_state in EXPECTED_PROMPT_STATES:
             valid_state_count += 1
             log.debug("wait_for_prompt_state.valid_state_count: %d", valid_state_count)
             if valid_state_count == valid_states_required:
                 log.info(f"Prompt state: {prompt_state}")
-                return True
+                return prompt_state
             time.sleep(interval)
         elif prompt_state == "REBOOT REQUIRED":
             log.info(f"Reboot required for device: {device.host}")
-            return True
+            return prompt_state
         else:
             valid_state_count = 0
             log.debug("wait_for_prompt_state.valid_state_count: %d", valid_state_count)
             time.sleep(interval * 2)
-    return False
+    return ""
 
 
 def _get_prompt_status(device: Device):

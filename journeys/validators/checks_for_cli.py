@@ -16,6 +16,7 @@ from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
 from journeys.validators.comparers import tmsh_compare
 from journeys.validators.core_watcher import list_cores
+from journeys.validators.deployment import PROMPT_ERR_MSG
 from journeys.validators.deployment import get_mcp_status
 from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
@@ -50,10 +51,11 @@ def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
 
 
 def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
-    if not wait_for_prompt_state(device=destination):
-        click.echo("Prompt is not active/standby", file=output)
-        return {"result": FAILED, "value": False}
-    return {"result": PASSED, "value": True}
+    prompt_state = wait_for_prompt_state(device=destination)
+    if not prompt_state:
+        click.echo(PROMPT_ERR_MSG, file=output)
+        return {"result": FAILED, "value": {"info": PROMPT_ERR_MSG}}
+    return {"result": PASSED, "value": {"info": f"{prompt_state} is desired"}}
 
 
 def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
@@ -98,7 +100,7 @@ def cli_version_diff_check(source: Device, destination: Device, output) -> Dict:
         cmd="tmsh show sys version", first=source, second=destination
     )
     click.echo(f"tmsh show sys version diff:\n{version_diff}", file=output)
-    return {"result": USER_EVALUATION, "value": version_diff}
+    return {"result": USER_EVALUATION, "value": {"unified_diff": version_diff}}
 
 
 def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> dict:
