@@ -281,6 +281,8 @@ def abort():
         if not current_conflict:
             raise NotResolvingConflictError()
         controller.abort()
+        repo = controller.repo
+        repo.git.checkout(".")
         process_and_print_output(controller=controller, commit_name=None)
 
 
