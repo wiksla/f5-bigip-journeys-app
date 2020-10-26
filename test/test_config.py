@@ -4,13 +4,14 @@ from unittest.mock import patch
 import pytest
 
 from journeys import config
+from journeys.errors import BigDbError
+
+RESOURCES_DIR = os.path.join(os.path.dirname(__file__), "resources")
 
 
 @pytest.fixture
 def config_file():
-    relative = "resources/sample_bigip.conf"
-    path = os.path.join(os.path.dirname(__file__), relative)
-    return path
+    return os.path.join(RESOURCES_DIR, "sample_bigip.conf")
 
 
 @pytest.fixture
@@ -196,3 +197,30 @@ def test_convert_field_to_comments(conf):
     node.convert_to_comments()
     assert tag not in conf.fields
     assert conf.fields[index].key.startswith("#")
+
+
+def test_obtain_bigdb_parameter(bigdb_dat):
+    bigdb_dat.FILENAME = "sample_BigDB.dat"
+    bigdb_dat_config = bigdb_dat(dirname=RESOURCES_DIR)
+    assert (
+        bigdb_dat_config.get(section="Cluster.MgmtIpaddr", option="scf_config")
+        == "false"
+    )
+
+
+def test_big_db_with_duplicated_section(bigdb_dat):
+    bigdb_dat.FILENAME = "sample_BigDB_duplicate_section.dat"
+    with pytest.raises(BigDbError):
+        bigdb_dat(dirname=RESOURCES_DIR)
+
+
+def test_big_db_with_duplicated_option(bigdb_dat):
+    bigdb_dat.FILENAME = "sample_BigDB_duplicate_option.dat"
+    with pytest.raises(BigDbError):
+        bigdb_dat(dirname=RESOURCES_DIR)
+
+
+@pytest.fixture
+def bigdb_dat():
+    yield config.BigDB
+    config.BigDB.FILENAME = "BigDB.dat"

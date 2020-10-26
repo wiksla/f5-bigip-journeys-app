@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 
@@ -123,3 +124,17 @@ class ValidationError(JourneysError):
 
 class CoreDumpValidatorError(ValidationError):
     pass
+
+
+class BigDbError(JourneysError):
+    def __init__(self, message):
+        error_info_data = re.findall(r"'([^']*)'", message)
+        option = None
+        try:
+            file_path, option, section = error_info_data
+        except ValueError:
+            file_path, section = error_info_data
+
+        option_str = f" option '{option}' in" if option else ""
+        msg = f"Please remove duplicated element manually:{option_str} section '{section}' from '{file_path}'"
+        super().__init__(msg)

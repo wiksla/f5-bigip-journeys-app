@@ -1,0 +1,16 @@
+
+[Cluster.Primary]
+default=false
+type=enum
+realm=private_internal
+enum=|true|false|
+scf_config=false
+display_name=Cluster.Primary
+
+[Cluster.Primary]
+default=false
+type=enum
+realm=private_internal
+enum=|true|false|
+scf_config=false
+display_name=Cluster.Primary

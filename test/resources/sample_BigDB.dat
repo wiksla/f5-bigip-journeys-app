@@ -1,0 +1,14 @@
+[Cluster.MgmtIpaddr]
+default=::
+type=ipaddress_mgmt
+realm=private_internal
+scf_config=false
+display_name=Cluster.MgmtIpaddr
+
+[Cluster.Primary]
+default=false
+type=enum
+realm=private_internal
+enum=|true|false|
+scf_config=false
+display_name=Cluster.Primary

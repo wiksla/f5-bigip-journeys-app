@@ -19,6 +19,7 @@ from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
 from journeys.errors import ArchiveOpenError
 from journeys.errors import AS3InputDoesNotExistError
+from journeys.errors import BigDbError
 from journeys.errors import ConflictNotResolvedError
 from journeys.errors import DeviceAuthenticationError
 from journeys.errors import DifferentConflictError
@@ -1011,6 +1012,9 @@ def error_handler():
             "To start the conflict resolution process, run 'journey resolve <conflict_id>'."
         )
     except InputFileNotExistError as e:
+        click.echo(e)
+
+    except BigDbError as e:
         click.echo(e)
 
 

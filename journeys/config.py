@@ -11,6 +11,7 @@ from typing import Iterable
 from typing import Optional
 from typing import Union
 
+from journeys.errors import BigDbError
 from journeys.errors import InputFileNotExistError
 from journeys.parser import build_files
 from journeys.parser import parse_file
@@ -567,10 +568,16 @@ class BigDB:
     def __init__(self, dirname: str):
         self.path = Path(dirname).joinpath(BigDB.FILENAME)
         self.config = configparser.ConfigParser()
-        self.config.read(self.path)
+        self.load()
 
     def load(self):
-        self.config.read(self.path)
+        try:
+            self.config.read(self.path)
+        except (
+            configparser.DuplicateSectionError,
+            configparser.DuplicateOptionError,
+        ) as e:
+            raise BigDbError(e.message)
 
     def save(self):
         try:
