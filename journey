@@ -677,8 +677,7 @@ def deploy(
         click.echo(f"Input file {input_ucs} does not exists.")
         return
 
-    load_success = False
-
+    destination_handler_created = False
     with error_handler():
         destination = Device(
             host=destination_host,
@@ -687,6 +686,14 @@ def deploy(
             api_username=destination_admin_username,
             api_password=destination_admin_password,
         )
+        destination_handler_created = True
+    if not destination_handler_created:
+        click.echo(
+            "Unable to proceed without connection to the destination platform.\n"
+        )
+        return
+
+    load_success = False
     click.echo("Starting Log Watcher check...")
     lw = LogWatcher(destination)
     with error_handler(), lw:
