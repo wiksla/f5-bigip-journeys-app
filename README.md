@@ -168,11 +168,11 @@ Or use interactive container mode:
     1. Non-Interactive mode
         1. On Linux-based hosts:
              ```
-             alias journey="docker run --rm -v $(pwd):/migrate f5devcentral/journeys:latest"
+             alias journey="docker run --rm -it -v $(pwd):/migrate f5devcentral/journeys:latest"
              ```
         1. On Windows:
              ```
-             doskey journey=docker run --rm -v %cd%:/migrate f5devcentral/journeys:latest
+             doskey journey=docker run --rm -it -v %cd%:/migrate f5devcentral/journeys:latest
              ```
 
 ### Source configuration
