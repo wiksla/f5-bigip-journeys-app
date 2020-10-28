@@ -25,6 +25,12 @@ class ConflictHandler:
         self.as3_ucs_path = as3_ucs_path
         self.dependency_map = DependencyMap(self.config)
         self.plugins = load_plugins()
+        self.as3_declaration_pointer = self.as3_declaration
+        if (
+            self.as3_declaration_pointer
+            and "declaration" in self.as3_declaration_pointer
+        ):
+            self.as3_declaration_pointer = self.as3_declaration_pointer["declaration"]
 
     def get_conflicts(self) -> dict:
         conflicts = {}
@@ -32,7 +38,7 @@ class ConflictHandler:
             conflict = plugin(
                 config=self.config,
                 dependency_map=self.dependency_map,
-                as3_declaration=self.as3_declaration,
+                as3_declaration=self.as3_declaration_pointer,
                 as3_file_name=os.path.basename(self.as3_ucs_path)
                 if self.as3_ucs_path
                 else None,

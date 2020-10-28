@@ -3,6 +3,7 @@ import logging
 import os
 import shelve
 import shutil
+from copy import deepcopy
 from tarfile import ReadError
 from typing import Dict
 from typing import List
@@ -11,6 +12,7 @@ from git import GitCommandError
 from git import Repo
 from gitdb.exc import BadName
 
+import journeys.utils.as3_ops as as3_ops
 from journeys.config import Config
 from journeys.errors import AlreadyInitializedError
 from journeys.errors import ArchiveDecryptError
@@ -25,6 +27,7 @@ from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import OutputAlreadyExistsError
 from journeys.errors import UcsInputDoesNotExistError
+from journeys.modifier.conflict.as3ucs import As3ucs
 from journeys.modifier.conflict.conflict import Conflict
 from journeys.modifier.conflict.handler import ConflictHandler
 from journeys.utils.as3_ops import load_declaration
@@ -137,8 +140,14 @@ class MigrationController:
         with open(file=git_ignore_file, mode="w") as gitignore:
             gitignore.write(f"{self.SHELF_FILE_NAME}*")
 
+    def _decode_as3_irules(self):
+        if self.as3_declaration:
+            as3ucs = As3ucs(self.as3_declaration)
+            self.shelf["as3_decoded_irules"] = as3ucs.decode_as3_irules()
+
     def _reformat_input(self):
         self._read_config()
+        self._decode_as3_irules()
         log.info("Preparing the reformat commit.")
         self.conflict_handler.render(dirname=self.config_path)
 
@@ -164,6 +173,7 @@ class MigrationController:
         conflicts = self.shelf.get("conflicts", None)
 
         if current_conflict:
+            prompt = f"{current_conflict}"
             prompt = f"{current_conflict}"
         elif conflicts:
             prompt = f"{len(conflicts)} conflicts left"
@@ -330,14 +340,23 @@ class MigrationController:
 
             self._read_config()
 
-    def generate(self, output_ucs, ucs_passphrase, output_as3, force, overwrite):
+    def _encode_as3_irules(self):
+        mutable_declaration = deepcopy(self.as3_declaration)
+        as3ucs = As3ucs(mutable_declaration)
+        as3ucs.encode_as3_irules(self.shelf["as3_decoded_irules"])
+        return mutable_declaration
 
+    def generate(self, output_ucs, ucs_passphrase, output_as3, force, overwrite):
         if self.config is None:
             self._read_config()
 
         if not force:
             if self.conflict_handler.get_conflicts():
                 raise NotAllConflictResolvedError()
+
+        mutable_declaration = self.as3_declaration
+        if self.as3_ucs_path:
+            mutable_declaration = self._encode_as3_irules()
 
         output_ucs_path, output_as3_path = self._check_output_files(
             output_ucs=output_ucs, output_as3=output_as3, overwrite=overwrite
@@ -348,7 +367,7 @@ class MigrationController:
         )
 
         if output_as3_path:
-            self._create_output_as3(output_path=output_as3_path)
+            self._create_output_as3(mutable_declaration, output_path=output_as3_path)
 
         return output_ucs_path, output_as3_path
 
@@ -404,10 +423,9 @@ class MigrationController:
             ],
         )
 
-    def _create_output_as3(self, output_path):
-
+    def _create_output_as3(self, mutable_declaration, output_path):
         log.info(f"Creating output as3 {output_path}.")
-        shutil.copyfile(self.as3_ucs_path, output_path)
+        as3_ops.save_declaration(mutable_declaration, output_path)
 
     def get_mitigation_branches(self):
         return set(self.repo.heads).difference(

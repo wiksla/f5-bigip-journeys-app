@@ -1,5 +1,7 @@
+import base64
 import re
 
+import journeys.utils.as3_ops as as3_ops
 from journeys.config import Config
 from journeys.config import Field
 from journeys.config import FieldCollection
@@ -64,20 +66,42 @@ class As3ucs:
                 name = field.name
                 fields = field.fields
                 if pattern.match(name) is not None:
-                    as3_node = self._get_as3_node(name)
+                    as3_node = as3_ops.get_json_node(self.pointer, name)
                     if as3_node is not None:
                         source_field = As3ucs._find_subfield(fields, conflict[1])
                         if source_field is not None:
                             conflict[2](as3_node, source_field)
 
-    def _get_as3_node(self, obj_name):
-        as3_tree_keys = obj_name.split("/")
-        as3_node = self.pointer
-        for as3_key in as3_tree_keys[1:]:
-            if as3_key not in as3_node:
-                return None
-            as3_node = as3_node[as3_key]
-        return as3_node
+    def decode_as3_irules(self):
+        decoded_irules = []
+        for tenant, cur_tenant in self.pointer.items():
+            if not as3_ops.check_matching_type(cur_tenant, {"Tenant"}):
+                continue
+            for app, cur_app in cur_tenant.items():
+                if not as3_ops.check_matching_type(cur_app, {"Application"}):
+                    continue
+                for obj, cur_obj in cur_app.items():
+                    if (
+                        as3_ops.check_matching_type(cur_obj, {"iRule"})
+                        and isinstance(cur_obj["iRule"], dict)
+                        and "base64" in cur_obj["iRule"]
+                    ):
+                        decoded_irules.append((tenant, app, obj))
+                        cur_obj["iRule"] = base64.b64decode(
+                            cur_obj["iRule"]["base64"]
+                        ).decode("utf8")
+
+        return decoded_irules
+
+    def encode_as3_irules(self, rule_list):
+        for tenant, app, obj in rule_list:
+            try:
+                node = self.pointer[tenant][app][obj]
+                body = node["iRule"]
+                encoded = base64.b64encode(body.encode("utf8")).decode("utf8")
+                node["iRule"] = {"base64": encoded}
+            except KeyError:
+                pass  # iRule was removed
 
     @staticmethod
     def _find_subfield(fields: FieldCollection, field_tuple) -> Field:

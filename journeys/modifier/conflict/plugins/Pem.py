@@ -6,6 +6,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import journeys.utils.as3_ops as as3_ops
 from journeys.config import Config
 from journeys.modifier.conflict.plugins.Plugin import TYPE_NOT_SUPPORTED
 from journeys.modifier.conflict.plugins.Plugin import Plugin
@@ -33,6 +34,17 @@ def find_objects_with_string_in_key(
                 objects.add(obj_.id)
 
     return objects
+
+
+def find_as3_pem_irules(as3_declaration, irules):
+    as3_pem_irules = []
+    if not as3_declaration:
+        return as3_pem_irules
+    for rule in irules:
+        if as3_ops.get_json_node(as3_declaration, rule):
+            name_list = rule.split("/")
+            as3_pem_irules.append((name_list[1], name_list[2], name_list[3]))
+    return as3_pem_irules
 
 
 class Pem(Plugin):
@@ -88,6 +100,8 @@ class Pem(Plugin):
             as3_declaration
         )
 
+        self.as3_pem_ltm_irules = find_as3_pem_irules(as3_declaration, self.irules)
+
         super().__init__(
             config, dependency_map, conflict_objects, as3_declaration, as3_file_name
         )
@@ -106,6 +120,8 @@ class Pem(Plugin):
             mutable_as3_declaration[tenant][app].pop(obj)
         for tenant, app, obj, pointer in self.as3_pem_object_pointers:
             mutable_as3_declaration[tenant][app][obj].pop(pointer)
+        for tenant, app, obj in self.as3_pem_ltm_irules:
+            mutable_as3_declaration[tenant][app].pop(obj)
 
     def modify_objects(self, mutable_config: Config):
         for obj_id in self.provision:
@@ -145,6 +161,7 @@ class Pem(Plugin):
         for msg, obj_tuple in chain(
             product([self.AS3_MSG_TYPE_1], self.as3_pem_objects),
             product([self.AS3_MSG_TYPE_2], self.as3_pem_object_pointers),
+            product([self.MSG_TYPE_2], self.as3_pem_ltm_irules),
         ):
             obj_id = "/".join(obj_tuple)
 
@@ -166,29 +183,19 @@ class Pem(Plugin):
             return as3_pem_objects, as3_pem_object_pointers
 
         data = as3_declaration
+        if "declaration" in data:
+            data = data["declaration"]
 
-        # TODO: Do we need pointer?
-        pointer = data
-        if "declaration" in pointer:
-            pointer = pointer["declaration"]
-
-        def check_matching_type(_obj, class_type):
-            return (
-                isinstance(_obj, dict)
-                and "class" in _obj
-                and _obj["class"] in class_type
-            )
-
-        for tenant, cur_tenant in as3_declaration.items():
-            if not check_matching_type(cur_tenant, {"Tenant"}):
+        for tenant, cur_tenant in data.items():
+            if not as3_ops.check_matching_type(cur_tenant, {"Tenant"}):
                 continue
             for app, cur_app in cur_tenant.items():
-                if not check_matching_type(cur_app, {"Application"}):
+                if not as3_ops.check_matching_type(cur_app, {"Application"}):
                     continue
                 for obj, cur_obj in cur_app.items():
-                    if check_matching_type(cur_obj, self.AS3_PEM_CLASSES):
+                    if as3_ops.check_matching_type(cur_obj, self.AS3_PEM_CLASSES):
                         as3_pem_objects.append((tenant, app, obj))
-                    elif check_matching_type(cur_obj, self.AS3_VS_CLASSES):
+                    elif as3_ops.check_matching_type(cur_obj, self.AS3_VS_CLASSES):
                         for pointer in self.AS3_VS_POINTERS:
                             if pointer in cur_obj:
                                 as3_pem_object_pointers.append(
