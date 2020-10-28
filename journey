@@ -856,7 +856,8 @@ def print_conflicts_info(conflicts):
     )
     click.echo("")
     click.echo(
-        "Warning: Vlans, trunks and vlan-groups may uniquely identify virtual servers. Removing them may in some cases produce invalid configurations."
+        "Warning: Vlans, trunks and vlan-groups may uniquely identify virtual servers. "
+        "Removing them may in some cases produce invalid configurations."
     )
 
 
