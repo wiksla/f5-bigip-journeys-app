@@ -34,7 +34,18 @@ CONFLICT_NAME = "CompatibilityLevel"
 
 
 def test_compatibility_lvl(test_compatibility):
-    solution_name = "F5_Recommended_CompatibilityLevel_compatibility_lvl_1"
+    solution_name = "F5_Recommended_CompatibilityLevel_compatibility_lvl_0"
+    validation_data = ("0", "false")
+
+    test_compatibility(
+        conflict_name=CONFLICT_NAME,
+        solution_name=solution_name,
+        conf_file=config,
+        conf_dat_file=bigdb_option_1,
+        validation_data=validation_data,
+    )
+
+    solution_name = "CompatibilityLevel_compatibility_lvl_1"
     validation_data = ("1", "true")
 
     test_compatibility(
@@ -44,22 +55,12 @@ def test_compatibility_lvl(test_compatibility):
         conf_dat_file=bigdb_option_1,
         validation_data=validation_data,
     )
+
     test_compatibility(
         conflict_name=CONFLICT_NAME,
         solution_name=solution_name,
         conf_file=config,
         conf_dat_file=bigdb_option_2,
-        validation_data=validation_data,
-    )
-
-    solution_name = "CompatibilityLevel_compatibility_lvl_0"
-    validation_data = ("0", "false")
-
-    test_compatibility(
-        conflict_name=CONFLICT_NAME,
-        solution_name=solution_name,
-        conf_file=config,
-        conf_dat_file=bigdb_option_1,
         validation_data=validation_data,
     )
 

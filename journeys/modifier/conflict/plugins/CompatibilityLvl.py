@@ -91,7 +91,7 @@ class CompatibilityLevel(Plugin):
     def mitigations(self) -> dict:
         return {
             "comment_only": self.comment_objects,
-            "recommended": self.set_compatibility_lvl_to_1,
+            "recommended": self.set_compatibility_lvl_to_0,
             "mitigations": {
                 "compatibility_lvl_0": self.set_compatibility_lvl_to_0,
                 "compatibility_lvl_1": self.set_compatibility_lvl_to_1,

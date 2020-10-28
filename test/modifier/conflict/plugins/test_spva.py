@@ -53,7 +53,7 @@ CONFLICT_NAME = "SPVA"
 
 
 def test_spva_delete(test_solution):
-    solution_name = "SPVA_delete_objects"
+    solution_name = "F5_Recommended_SPVA_delete_objects"
 
     controller = test_solution(
         conflict_name=CONFLICT_NAME,
@@ -73,7 +73,7 @@ def test_spva_delete(test_solution):
 
 
 def test_spdag_compatibility_lvl_1(test_solution):
-    solution_name = "F5_Recommended_SPVA_compatibility_lvl_1"
+    solution_name = "SPVA_compatibility_lvl_1"
 
     controller = test_solution(
         conflict_name=CONFLICT_NAME,
