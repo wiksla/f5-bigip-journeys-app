@@ -854,6 +854,10 @@ def print_conflicts_info(conflicts):
     click.echo(
         "To resolve all conflicts automatically, please run 'journey resolve-all'"
     )
+    click.echo("")
+    click.echo(
+        "Warning: Vlans, trunks and vlan-groups may uniquely identify virtual servers. Removing them may in some cases produce invalid configurations."
+    )
 
 
 def print_no_conflict_info(history):
