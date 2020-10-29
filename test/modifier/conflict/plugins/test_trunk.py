@@ -56,8 +56,8 @@ def test_trunk_delete(test_solution):
     with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get("net trunk trunk0")
 
-    with pytest.raises(KeyError, match=r"Requested field.*not found"):
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get(("net", "stp")).fields["trunks"]
 
-    with pytest.raises(KeyError, match=r"Requested field.*not found"):
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get("net vlan /Common/internal").fields["interfaces"]

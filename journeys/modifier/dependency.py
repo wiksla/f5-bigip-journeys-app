@@ -449,6 +449,13 @@ DEFAULT_DEPENDENCIES = [
     ),
     SubCollectionDependency(
         child_types=[("ltm", "virtual")],
+        field_name="rules",
+        parent_types=[("ltm", "rule")],
+        dependency=FieldKeyToNameDependency(),
+        resolution="nested_with_cleanup",
+    ),
+    SubCollectionDependency(
+        child_types=[("ltm", "virtual")],
         field_name="profiles",
         parent_types=[("pem", "profile")],
         dependency=FieldKeyToNameDependency(),

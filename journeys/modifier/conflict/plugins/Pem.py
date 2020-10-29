@@ -77,8 +77,6 @@ class Pem(Plugin):
             field_value=["nominal", "minimum", "dedicated", "custom"],
         )
 
-        conflict_objects = None
-
         # each conf can have a few empty fields which don't mean that pem is enabled
         # ignore the conflict if that is the case
         if not self.provision and not self.irules:
@@ -91,10 +89,7 @@ class Pem(Plugin):
                 if obj not in ignored or len(config.fields[obj].fields) != 0:
                     break
             else:
-                conflict_objects = set()
-
-        if conflict_objects is None:
-            conflict_objects = self.pem | self.provision | self.irules
+                self.pem = set()
 
         self.as3_pem_objects, self.as3_pem_object_pointers = self.find_as3_pem_objects(
             as3_declaration
@@ -103,7 +98,11 @@ class Pem(Plugin):
         self.as3_pem_ltm_irules = find_as3_pem_irules(as3_declaration, self.irules)
 
         super().__init__(
-            config, dependency_map, conflict_objects, as3_declaration, as3_file_name
+            config,
+            dependency_map,
+            self.pem | self.provision | self.irules,
+            as3_declaration,
+            as3_file_name,
         )
 
     def delete_objects(self, mutable_config: Config, mutable_as3_declaration: Dict):

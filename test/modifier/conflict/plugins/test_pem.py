@@ -9,10 +9,9 @@ ltm virtual /Common/pem_http_virt {
         /Common/PEM_Steering_pem_profile {
             context clientside
         }
-        /Common/classification {
+        /Common/spm {
             context clientside
         }
-        /Common/fastL4 { }
     }
     source 0.0.0.0/0
     translate-address enabled
@@ -130,4 +129,4 @@ def test_pem_modify(test_solution):
         controller.config.fields.get(("ltm", "rule"))
 
     with pytest.raises(KeyError, match=r"Requested key.*not found"):
-        controller.config.fields.get("ltm virtual /Common/pem_http_virt")
+        controller.config.fields["ltm virtual /Common/pem_http_virt"]

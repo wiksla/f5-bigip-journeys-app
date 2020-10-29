@@ -35,7 +35,7 @@ def test_vlan_group_resolution_delete(test_solution):
     with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get(("net", "vlan-group"))
 
-    with pytest.raises(KeyError, match=r"Requested field.*not found"):
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get(("net", "route-domain")).fields[
             "vlans"
         ].fields.get("/Common/vlanGroup_AZ")

@@ -315,7 +315,7 @@ class FieldCollection:
                 return next(self.get_all(item))
             except StopIteration:
                 pass
-        raise KeyError(f"Requested field {item} not found.")
+        raise KeyError(f"Requested key {item} not found.")
 
     def get_all(self, item: tuple) -> Iterable[Field]:
         """Return a generator of all elements matching the criteria.

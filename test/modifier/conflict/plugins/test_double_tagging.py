@@ -26,7 +26,7 @@ def test_double_tagging_delete(test_solution):
         conflict_name=CONFLICT_NAME, solution_name=solution_name, conf_file=config,
     )
 
-    with pytest.raises(KeyError, match=r"Requested field.*not found"):
+    with pytest.raises(KeyError, match=r"Requested key.*not found"):
         controller.config.fields.get("net vlan /Common/vlan_external_az").fields.get(
             "customer-tag"
         )
