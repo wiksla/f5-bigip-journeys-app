@@ -118,11 +118,19 @@ class UcsInputDoesNotExistError(InputFileNotExistError):
         super().__init__(input_name=input_name, file_ext="UCS")
 
 
-class ValidationError(JourneysError):
+class ValidationRuntimeError(JourneysError):
     pass
 
 
-class CoreDumpValidatorError(ValidationError):
+class ValidationFailed(JourneysError):
+    pass
+
+
+class CoreWatcherFailed(ValidationFailed):
+    pass
+
+
+class LogWatcherRuntimeError(ValidationRuntimeError):
     pass
 
 

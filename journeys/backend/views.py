@@ -12,7 +12,7 @@ from journeys.errors import ConflictNotResolvedError
 from journeys.errors import JourneysError
 from journeys.modifier.conflict.plugins import load_plugins
 
-from ..validators.checks_for_cli import supported_checks
+from ..validators.checks_for_cli import default_checks
 from . import forms
 from . import logic
 from . import models
@@ -33,7 +33,7 @@ def get_supported_validators(request):
                     "require_admin": check.require_admin,
                     "description": check.description,
                 }
-                for check in supported_checks.values()
+                for check in default_checks.values()
             }
         }
     )

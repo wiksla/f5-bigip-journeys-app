@@ -48,10 +48,8 @@ from journeys.utils.resource_check import create_mprov_cfg_locally
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
 )
-from journeys.validators.checks_for_cli import auto_checks
 from journeys.validators.checks_for_cli import default_checks
 from journeys.validators.checks_for_cli import exclude_checks
-from journeys.validators.checks_for_cli import run_auto_checks
 from journeys.validators.checks_for_cli import run_diagnose
 from journeys.validators.deployment import backup_over_cli
 from journeys.validators.log_watcher import LogWatcher
@@ -629,12 +627,6 @@ def backup(
 @click.option(
     "--ucs-passphrase", required=True, help="Passphrase to decrypt the UCS archive."
 )
-@click.option(
-    "--no-autocheck",
-    is_flag=True,
-    default=False,
-    help="Run diagnostics after deployment",
-)
 @click.option("--input-ucs", required=True, help="Filename for generated UCS file.")
 @click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
@@ -663,7 +655,6 @@ def backup(
 def deploy(
     input_ucs,
     ucs_passphrase,
-    no_autocheck,
     destination_host,
     destination_username,
     destination_password,
@@ -693,10 +684,11 @@ def deploy(
         )
         return
 
-    load_success = False
-    click.echo("Starting Log Watcher check...")
-    lw = LogWatcher(destination)
-    with error_handler(), lw:
+    with error_handler():
+        lw = LogWatcher(destination)
+        lw.start()
+
+    with error_handler():
         if no_backup:
             click.echo("Auto backup skipped by user.")
         else:
@@ -708,27 +700,8 @@ def deploy(
         click.echo("Deploying UCS on the Destination Platform...")
         load_ucs(destination, input_ucs, ucs_passphrase)
         click.echo("Done.")
-        load_success = True
-
-    check_success = True
-
-    if load_success:
-        if not no_autocheck:
-            checks = auto_checks.copy()
-            checks.update({"Log watcher": lw.get_log_watcher_result})
-            click.echo("Running auto checks:")
-            check_success = run_auto_checks(destination, checks)
-        else:
-            click.echo(
-                "Autocheck skipped by user!\n"
-                "In case of problems, check log files for errors, especially /var/log/ltm."
-                "and use journeys.py diagnose option. "
-            )
-        click.echo(
-            f"\nDeployment completed {'successfully' if check_success else 'with errors'}."
-        )
-    else:
-        click.echo("\nDeployment failed!")
+        return
+    click.echo("\nDeployment failed!")
 
 
 @cli.command()
@@ -757,28 +730,6 @@ def deploy(
 )
 @click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
-    "--destination-username",
-    default="root",
-    help="SSH username for the destination host. Default: root",
-)
-@click.option(
-    "--destination-password",
-    prompt=True,
-    hide_input=True,
-    help="SSH password for the destination host. Will prompt if not provided.",
-)
-@click.option(
-    "--destination-admin-username",
-    default="admin",
-    help="Admin username for the destination host. Default: admin",
-)
-@click.option(
-    "--destination-admin-password",
-    prompt=True,
-    hide_input=True,
-    help="Admin password for the destination host. Will prompt if not provided.",
-)
-@click.option(
     "--excluded-checks",
     default="",
     help='Add checks to exclude in a list, e.g. \'["TMM status", "Core dumps"]\'',
@@ -790,10 +741,6 @@ def diagnose(
     source_admin_username,
     source_admin_password,
     destination_host,
-    destination_username,
-    destination_password,
-    destination_admin_username,
-    destination_admin_password,
     excluded_checks,
 ):
     """ Run diagnosis and comparison checks for Source and Destination Platforms. """
@@ -807,10 +754,10 @@ def diagnose(
         )
         destination = Device(
             host=destination_host,
-            ssh_username=destination_username,
-            ssh_password=destination_password,
-            api_username=destination_admin_username,
-            api_password=destination_admin_password,
+            ssh_username=source_username,
+            ssh_password=source_password,
+            api_username=source_admin_username,
+            api_password=source_admin_password,
         )
         prefix = "diagnose_output"
         timestamp = strftime("%Y%m%d%H%M%S", gmtime())

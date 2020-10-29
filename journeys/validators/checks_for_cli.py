@@ -10,8 +10,9 @@ from typing import Dict
 
 import click
 
-from journeys.errors import CoreDumpValidatorError
+from journeys.errors import CoreWatcherFailed
 from journeys.errors import JourneysError
+from journeys.errors import ValidationRuntimeError
 from journeys.utils.device import Device
 from journeys.validators.comparers import compare_db
 from journeys.validators.comparers import compare_memory_footprint
@@ -21,6 +22,7 @@ from journeys.validators.deployment import PROMPT_ERR_MSG
 from journeys.validators.deployment import get_mcp_status
 from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
+from journeys.validators.log_watcher import LogWatcher
 from journeys.validators.ltm_checks import get_ltm_vs_status
 from journeys.workdir import WORKDIR
 
@@ -82,7 +84,7 @@ def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
     if not prompt_state:
         click.echo(PROMPT_ERR_MSG, file=output)
         return {"result": FAILED, "value": {"info": PROMPT_ERR_MSG}}
-    return {"result": PASSED, "value": {"info": f"{prompt_state} is desired"}}
+    return {"result": PASSED, "value": {"info": f"`{prompt_state}` state is desired"}}
 
 
 @attributes(
@@ -92,17 +94,20 @@ def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if diagnostic core dumps were created."""
     try:
         list_cores(destination, raise_exception=True)
-        msg = "No core dumps found in /var/core\n" "Core dumps check PASSED.\n"
+        click.echo("Core dumps check:", file=output)
+        msg = "No core dumps found in /var/core\n" "Core dumps check PASSED."
         click.echo(msg, file=output)
-    except CoreDumpValidatorError as err:
+        result = PASSED
+    except CoreWatcherFailed as err:
         msg = f"{err}\n"
         "Diagnostic core dumps found. You can check why it happened\n"
         "and read more bout it at:\n"
-        "https://support.f5.com/csp/article/K10062\n\n"
-        "Core dupms check FAILED.\n"
-        click.echo(msg)
+        "https://support.f5.com/csp/article/K10062"
+        click.echo(msg, file=output)
+        click.echo("Core dumps check FAILED.\n", file=output)
+        result = FAILED
     finally:
-        return {"result": PASSED, "value": {"info": msg}}
+        return {"result": result, "value": {"info": msg}}
 
 
 @attributes(
@@ -154,10 +159,28 @@ Requires manual evaluation."""
 @attributes(
     name="Log watcher", require_source=False, require_admin=True,
 )
-def cli_log_watcher_stub() -> None:
+def cli_log_watcher_data_collector(destination: Device, output, **kwargs) -> dict:
     """Check looks for `ERR` and `CRIT` phrases (case insensitive) \
 that appear in log during UCS deployment process."""
-    pass  # Log watcher is executed as a context manager for deployment!
+    try:
+        lw = LogWatcher.init_from_saved_pointers(destination)
+        lw.stop()
+        diff = lw.get_diff()
+        lw.cleanup()
+        msg = (
+            "Patterns representing potential errors found in logs. "
+            f"Review them to find out details: \n{json.dumps(diff, indent=4)}"
+            if any(diff.values())
+            else "No `ERR` and `CRIT` phrases found in logs."
+        )
+        click.echo(f"Log Watcher check:\n{msg}", file=output)
+        return {"result": USER_EVALUATION, "value": diff}
+    except ValidationRuntimeError as err:
+        click.echo(f"Failed to execute log watcher check: {err}\n")
+        return {
+            "result": FAILED,
+            "value": {"info": f"Failed to execute check function: {err}"},
+        }
 
 
 def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> dict:
@@ -237,31 +260,13 @@ def run_auto_checks(destination: Device, checks: OrderedDict):
     return check_success
 
 
-supported_checks = OrderedDict()
-supported_checks["MCP status"] = cli_mcp_status_check
-supported_checks["TMM status"] = cli_tmm_status_check
-supported_checks["Prompt state"] = cli_prompt_state_check
-supported_checks["Core dumps"] = cli_core_dumps_check
-supported_checks["DB compare"] = cli_compare_db_check
-supported_checks["Memory footprint"] = cli_memory_footprint_check
-supported_checks["Version check"] = cli_version_diff_check
-supported_checks["LTM VS check"] = cli_ltm_vs_check
-supported_checks["Log watcher"] = cli_log_watcher_stub
-
-
 default_checks = OrderedDict()
+default_checks["Prompt state"] = cli_prompt_state_check
+default_checks["Log watcher"] = cli_log_watcher_data_collector
 default_checks["MCP status"] = cli_mcp_status_check
 default_checks["TMM status"] = cli_tmm_status_check
-default_checks["Prompt state"] = cli_prompt_state_check
 default_checks["Core dumps"] = cli_core_dumps_check
 default_checks["DB compare"] = cli_compare_db_check
 default_checks["Memory footprint"] = cli_memory_footprint_check
 default_checks["Version check"] = cli_version_diff_check
 default_checks["LTM VS check"] = cli_ltm_vs_check
-# Log watcher executed by default during deployment, no need to add it here.
-
-auto_checks = OrderedDict()
-auto_checks["MCP status"] = cli_mcp_status_check
-auto_checks["TMM status"] = cli_tmm_status_check
-auto_checks["Prompt state"] = cli_prompt_state_check
-auto_checks["Core dumps"] = cli_core_dumps_check

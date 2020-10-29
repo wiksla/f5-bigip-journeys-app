@@ -1,20 +1,23 @@
+import json
 import logging
 import re
-import tempfile
+import shutil
 from pathlib import Path
 from re import Pattern
 from typing import Dict
 from typing import List
 
-from journeys.errors import JourneysError
+from journeys.errors import LogWatcherRuntimeError
+from journeys.errors import ValidationRuntimeError
 from journeys.utils.device import Device
 from journeys.utils.device import get_file
 from journeys.utils.device import stat_file
-from journeys.validators.checks_for_cli import USER_EVALUATION
 from journeys.workdir import WORKDIR
 
 log = logging.getLogger(__name__)
 
+POINTERS_FILE_NAME = ".log_watcher_start_point"
+LOG_WATCHER_DIR_NAME = ".log_watcher_data"
 
 default_watchers = {
     "/var/log/ltm": "([eE][rR][rR])|([cC][rR][iI][tT])",
@@ -46,7 +49,7 @@ class LogWatcher:
     If no logs are provided default watcher list is being used.
     """
 
-    def __init__(self, device: Device, logs=None):
+    def __init__(self, device: Device, logs: Dict = None, create_tempdir: bool = True):
         if logs is None:
             logs = default_watchers
         self.__device = device
@@ -56,11 +59,26 @@ class LogWatcher:
             else [re.compile(regex)]
             for (logfile, regex) in logs.items()
         }
-        self.__tmpdir = tempfile.TemporaryDirectory(prefix="log_watcher_", dir=WORKDIR)
-        self.__tmppath = Path(WORKDIR) / Path(self.__tmpdir.name)
+        self.__tmppath = (
+            Path(WORKDIR) / LOG_WATCHER_DIR_NAME if create_tempdir else None
+        )
+        try:
+            if self.__tmppath:
+                self.__tmppath.mkdir()
+        except FileExistsError:
+            shutil.rmtree(self.__tmppath)
+            self.__tmppath.mkdir()
+
         self.__stopped = False
         self._pointers = dict()
         self.__diff = dict()
+
+    @classmethod
+    def init_from_saved_pointers(cls, device: Device, logs=None):
+        lw = cls(device, logs, create_tempdir=False)
+        lw.__tmppath = Path(WORKDIR) / LOG_WATCHER_DIR_NAME
+        lw.load_pointers_from_file()
+        return lw
 
     def __enter__(self):
         self.start()
@@ -81,6 +99,7 @@ class LogWatcher:
             except PermissionError:
                 log.debug(f"No required permission for file: {logfile}")
         log.info("Logging started")
+        self.dump_pointers_to_file()
 
     def stop(self):
         """Stop logging."""
@@ -109,16 +128,30 @@ class LogWatcher:
                 log.debug(f"No required permission for file: {logfile}")
 
         self.__stopped = True
-        self.__tmpdir.cleanup()
         log.info("Logging stopped")
+
+    def cleanup(self):
+        if self.__tmppath:
+            shutil.rmtree(self.__tmppath)
+            self.__tmppath = None
 
     def get_diff(self) -> Dict[str, List[str]]:
         """Return diff of logs."""
         if not self.__stopped:
-            raise JourneysError("LogWatcher not stopped")
+            raise ValidationRuntimeError("LogWatcher not stopped")
         return self.__diff
 
-    def get_log_watcher_result(self, output, **kwargs):
-        diff = self.get_diff()
-        result = USER_EVALUATION
-        return {"result": result, "value": diff}
+    def dump_pointers_to_file(self):
+        with open(self.__tmppath / POINTERS_FILE_NAME, "w") as fp:
+            json.dump(self._pointers, fp)
+        log.debug(f"Pointers saved to {str(self.__tmppath / POINTERS_FILE_NAME)}")
+
+    def load_pointers_from_file(self):
+        pointers_path = self.__tmppath / POINTERS_FILE_NAME
+        try:
+            with open(pointers_path, "r") as fp:
+                self._pointers = json.load(fp)
+        except FileNotFoundError:
+            raise LogWatcherRuntimeError(
+                "File with initialized pointers to log files not found!"
+            )
