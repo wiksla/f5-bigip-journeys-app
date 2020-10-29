@@ -1,0 +1,160 @@
+.sum-bar-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 850px;
+    margin-left: 50px;
+    margin-right: 50px;
+    padding: 10px;
+    background-color: #f2f2f2;
+    border-radius: 10px;
+}
+.sum-bar-title-row {
+    display: flex;
+    padding: 10px;
+    font-family: sans-serif;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 24px;
+}
+.sum-bar-title-divider {
+    border-bottom: 1px solid #cccccc;
+}
+.sum-bar-content-row {
+    display: flex;
+    padding: 10px 0;
+    font-family: sans-serif;
+    font-style: normal;
+}
+.sum-bar-cell {
+    display: flex;
+    width: 25%;
+    max-width: 400px;
+    min-height: 100px;
+    margin-right: 24px;
+    padding: 0 10px;
+    background-color: #ffffff;
+}
+.sum-bar-cell.pass {
+    border-left: .25rem solid #1cc88a;
+}
+.sum-bar-cell.fail {
+    border-left: .25rem solid #e74a3b;
+}
+.sum-bar-cell.eval {
+    border-left: .25rem solid #f6c23e;
+}
+.sum-bar-text-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.sum-bar-cell-title {
+    text-transform: uppercase;
+    font-size: 12px;
+}
+.sum-bar-cell-title.pass {
+    color: #1cc88a;
+}
+.sum-bar-cell-title.fail {
+    color: #e74a3b;
+}
+.sum-bar-cell-title.eval {
+    color: #f4b20b;
+}
+.sum-bar-cell-title-box {
+    padding-bottom: 4px;
+}
+.sum-bar-cell-data {
+    font-size: 20px;
+}
+.details-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 850px;
+    margin: 40px 50px 20px 50px;
+    padding: 10px 0;
+    font-family: sans-serif;
+}
+.val-res-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 850px;
+}
+.val-res-section-title-row {
+    display: flex;
+    align-items: center;
+    width: calc(100% - 40px);
+    padding: 20px;
+    color: #ffffff;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+.val-res-section-title-row.pass {
+    background-color: #1cc88a;
+}
+.val-res-section-title-row.fail {
+    background-color: #e74a3b;
+}
+.val-res-section-title-row.eval {
+    background-color: #f6c23e;
+}
+.val-res-section-title {
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+}
+.val-res-section-sub-title {
+    padding-left: 10px;
+}
+.val-res-section-data-row {
+    display: flex;
+    flex-direction: column;
+    min-height: 100px;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    border: 1px solid #cccccc;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.val-res-txt-row {
+    padding: 10px 0;
+    display: flex;
+}
+.val-res-txt {
+    white-space: pre;
+}
+.val-res-txt-row.even {
+    background-color: #e3e6ec;
+}
+.report-title-row {
+    background-color: #292932;
+    font-family: sans-serif;
+    font-style: normal;
+    font-weight: normal;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FFFFFF;
+    padding: 10px;
+    margin-left: 50px;
+    margin-right: 50px;
+    margin-bottom: 50px;
+    display: flex;
+    min-width: 850px;
+}
+.logo-box {
+    margin-right: 10px;
+}
+.logo {
+    width: 30px;
+    height: 28px;
+}
+.val-res-label {
+    font-weight: 600;
+}
+.val-res-label-box {
+    min-width: 150px;
+    margin-right: 5px;
+}

@@ -75,7 +75,7 @@ class VirtualWire(Plugin):
             object_info[obj_id] = {
                 "file": obj.file,
                 "comment": self.MSG_TYPE.format(field_name),
-                "object": str(obj),
+                "object": str(obj).splitlines(),
             }
 
         for obj_id in self.virtwire_tagged_vlans:

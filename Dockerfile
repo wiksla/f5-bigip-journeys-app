@@ -2,6 +2,7 @@ FROM python:3.8-alpine
 ENV PYTHONUNBUFFERED 1
 ENV MIGRATE_DIR /migrate
 RUN apk --update --no-cache add git bash gnupg openssl
+RUN apk --update --no-cache add git bash gnupg openssl wkhtmltopdf xvfb ttf-dejavu
 RUN mkdir /code ; mkdir /code/journeys ; mkdir /migrate
 COPY requirements.txt /code/
 RUN apk --update --no-cache --virtual .build add gcc make musl-dev libffi-dev openssl-dev && \

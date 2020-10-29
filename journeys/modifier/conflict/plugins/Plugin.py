@@ -187,7 +187,7 @@ class Plugin:
             object_info[obj_id] = {
                 "file": obj.file,
                 "comment": self.MSG_TYPE.format(self.MSG_INFO),
-                "object": str(obj),
+                "object": str(obj).splitlines(),
             }
         return object_info
 

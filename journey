@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import glob
+import json
 import logging
 import os
 import random
@@ -35,6 +36,9 @@ from journeys.errors import SSHConnectionError
 from journeys.errors import UcsActionError
 from journeys.errors import UnknownConflictError
 from journeys.modifier.conflict.plugins import load_plugins
+from journeys.reports.reports import generate_changes_report
+from journeys.reports.reports import generate_conflicts_report
+from journeys.reports.reports import generate_deployment_validations_report
 from journeys.utils.device import REMOTE_UCS_DIRECTORY
 from journeys.utils.device import Device
 from journeys.utils.device import delete_file
@@ -56,6 +60,7 @@ from journeys.validators.log_watcher import LogWatcher
 from journeys.workdir import WORKDIR
 
 log = logging.getLogger(__name__)
+LAST_DIAGNOSE_POINTER = ".last_diagnose_pointer"
 
 
 def passed_params():
@@ -761,8 +766,12 @@ def diagnose(
         )
         prefix = "diagnose_output"
         timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-        output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
-        output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
+
+        output_log_file_name = f"{prefix}_{timestamp}.log"
+        output_log = os.path.join(WORKDIR, output_log_file_name)
+
+        output_json_file_name = f"{prefix}_{timestamp}.json"
+        output_json = os.path.join(WORKDIR, output_json_file_name)
 
         if excluded_checks:
             try:
@@ -779,8 +788,88 @@ def diagnose(
                 checks=checks, kwargs=kwargs, output_json=output_json,
             )
         click.echo(f"Finished. Check {output_log} and {output_json} for details.")
+
+        with open(
+            os.path.join(WORKDIR, LAST_DIAGNOSE_POINTER), "w"
+        ) as last_diagnose_pointer:
+            last_diagnose_pointer.write(output_json_file_name)
+
         return
     click.echo("\nFailed to run diagnosis on the Destination Device!")
+
+
+@cli.command()
+def conflicts_report():
+    """ Generates conflicts report. """
+
+    with error_handler():
+        controller = MigrationController(working_directory=WORKDIR)
+        generate_conflicts_report(
+            output_path=os.path.join(
+                controller.working_directory, "conflicts_report.pdf"
+            ),
+            conflicts=controller.initial_conflicts,
+        )
+
+
+@cli.command()
+def resolutions_report():
+    """ Generates resolutions report. """
+
+    with error_handler():
+        controller = MigrationController(working_directory=WORKDIR)
+        commits_history = controller.history()
+
+        if not commits_history:
+            click.echo("No changes detected.")
+            return
+
+        changes = [
+            {
+                "message": commit.summary,
+                "diffs": controller.get_changes_from_commit(commit.hexsha),
+            }
+            for commit in commits_history
+        ]
+
+        generate_changes_report(
+            output_path=os.path.join(
+                controller.working_directory, "resolutions_report.pdf"
+            ),
+            changes=changes,
+        )
+
+
+@cli.command()
+def deployment_report():
+    """ Generates deployment validation report. """
+    with error_handler():
+        controller = MigrationController(working_directory=WORKDIR)
+        try:
+            with open(
+                os.path.join(WORKDIR, LAST_DIAGNOSE_POINTER), "r"
+            ) as last_diagnose_pointer:
+                last_diagnose_file_name = last_diagnose_pointer.read()
+        except FileNotFoundError:
+            raise InputFileNotExistError(
+                f"'{LAST_DIAGNOSE_POINTER}'", "Diagnose results pointer file"
+            )
+        try:
+            with open(
+                os.path.join(WORKDIR, last_diagnose_file_name.strip())
+            ) as last_diagnose_output:
+                validation = json.load(last_diagnose_output)
+        except FileNotFoundError:
+            raise InputFileNotExistError(
+                f"'{last_diagnose_file_name}'", "Diagnose results file"
+            )
+
+        generate_deployment_validations_report(
+            output_path=os.path.join(
+                controller.working_directory, "deployment_report.pdf"
+            ),
+            validation=validation,
+        )
 
 
 def print_conflicts_info(conflicts):

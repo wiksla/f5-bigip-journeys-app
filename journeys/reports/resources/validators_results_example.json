@@ -1,0 +1,77 @@
+{
+  "MCP status": {
+    "result": "PASSED",
+    "value": {
+      "end-platform-id-received": "true",
+      "last-load": "full-config-load-succeed",
+      "phase": "running"
+    }
+  },
+  "TMM status": {
+    "result": "FOR_USER_EVALUATION",
+    "value": {
+      "five-sec-avg-usage-ratio": "1",
+      "one-min-avg-usage-ratio": "1",
+      "memory-total": "13.5G",
+      "npus": "4",
+      "memory-used": "407.3M",
+      "five-min-avg-usage-ratio": "1"
+    }
+  },
+  "Prompt state": {
+    "result": "PASSED",
+    "value": {
+      "info": "prompt is f*ckin great"
+    }
+  },
+  "Core dumps": {
+    "result": "PASSED",
+    "value": {
+      "info": "No core dumps found in /var/core"
+    }
+  },
+  "DB compare": {
+    "result": "FOR_USER_EVALUATION",
+    "value": {
+      "Item root[\u0027tam\u0027]": "removed from dictionary",
+      "Item root[\u0027vcmp\u0027]": "removed from dictionary.",
+      "Item root[\u0027pem\u0027]": "removed from dictionary.",
+      "Value of root[\u0027host\u0027][\u0027memory\u0027][\u0027value\u0027]": "changed from 7558 to 1396.",
+      "Value of root[\u0027host\u0027][\u0027disk\u0027][\u0027value\u0027]": "changed from 298859 to 45920.",
+      "Value of root[\u0027tmos\u0027][\u0027memory\u0027][\u0027value\u0027]": "changed from 89068 to 6084.",
+      "Value of root[\u0027tmos\u0027][\u0027host-memory\u0027][\u0027value\u0027]": "changed from 420 to 0."
+    }
+  },
+  "Memory footprint": {
+    "result": "FOR_USER_EVALUATION",
+    "value": {
+      "Item root[\u0027tam\u0027]": "removed from dictionary",
+      "Item root[\u0027vcmp\u0027]": "removed from dictionary.",
+      "Item root[\u0027pem\u0027]": "removed from dictionary.",
+      "Value of root[\u0027host\u0027][\u0027memory\u0027][\u0027value\u0027]": "changed from 7558 to 1396.",
+      "Value of root[\u0027host\u0027][\u0027disk\u0027][\u0027value\u0027]": "changed from 298859 to 45920.",
+      "Value of root[\u0027tmos\u0027][\u0027memory\u0027][\u0027value\u0027]": "changed from 89068 to 6084.",
+      "Value of root[\u0027tmos\u0027][\u0027host-memory\u0027][\u0027value\u0027]": "changed from 420 to 0."
+    }
+  },
+  "Version check": {
+    "result": "FOR_USER_EVALUATION",
+    "value": {}
+  },
+  "LTM VS check": {
+    "result": "FOR_USER_EVALUATION",
+    "value": {
+      "my_vs_1": {
+        "status.availabilityState": {
+          "description": "unknown"
+        },
+        "status.enabledState": {
+          "description": "enabled"
+        },
+        "status.statusReason": {
+          "description": "The children pool member(s) either don\u0027t have service checking enabled, or service check results are not available yet"
+        }
+      }
+    }
+  }
+}

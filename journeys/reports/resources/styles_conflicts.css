@@ -1,0 +1,75 @@
+.report-title-row {
+    background-color: #292932;
+    font-family: sans-serif;
+    font-style: normal;
+    font-weight: normal;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FFFFFF;
+    padding: 10px;
+    margin-left: 50px;
+    margin-right: 50px;
+    margin-bottom: 50px;
+    display: flex;
+}
+.logo-box {
+    margin-right: 10px;
+}
+.logo {
+    width: 30px;
+    height: 28px;
+}
+.conflicts {
+    margin-left: 50px;
+    margin-right: 50px;
+    font-family: sans-serif;
+}
+.conflict-item {
+    margin-bottom: 30px;
+    border: 1px solid black;
+}
+.conflict-item-summary {
+    font-family: sans-serif;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 20px;
+    line-height: 20px;
+    color: #ffffff;
+    background-color: #999999;
+    padding: 10px;
+}
+.affected-obj-item-row {
+    display: flex;
+    margin-bottom: 5px;
+    padding-left: 10px;
+    padding-top: 10px;
+}
+.affected-obj-item-row.even {
+    background-color: #f2f2f2;
+}
+.affected-obj-item-labels-col {
+    display: flex;
+    flex-direction: column;
+    font-weight: 600;
+    min-width: 100px;
+}
+.horizontal-divider {
+    border-bottom: 1px solid #cccccc;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+}
+.affected-obj-item-data-col {
+    display: flex;
+    flex-direction: column;
+    width: 500px;
+    padding-right: 10px;
+}
+.affected-obj-item {
+    background-color: #eeeeee;
+}
+.affected-obj-item-comment-row {
+    display: flex;
+}
+.obj-list-item {
+    white-space: pre;
+}

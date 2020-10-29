@@ -154,7 +154,7 @@ class Pem(Plugin):
             object_info[obj_id] = {
                 "file": obj.file,
                 "comment": msg.format(field_name),
-                "object": str(obj),
+                "object": str(obj).splitlines(),
             }
 
         for msg, obj_tuple in chain(

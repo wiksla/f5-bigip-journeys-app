@@ -146,12 +146,12 @@ class MigrationController:
             self.shelf["as3_decoded_irules"] = as3ucs.decode_as3_irules()
 
     def _reformat_input(self):
-        self._read_config()
+        self.read_config()
         self._decode_as3_irules()
         log.info("Preparing the reformat commit.")
         self.conflict_handler.render(dirname=self.config_path)
 
-    def _read_config(self):
+    def read_config(self):
         log.info(f"Reading and parsing the configuration from {self.repo_path}.")
         self.ucs_reader = UcsReader(extracted_ucs_dir=self.repo_path)
         self.config: Config = self.ucs_reader.get_config()
@@ -167,6 +167,10 @@ class MigrationController:
     @property
     def current_conflict(self):
         return self.shelf.get("current_conflict", None)
+
+    @property
+    def initial_conflicts(self):
+        return self.shelf.get("initial_conflicts", None)
 
     def prompt(self):
         current_conflict = self.current_conflict
@@ -185,9 +189,20 @@ class MigrationController:
     def process(self, commit_name: str = "") -> dict:
         log.info("Initiating VELOS conflict search.")
         if self.config is None:
-            self._read_config()
+            self.read_config()
         conflicts = self.conflict_handler.get_conflicts()
         log.info(f"Conflicts found: {', '.join(conflicts.keys())}")
+        if "initial_conflicts" not in self.shelf:
+            initial_conflicts = [
+                {
+                    "id": conflict.id,
+                    "summary": "\n".join(conflict.summary),
+                    "affected_objects": conflict.affected_objects,
+                }
+                for conflict in conflicts.values()
+            ]
+            self.shelf["initial_conflicts"] = initial_conflicts
+
         self.shelf["conflicts"] = list(conflicts.keys())
 
         current_conflict = self.current_conflict
@@ -245,7 +260,7 @@ class MigrationController:
             raise DifferentConflictError(conflict_id=current_conflict)
 
         if self.config is None:
-            self._read_config()
+            self.read_config()
 
         log.info(f"Initiating resolution for conflict {conflict_id}.")
         conflict_info = self.conflict_handler.get_conflict(conflict_id=conflict_id)
@@ -338,7 +353,7 @@ class MigrationController:
             self.repo.git.checkout(".")
             self.repo.git.merge(branch_name)
 
-            self._read_config()
+            self.read_config()
 
     def _encode_as3_irules(self):
         mutable_declaration = deepcopy(self.as3_declaration)
@@ -348,7 +363,7 @@ class MigrationController:
 
     def generate(self, output_ucs, ucs_passphrase, output_as3, force, overwrite):
         if self.config is None:
-            self._read_config()
+            self.read_config()
 
         if not force:
             if self.conflict_handler.get_conflicts():
