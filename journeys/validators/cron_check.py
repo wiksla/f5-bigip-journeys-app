@@ -1,6 +1,8 @@
 from typing import Dict
 from typing import List
 
+from deepdiff import DeepDiff
+
 from journeys.utils.device import Device
 
 
@@ -8,6 +10,11 @@ def get_sys_users(device: Device) -> List[str]:
     """Get system users."""
     users_output = device.ssh.run("cut -d: -f1 /etc/passwd")
     return [user for user in users_output.stdout.splitlines()]
+
+
+def compare_crontabs(first: Device, second: Device):
+    """Get diff between cron job entries on both given devices."""
+    return DeepDiff(get_crontabs(first), get_crontabs(second))
 
 
 def _get_crontabs_for_users(device: Device, users: List[str]) -> Dict:

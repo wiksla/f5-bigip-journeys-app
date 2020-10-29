@@ -6,7 +6,7 @@ from f5.bigip.tm.ltm.pool import Members
 from f5.bigip.tm.ltm.pool import Pool
 
 from journeys.utils.device import Device
-from journeys.validators.comparers import convert_raw_to_dict
+from journeys.validators.helpers import convert_raw_to_dict
 
 
 def get_ltm_vs_status(device: Device) -> dict:

@@ -2,7 +2,14 @@ from typing import Dict
 from typing import List
 from typing import Tuple
 
+from deepdiff import DeepDiff
+
 from journeys.utils.device import Device
+
+
+def compare_ciphersuites(first: Device, second: Device) -> DeepDiff:
+    """Run DeepDiff against devices' available ciphersuites."""
+    return DeepDiff(*get_ciphersuites_from_devices(first, second))
 
 
 def _get_raw_suites(device: Device) -> str:

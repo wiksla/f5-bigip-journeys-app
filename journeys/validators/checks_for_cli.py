@@ -14,16 +14,17 @@ from journeys.errors import CoreWatcherFailed
 from journeys.errors import JourneysError
 from journeys.errors import ValidationRuntimeError
 from journeys.utils.device import Device
-from journeys.validators.comparers import compare_db
-from journeys.validators.comparers import compare_memory_footprint
-from journeys.validators.comparers import tmsh_compare
 from journeys.validators.core_watcher import list_cores
+from journeys.validators.db_comparer import compare_db
 from journeys.validators.deployment import PROMPT_ERR_MSG
 from journeys.validators.deployment import get_mcp_status
 from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
+from journeys.validators.helpers import pretty
+from journeys.validators.helpers import tmsh_compare
 from journeys.validators.log_watcher import LogWatcher
 from journeys.validators.ltm_checks import get_ltm_vs_status
+from journeys.validators.module_footprint_comparer import compare_memory_footprint
 from journeys.workdir import WORKDIR
 
 PASSED = "PASSED"
@@ -117,8 +118,12 @@ def cli_compare_db_check(source: Device, destination: Device, output) -> Dict:
     """Compares two system DBs getting them from iControl endpoint for sys db. \
 Requires manual evaluation."""
     db_diff = compare_db(first=source, second=destination)
-    click.echo(f"Sys DB diff:\n{db_diff.pretty()}", file=output)
-    return {"result": USER_EVALUATION, "value": db_diff.to_json()}
+    root_name = "DB record "
+    collection_name = "Sys DB"
+    click.echo(
+        f"Sys DB diff:\n{pretty(db_diff, root_name, collection_name)}", file=output
+    )
+    return {"result": USER_EVALUATION, "value": db_diff.to_dict()}
 
 
 @attributes(
@@ -127,9 +132,15 @@ Requires manual evaluation."""
 def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
     """Compares information from `tmsh show sys provision` for both systems. \
 Requires manual evaluation. """
+    root_name = "Module"
+    collection_name = "provisioned modules"
+
     module_diff = compare_memory_footprint(first=source, second=destination)
-    click.echo(f"Memory footprint diff:\n{module_diff.pretty()}", file=output)
-    return {"result": USER_EVALUATION, "value": module_diff.to_json()}
+    click.echo(
+        f"Memory footprint diff:\n{pretty(module_diff, root_name, collection_name)}",
+        file=output,
+    )
+    return {"result": USER_EVALUATION, "value": module_diff.to_dict()}
 
 
 @attributes(

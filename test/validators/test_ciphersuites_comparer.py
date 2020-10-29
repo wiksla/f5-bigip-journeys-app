@@ -1,8 +1,11 @@
-from journeys.validators.ciphersuites_handler import _get_raw_suites
-from journeys.validators.ciphersuites_handler import _parse_header
-from journeys.validators.ciphersuites_handler import _parse_suite_row
-from journeys.validators.ciphersuites_handler import _remove_row_numbering
-from journeys.validators.ciphersuites_handler import get_ciphersuites
+from deepdiff import DeepDiff
+
+from journeys.validators.ciphersuites_comparer import _get_raw_suites
+from journeys.validators.ciphersuites_comparer import _parse_header
+from journeys.validators.ciphersuites_comparer import _parse_suite_row
+from journeys.validators.ciphersuites_comparer import _remove_row_numbering
+from journeys.validators.ciphersuites_comparer import compare_ciphersuites
+from journeys.validators.ciphersuites_comparer import get_ciphersuites
 
 
 def test_get_raw_suites(bigip_mock):
@@ -54,3 +57,9 @@ def test_get_ciphersuites(bigip_mock):
     assert type(parsed_suites[0]) == dict
     assert len(parsed_suites[0].keys()) == 7
     assert parsed_suites[0]["SUITE"] == "ECDHE-RSA-AES128-GCM-SHA256"
+
+
+def test_compare_ciphersuites(bigip_mock, velos_mock):
+    diff = compare_ciphersuites(bigip_mock, velos_mock)
+    assert type(diff) == DeepDiff
+    assert not diff
