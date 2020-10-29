@@ -142,6 +142,10 @@ cython_debug/
 # journey wip folder
 wip/
 
+# journeys inputs/outputs
+*.ucs
+*.json
+
 # pycharm project folder
 .idea
 

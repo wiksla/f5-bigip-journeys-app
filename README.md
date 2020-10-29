@@ -11,21 +11,21 @@
 ----
 ## Description
 F5 BIG-IP Journeys app assists with migrating a configuration from BIG-IP versions 11.5.0 or higher to BIG-IP 14.1.x running on the VELOS platform. It allows:
-+ flagging source configuration feature parity gaps and fixing them with custom or F5 recommended solutions
-+ automated deployment of the updated configuration to VELOS VM tenant and post deployment validation validation
++ flagging source configuration feature parity gaps and fixing them with custom or F5 recommended solutions,
++ automated deployment of the updated configuration to VELOS VM tenant and post deployment validation.
 
 List of supported features:
-+ Compatibility level
-+ Double Tagging
-+ Hardware Class of Service
-+ Management dhcp
-+ PEM [2]
-+ Service Provider DAG
-+ sPVA [1]
-+ Trunk
-+ Virtual Wire
-+ VLAN groups
-+ Wildcard allow-list
++ Compatibility level,
++ Double Tagging,
++ Hardware Class of Service,
++ Management dhcp,
++ PEM [2],
++ Service Provider DAG,
++ sPVA [1],
++ Trunk,
++ Virtual Wire,
++ VLAN groups,
++ Wildcard allow-list.
 
 **Journey App does not support** following feature parity gaps, which:
 
@@ -204,19 +204,292 @@ Or use interactive container mode:
    journey start <ucs file> --ucs-passphrase <passphrase> --as3-path <as3 declaration>
    ```
    The tool will track changes made by resolving the conflicts and apply them to AS3 declaration.
+   
+   >WARNING: Vlans, trunks and vlan-groups may uniquely identify virtual servers.
+   >In some cases removing them may produce invalid configurations.
 
-### Resolving conflicts.
+   
+
+### Resolving conflicts
    If at least one conflict has been detected, the tool will print the entire list.
    1. One-by-one
-   ``` 
-   journey resolve <conflict_tag>
-   ```
+      ``` 
+      journey resolve <conflict_tag>
+      ```
    1. Resolve all conflicts and apply F5 recommended changes to each
-   ```
-   journey resolve-all
-   ```
-   After the command is run, the tool will generate git branches with proposed conflict mitigations. 
-   Detailed instructions about resolving conflicts are printed by the tool.
+      ```
+      journey resolve-all
+      ```
+      After the command is run, the tool will generate git branches with proposed conflict mitigations. 
+      Detailed instructions about resolving conflicts are printed by the tool.
+   
+   1. Example of conflict resolution
+        1. Resolve a conflict:
+           ```
+           journey resolve TRUNK
+           ```
+           The output should look like:       
+           ```
+           journey(12 conflicts left): migrate> journey resolve TRUNK
+           Workdir: /migrate
+           Config path: /migrate/wip/config
+
+           Resolving conflict_info TRUNK
+
+           Resolve issues on objects commented with 'TRUNK' in the following files:
+	            bigip_base.conf
+
+           Available conflict mitigations are:
+	            F5_Recommended_TRUNK_delete_objects
+
+           To review the mitigation content, run 'journey show <mitigation>'
+           Example 'journey show F5_Recommended_TRUNK_delete_objects'
+
+           To review issues found, run 'journey diff'
+
+           To apply proposed changes, please run 'journey use <mitigation>'
+           Example 'journey use F5_Recommended_TRUNK_delete_objects'
+
+           Please note, that files can be also edited manually, followed by running 'journey migrate' command.
+
+           To abort resolving current conflict, run 'journey abort'
+           ```
+        
+        1. Preview the issues in the affected files (eg. wip/config/bigip_base.conf).
+           Problematic objects are commented with a conflict tag name. 
+           ```
+           #TRUNK: Depends on an object 'net vlan /Common/vlan_with_trunk' which requires an action
+           #TRUNK: Depends on an object 'net vlan /Common/testVirtWire_vlan_4096_2_902' which requires an action
+           #TRUNK: Depends on an object 'net vlan /Common/testVirtWire_vlan_4096_1_902' which requires an action
+           net route-domain /Common/0 {
+             id 0
+               vlans {
+                  /Common/http-tunnel
+                  /Common/socks-tunnel
+                  /Common/subscriber
+                  /Common/testVirtWire_vlan_4096_1_902
+                  /Common/vlan1
+                  /Common/vlan_spdag
+                  /Common/vlan_qinq
+                  /Common/vlan_with_trunk
+                  /Common/vlan2
+                  /Common/testVirtWire
+                  /Common/test_vlan_group
+                  /Common/testVirtWire_vlan_4096_2_902
+                  /Common/internet
+               }
+           }
+        
+            #TRUNK: Type net trunk is not supported on target platform
+            net trunk test_trunk {
+              interfaces {
+                2.0
+              }
+            }
+            #TRUNK: Type net trunk is not supported on target platform
+            net trunk trunk_external {
+                description "Test trunk for virtual wire"
+                interfaces {
+                   1.3
+                   1.4
+                }
+                lacp enabled
+             }
+            ```
+      
+        1. Review the mitigation.
+           ```
+           journey show F5_Recommended_TRUNK_delete_objects
+           ```
+           
+           The output shows all the changes ("-" stands for line removal, "+" stands for line insertion).
+           
+           ```
+           commit 46769f75963de9c7a1d1aac30f4dc74f11e6627a
+           Author: root <root@194d95145de1>
+           Date:   Thu Oct 22 13:55:46 2020 +0000
+
+              F5_Recommended_TRUNK_delete_objects
+
+           diff --git a/config/bigip_base.conf b/config/bigip_base.conf
+           index f3c35ab..fd3de1a 100644
+           --- a/config/bigip_base.conf
+           +++ b/config/bigip_base.conf
+           @@ -215,20 +215,6 @@ net stp /Common/cist {
+                     internal-path-cost 2000
+                 }
+             }
+           -    trunks {
+           -        test_trunk {
+           -            external-path-cost 500
+           -            internal-path-cost 500
+           -        }
+           -        trunk_external {
+           -            external-path-cost 2000
+           -            internal-path-cost 2000
+           -        }
+           -        trunk_internal {
+           -            external-path-cost 2000
+           -            internal-path-cost 2000
+           -        }
+           -    }
+                vlans {
+                    /Common/internet
+                    /Common/subscriber
+           @@ -244,27 +230,6 @@ net stp /Common/cist {
+            net stp-globals {
+                config-name 00-94-A1-11-E8-80
+            }
+           -net trunk test_trunk {
+           -    interfaces {
+           -        2.0
+           -    }
+           -}  
+           ```  
+           
+        1. Apply a mitigation or abort resolving conflict step.
+           ```
+           journey use F5_Recommended_TRUNK_delete_objects   
+           ```
+           or
+           ```
+           journey abort
+           ```
+        1. Resolve another conflict.
+           ```
+           journey resolve SPDAG
+           ```
+           The output should look like:
+           ```
+           journey(11 conflicts left): migrate> journey resolve SPDAG
+           Workdir: /migrate
+           Config path: /migrate/wip/config
+
+           Resolving conflict_info SPDAG
+
+           Resolve issues on objects commented with 'SPDAG' in the following files:
+             	bigip.conf
+            	bigip_base.conf
+
+           Available conflict mitigations are:
+            	SPDAG_delete_objects
+            	F5_Recommended_SPDAG_change_value_to_default
+
+           To review the mitigation content, run 'journey show <mitigation>'
+           Example 'journey show F5_Recommended_SPDAG_change_value_to_default'
+
+           To review issues found, run 'journey diff'
+
+           To apply proposed changes, please run 'journey use <mitigation>'
+           Example 'journey use F5_Recommended_SPDAG_change_value_to_default'
+
+           Please note, that files can be also edited manually, followed by running 'journey migrate' command.
+
+           To abort resolving current conflict, run 'journey abort'
+           ```
+        1. Review a mitigation.
+           ```
+            journey(SPDAG): migrate> journey show F5_Recommended_SPDAG_change_value_to_default
+            commit fcff94eff09debc39c3d8604615fbba8111ce60d
+            Author: root <root@194d95145de1>
+            Date:   Thu Oct 22 14:22:53 2020 +0000
+
+               F5_Recommended_SPDAG_change_value_to_default
+
+            diff --git a/config/bigip_base.conf b/config/bigip_base.conf
+            index fd3de1a..765dba5 100644
+            --- a/config/bigip_base.conf
+            +++ b/config/bigip_base.conf
+            @@ -231,11 +231,11 @@ net stp-globals {
+                config-name 00-94-A1-11-E8-80
+            }
+            net vlan /Common/internet {
+            -    cmp-hash dst-ip
+            +    cmp-hash default
+                tag 107
+            }
+            net vlan /Common/subscriber {
+            -    cmp-hash src-ip
+            +    cmp-hash default
+                tag 1075
+            }
+            net vlan /Common/testVirtWire_vlan_4096_1_902 {
+            @@ -277,7 +277,7 @@ net vlan /Common/vlan_qinq {
+                tag 4094
+            }
+            net vlan /Common/vlan_spdag {
+            -    cmp-hash src-ip
+            +    cmp-hash default
+                description "Test VLAN with SP-DAG"
+                interfaces {
+                    1.2 { }
+
+            In order to apply the mitigation, run 'journey use F5_Recommended_SPDAG_change_value_to_default' 
+           ```
+        1. Apply a mitigation.
+           ```
+           journey use F5_Recommended_SPDAG_change_value_to_default
+           ```
+        1. Revert the mitigation.
+           1. Check the history of applied mitigations / changes.
+              ```
+              journey history
+              ```
+              The output should look like:
+              ```
+              The following changes have been applied successfully:
+                    1: F5_Recommended_TRUNK_delete_objects
+                    2: F5_Recommended_SPDAG_change_value_to_default
+
+              In order to revert conflict_info resolution, run 'journey revert <step name>'.
+
+              Note that reverting a conflict_info resolution will also revert all subsequent resolutions.
+              ```
+           1. Select a step you want to revert.
+              ```
+              journey revert F5_Recommended_SPDAG_change_value_to_default
+              ```
+        1. Select a conflict to resolve 
+           ```
+           journey resolve SPVA
+           ```
+           and apply a desirable mitigation.
+           Repeat the step until all conflicts are resolved.
+        1. Mitigate a conflict manually.
+           1. Select a conflict you want to resolve manually.
+              ```
+              journey resolve DoubleTagging
+              ```
+           1. Install your text editor of choice (eg. vim)
+              ```
+              apk add vim
+              ```
+           1. Manually edit files with conflicted objects by removing or editing them.
+              ```
+              vim wip/config/bigip_base.conf
+              ```
+              Find commented objects and edit them to fulfill the mitigation.
+              ```
+              #DoubleTagging: Type customer tag is not supported on target platform
+              net vlan /Common/vlan_qinq {
+                customer-tag 3210
+                description "Test VLAN with Customer Tag"
+                interfaces {
+                    1.1 { }
+                }
+                sflow {
+                    poll-interval-global no
+                    sampling-rate-global no
+                }
+                tag 4094
+              }
+              ```
+         
+           1. Apply the mitigation.
+              ```
+              journey migrate --message "Your mitigation name"
+              ```
+         
 ### Generating VELOS-ready output configuration
    1. Generating output ucs configuration
    Once all conflicts are resolved, the following command will generate an output UCS file.
