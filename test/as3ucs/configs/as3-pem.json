@@ -1,0 +1,260 @@
+{
+  "remark": "VNF",
+  "id": "cfy_vnf_01",
+  "f5vnf": {
+    "gilan_http": {
+      "class": "Application",
+      "template": "http",
+      "serviceMain": {
+        "profileSubscriberManagement": {
+          "use": "/f5vnf/Shared/profileSubscriberManagement"
+        },
+        "layer4": "tcp",
+        "virtualPort": 80,
+        "profileHTTP": {
+          "bigip": "/Common/http-transparent"
+        },
+        "iRules": [
+          "/f5vnf/Shared/lbSelectedRule"
+        ],
+        "profileEnforcement": {
+          "use": "/f5vnf/Shared/profileSpm"
+        },
+        "lastHop": "disable",
+        "translateServerAddress": false,
+        "translateServerPort": false,
+        "profileL4": {
+          "use": "/f5vnf/Shared/profileL4"
+        },
+        "virtualAddresses": [
+          {
+            "use": "/f5vnf/Shared/serviceAddress"
+          }
+        ],
+        "profileTCP": {
+          "bigip": "/Common/f5-tcp-mobile"
+        },
+        "snat": "none",
+        "class": "Service_HTTP",
+        "profileClassification": {
+          "use": "/f5vnf/Shared/profileClassification"
+        },
+        "allowVlans": [
+          {"bigip": "/Common/testvlan"}
+        ]
+      }
+    },
+    "gilan_any": {
+      "class": "Application",
+      "template": "generic",
+      "serviceMain": {
+        "profileSubscriberManagement": {
+          "use": "/f5vnf/Shared/profileSubscriberManagement"
+        },
+        "layer4": "any",
+        "virtualPort": 0,
+        "iRules": [
+          "/f5vnf/Shared/lbSelectedRule"
+        ],
+        "profileEnforcement": {
+          "use": "/f5vnf/Shared/profileSpm"
+        },
+        "lastHop": "disable",
+        "translateServerAddress": false,
+        "profileIPOther": {
+          "use": "/f5vnf/Shared/profileIPOther"
+        },
+        "translateServerPort": false,
+        "profileL4": {
+          "use": "/f5vnf/Shared/profileL4"
+        },
+        "virtualAddresses": [
+          {
+            "use": "/f5vnf/Shared/serviceAddress2"
+          }
+        ],
+        "snat": "none",
+        "class": "Service_Generic",
+        "profileClassification": {
+          "use": "/f5vnf/Shared/profileClassification"
+        }
+      }
+    },
+    "Shared": {
+      "profileSpm": {
+        "policiesUnknownSubscribers": [
+          {
+            "use": "policyEnforcementDefault"
+          }
+        ],
+        "policiesGlobalHighPrecedence": [
+          {
+            "use": "policyEnforcement"
+          }
+        ],
+        "class": "Enforcement_Profile",
+        "connectionOptimizationEnabled": true
+      },
+      "profileSubscriberManagement": {
+        "serverSideSessionsEnabled": true,
+        "class": "Enforcement_Subscriber_Management_Profile"
+      },
+      "policyEnforcement": {
+        "rules": [
+          {
+            "name": "testPolicyRule1",
+            "precedence": 1,
+            "tcpOptimizationUplink": {
+              "use": "profileTcpServer"
+            },
+            "tcpOptimizationDownlink": {
+              "use": "profileTcpClient"
+            },
+            "tcpAnalyticsEnabled": true,
+            "modifyHttpHeader": {
+              "headerName": "myHeaderName",
+              "operation": "insert",
+              "valueType": "string",
+              "valueContent": "myHeaderValue"
+            }
+          },
+          {
+            "name": "testPolicyRule2",
+            "precedence": 1,
+            "dscpMarkingDownlink": 0,
+            "dscpMarkingUplink": 0,
+            "classificationFilters": [
+              {
+                "application": {
+                  "bigip": "/Common/acrobat"
+                },
+                "invertMatch": true,
+                "name": "testClassFilter1"
+              },
+              {
+                "category": {
+                  "bigip": "/Common/Audio"
+                },
+                "invertMatch": true,
+                "name": "testClassFilter2"
+              }
+            ],
+            "gateStatusEnabled": true
+          }
+        ],
+        "allTransactions": false,
+        "enable": true,
+        "class": "Enforcement_Policy"
+      },
+      "profileTcpServer": {
+        "fastOpen": true,
+        "mptcp": "passthrough",
+        "autoReceiveWindowSize": true,
+        "fastOpenCookieExpiration": 21600,
+        "autoProxyBufferSize": true,
+        "earlyRetransmit": true,
+        "initCwnd": 16,
+        "receiveWindowSize": 131072,
+        "tailLossProbe": true,
+        "proxyMSS": true,
+        "initRwnd": 16,
+        "sendBufferSize": 262144,
+        "enhancedLossRecovery": true,
+        "autoSendBufferSize": true,
+        "class": "TCP_Profile",
+        "proxyBufferLow": 196608,
+        "minimumRto": 1000,
+        "proxyBufferHigh": 262144,
+        "idleTimeout": 300,
+        "maxSegmentSize": 0,
+        "verifiedAccept": false,
+        "congestionControl": "woodside",
+        "synRtoBase": 3000
+      },
+      "profileClassification": {
+        "preset": {
+          "bigip": "/Common/ce_pem"
+        },
+        "class": "Classification_Profile"
+      },
+      "policyEnforcementDefault": {
+        "rules": [
+          {
+            "name": "enforcementPolicyRuleDefault",
+            "precedence": 10
+          }
+        ],
+        "class": "Enforcement_Policy"
+      },
+      "profileIPOther": {
+        "class": "IP_Other_Profile"
+      },
+      "profileTcpClient": {
+        "fastOpen": true,
+        "mptcp": "passthrough",
+        "autoReceiveWindowSize": true,
+        "fastOpenCookieExpiration": 21600,
+        "autoProxyBufferSize": true,
+        "earlyRetransmit": true,
+        "initCwnd": 16,
+        "receiveWindowSize": 131072,
+        "tailLossProbe": true,
+        "proxyMSS": true,
+        "initRwnd": 16,
+        "sendBufferSize": 262144,
+        "enhancedLossRecovery": true,
+        "autoSendBufferSize": true,
+        "class": "TCP_Profile",
+        "proxyBufferLow": 196608,
+        "minimumRto": 1000,
+        "proxyBufferHigh": 262144,
+        "idleTimeout": 300,
+        "maxSegmentSize": 0,
+        "verifiedAccept": false,
+        "congestionControl": "woodside",
+        "synRtoBase": 3000
+      },
+      "template": "shared",
+      "lbSelectedRule": {
+        "iRule":  {
+          "base64": "d2hlbiBMQl9TRUxFQ1RFRCB7bG9nIGxvY2FsMC4gIlNlbGVjdGVkIHNlcnZlciBbTEI6OnNlcnZlcl0ifQ=="
+        },
+        "class": "iRule"
+      },
+      "class": "Application",
+      "profileL4": {
+        "class": "L4_Profile"
+      },
+      "serviceAddress": {
+        "icmpEcho": "disable",
+        "arpEnabled": false,
+        "class": "Service_Address",
+        "spanningEnabled": true,
+        "virtualAddress": "1.2.3.4"
+      },
+      "serviceAddress2": {
+        "icmpEcho": "disable",
+        "arpEnabled": false,
+        "class": "Service_Address",
+        "spanningEnabled": true,
+        "virtualAddress": "0.0.0.0"
+      },
+      "IRULE_PEM_HTTP_XMSISDN_INSERTION": {
+        "class": "iRule",
+        "iRule": {
+            "base64": "d2hlbiBSVUxFX0lOSVQgewogICAgICAgIHNldCBzdGF0aWM6Onhtc2lzZG5fZGVidWcgMAp9CndoZW4gSFRUUF9SRVFVRVNUIHsKICAgIGlmIHsgW2NsYXNzIG1hdGNoIC0tIFtzdHJpbmcgdG9sb3dlciBbSFRUUDo6aG9zdF1bSFRUUDo6dXJpXV0gc3RhcnRzX3dpdGggREdfQlJOX1hNU0lTRE5fVVJJXSBvciBcCiAgICAgICAgW2NsYXNzIG1hdGNoIC0tIFtzdHJpbmcgdG9sb3dlciBbSFRUUDo6dXJpXV0gY29udGFpbnMgREdfQlJOX1hNU0lTRE5fVVJJXSB9IHsKICAgICAgICBzZXQgbXNpc2RuIFtQRU06OnNlc3Npb24gaW5mbyBbSVA6OmNsaWVudF9hZGRyXSBjYWxsaW5nLXN0YXRpb24taWRdCiAgICAgICAgSFRUUDo6aGVhZGVyIGluc2VydCBNU0lTRE4gJG1zaXNkbgogICAgICAgIGlmIHsgJHN0YXRpYzo6eG1zaXNkbl9kZWJ1ZyB9IHsKICAgICAgICAgICAgbG9nIGxvY2FsMC4gIklQIEFkZHJlc3MgW0lQOjpjbGllbnRfYWRkcl0gaGFzIE1TSVNETiA6ICRtc2lzZG4iCiAgICAgICAgfQogICAgIH0KfQ=="
+        }
+      },
+      "IRULE_PEM_HTTP_XMSISDN_INSERTION_AS1": {
+        "class": "iRule",
+        "iRule": {
+            "base64": "d2hlbiBSVUxFX0lOSVQgewogICAgICAgIHNldCBzdGF0aWM6Onhtc2lzZG5fZGVidWcgMAp9CndoZW4gSFRUUF9SRVFVRVNUIHsKICAgIGlmIHsgW2NsYXNzIG1hdGNoIC0tIFtzdHJpbmcgdG9sb3dlciBbSFRUUDo6aG9zdF1bSFRUUDo6dXJpXV0gc3RhcnRzX3dpdGggREdfQlJOX1hNU0lTRE5fVVJJXSBvciBcCiAgICAgICAgW2NsYXNzIG1hdGNoIC0tIFtzdHJpbmcgdG9sb3dlciBbSFRUUDo6dXJpXV0gY29udGFpbnMgREdfQlJOX1hNU0lTRE5fVVJJXSB9IHsKICAgICAgICBzZXQgbXNpc2RuIFtQRU06OnNlc3Npb24gaW5mbyBbSVA6OmNsaWVudF9hZGRyXSBjYWxsaW5nLXN0YXRpb24taWRdCiAgICAgICAgSFRUUDo6aGVhZGVyIGluc2VydCBNU0lTRE4gJG1zaXNkbgogICAgICAgIGlmIHsgJHN0YXRpYzo6eG1zaXNkbl9kZWJ1ZyB9IHsKICAgICAgICAgICAgbG9nIGxvY2FsMC4gIklQIEFkZHJlc3MgW0lQOjpjbGllbnRfYWRkcl0gaGFzIE1TSVNETiA6ICRtc2lzZG4iCiAgICAgICAgfQogICAgIH0KfQ=="
+        }
+      }
+    },
+    "class": "Tenant"
+  },
+  "schemaVersion": "3.0.0",
+  "label": "vnf",
+  "class": "ADC"
+}
