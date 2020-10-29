@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -44,13 +43,8 @@ def generate_conflicts_report(output_path: str, conflicts: List[Dict]):
         logo_file=str(RESOURCE_DIR / "logo.png"),
     )
 
-    output_html = os.path.splitext(output_path)[0] + ".html"
-
-    with open(output_html, "w") as f:
-        f.write(html)
-
     options = {"allow": "."}
-    pdfkit.from_file(input=output_html, output_path=output_path, options=options)
+    pdfkit.from_string(input=html, output_path=output_path, options=options)
 
 
 def generate_changes_report(output_path: str, changes: List[Dict]):
@@ -119,13 +113,8 @@ def generate_changes_report(output_path: str, changes: List[Dict]):
         logo_file=str(RESOURCE_DIR / "logo.png"),
     )
 
-    output_html = os.path.splitext(output_path)[0] + ".html"
-
-    with open(output_html, "w") as f:
-        f.write(html)
-
     options = {"allow": "."}
-    pdfkit.from_file(input=output_html, output_path=output_path, options=options)
+    pdfkit.from_string(input=html, output_path=output_path, options=options)
 
 
 def generate_deployment_validations_report(
@@ -137,10 +126,5 @@ def generate_deployment_validations_report(
         logo_file=str(RESOURCE_DIR / "logo.png"),
     )
 
-    output_html = os.path.splitext(output_path)[0] + ".html"
-
-    with open(output_html, "w") as f:
-        f.write(html)
-
     options = {"allow": "."}
-    pdfkit.from_file(input=output_html, output_path=output_path, options=options)
+    pdfkit.from_string(input=html, output_path=output_path, options=options)

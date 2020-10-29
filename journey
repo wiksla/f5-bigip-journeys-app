@@ -794,6 +794,11 @@ def diagnose(
         ) as last_diagnose_pointer:
             last_diagnose_pointer.write(output_json_file_name)
 
+        click.echo("")
+        click.echo(
+            "To generate a full deployment report in pdf format, please run 'journey deployment-report'"
+        )
+
         return
     click.echo("\nFailed to run diagnosis on the Destination Device!")
 
@@ -804,12 +809,15 @@ def conflicts_report():
 
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
+
+        output_path = os.path.join(controller.working_directory, "conflicts_report.pdf")
+
         generate_conflicts_report(
-            output_path=os.path.join(
-                controller.working_directory, "conflicts_report.pdf"
-            ),
-            conflicts=controller.initial_conflicts,
+            output_path=output_path, conflicts=controller.initial_conflicts,
         )
+
+        click.echo("")
+        click.echo(f"The report was generated in file '{output_path}'.")
 
 
 @cli.command()
@@ -832,12 +840,16 @@ def resolutions_report():
             for commit in commits_history
         ]
 
-        generate_changes_report(
-            output_path=os.path.join(
-                controller.working_directory, "resolutions_report.pdf"
-            ),
-            changes=changes,
+        output_path = os.path.join(
+            controller.working_directory, "resolutions_report.pdf"
         )
+
+        generate_changes_report(
+            output_path=output_path, changes=changes,
+        )
+
+        click.echo("")
+        click.echo(f"The report was generated in file '{output_path}'.")
 
 
 @cli.command()
@@ -864,12 +876,16 @@ def deployment_report():
                 f"'{last_diagnose_file_name}'", "Diagnose results file"
             )
 
-        generate_deployment_validations_report(
-            output_path=os.path.join(
-                controller.working_directory, "deployment_report.pdf"
-            ),
-            validation=validation,
+        output_path = os.path.join(
+            controller.working_directory, "deployment_report.pdf"
         )
+
+        generate_deployment_validations_report(
+            output_path=output_path, validation=validation,
+        )
+
+        click.echo("")
+        click.echo(f"The report was generated in file '{output_path}'.")
 
 
 def print_conflicts_info(conflicts):
@@ -892,6 +908,10 @@ def print_conflicts_info(conflicts):
     )
     click.echo("")
     click.echo(
+        "To generate a full conflicts report in pdf format, please run 'journey conflicts-report'"
+    )
+    click.echo("")
+    click.echo(
         "Warning: Vlans, trunks and vlan-groups may uniquely identify virtual servers. "
         "In some cases removing them may produce invalid configurations."
     )
@@ -908,6 +928,10 @@ def print_no_conflict_info(history):
     click.echo("")
     click.echo(
         "To review the history or changes, please run 'journey history' or 'journey history --details'"
+    )
+    click.echo("")
+    click.echo(
+        "To generate a full changes report in pdf format, please run 'journey resolutions-report'"
     )
 
 
