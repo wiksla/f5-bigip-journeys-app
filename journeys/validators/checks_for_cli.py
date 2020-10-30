@@ -101,8 +101,8 @@ def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
         result = PASSED
     except CoreWatcherFailed as err:
         msg = f"{err}\n"
-        "Diagnostic core dumps found. You can check why it happened\n"
-        "and read more bout it at:\n"
+        "You can check why it happened\n"
+        "and read more about it at:\n"
         "https://support.f5.com/csp/article/K10062"
         click.echo(msg, file=output)
         click.echo("Core dumps check FAILED.\n", file=output)
