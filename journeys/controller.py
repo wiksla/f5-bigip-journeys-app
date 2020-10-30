@@ -164,6 +164,8 @@ class MigrationController:
             as3_ucs_path=self.as3_ucs_path,
         )
 
+        return self.config
+
     @property
     def current_conflict(self):
         return self.shelf.get("current_conflict", None)
