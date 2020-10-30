@@ -123,7 +123,7 @@ Requires manual evaluation."""
     click.echo(
         f"Sys DB diff:\n{pretty(db_diff, root_name, collection_name)}", file=output
     )
-    return {"result": USER_EVALUATION, "value": db_diff.to_dict()}
+    return {"result": USER_EVALUATION, "value": json.loads(db_diff.to_json())}
 
 
 @attributes(
@@ -140,7 +140,7 @@ Requires manual evaluation. """
         f"Memory footprint diff:\n{pretty(module_diff, root_name, collection_name)}",
         file=output,
     )
-    return {"result": USER_EVALUATION, "value": module_diff.to_dict()}
+    return {"result": USER_EVALUATION, "value": json.loads(module_diff.to_json())}
 
 
 @attributes(
