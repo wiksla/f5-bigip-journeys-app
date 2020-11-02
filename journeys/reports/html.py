@@ -168,7 +168,7 @@ def normalize_replace_diff_item(raw_diff_item):
     }
     curr_line = {
         "line_num": raw_diff_item["current_line"],
-        "diff_text": raw_diff_item["previous_text"],
+        "diff_text": raw_diff_item["current_text"],
     }
     klass = "replaced"
 
