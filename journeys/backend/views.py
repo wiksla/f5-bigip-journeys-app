@@ -30,7 +30,7 @@ def get_supported_validators(request):
             "validators": {
                 check.name: {
                     "require_source": check.require_source,
-                    "require_admin": check.require_admin,
+                    "require_root": check.require_root,
                     "description": check.description,
                 }
                 for check in default_checks.values()

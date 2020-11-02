@@ -577,44 +577,44 @@ paths:
                     validators:
                       MCP status:
                         require_source: false
-                        require_admin: false
+                        require_root: true
                         description: "Checks if values of returned fields are correct. This method uses
                           `tmsh showsys mcp-state field-fmt` "
                       TMM status:
                         require_source: false
-                        require_admin: false
+                        require_root: true
                         description: Logs status of TMM. Requires manual evaluation.
                       Prompt state:
                         require_source: false
-                        require_admin: false
+                        require_root: true
                         description: Checks if prompt state is in active mode.
                       Core dumps:
                         require_source: false
-                        require_admin: false
+                        require_root: true
                         description: Checks if diagnostic core dumps were created.
                       DB compare:
                         require_source: true
-                        require_admin: true
+                        require_root: false
                         description: Compares two system DBs getting them from iControl endpoint for sys
                           db. Requires manual evaluation.
                       Memory footprint:
-                        require_source: false
-                        require_admin: false
+                        require_source: true
+                        require_root: true
                         description: "Compares information from `tmsh show sys provision` for both
                           systems. Requires manual evaluation. "
                       Version check:
-                        require_source: false
-                        require_admin: true
+                        require_source: true
+                        require_root: true
                         description: Compares information from `tmsh show sys version` for both systems.
                           Requires manual evaluation.
                       LTM VS check:
                         require_source: false
-                        require_admin: true
+                        require_root: false
                         description: Check lists of all defined LTM nodes and Virtual Servers configured
                           in the new system.
                       Log watcher:
                         require_source: false
-                        require_admin: true
+                        require_root: true
                         description: Check looks for `ERR` and `CRIT` phrases (case insensitive) that
                           appear in log during UCS deployment process.
 
@@ -957,7 +957,7 @@ components:
              - name
              - description
              - require_source
-             - require_admin
+             - require_root
             properties:
               name:
                 type: string
@@ -965,7 +965,7 @@ components:
                 type: string
               require_source:
                 type: boolean
-              require_admin:
+              require_root:
                 type: boolean
     Source:
       type: object

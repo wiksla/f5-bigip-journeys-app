@@ -35,11 +35,11 @@ USER_EVALUATION = "FOR_USER_EVALUATION"
 log = logging.getLogger(__name__)
 
 
-def attributes(name: str, require_source: bool, require_admin: bool):
+def attributes(name: str, require_source: bool, require_root: bool):
     def wrapper(func):
         setattr(func, "name", name)
         setattr(func, "require_source", require_source)
-        setattr(func, "require_admin", require_admin)
+        setattr(func, "require_root", require_root)
         if not func.__doc__:
             raise JourneysError("description missing")
         setattr(func, "description", func.__doc__)
@@ -49,7 +49,7 @@ def attributes(name: str, require_source: bool, require_admin: bool):
 
 
 @attributes(
-    name="MCP status", require_source=False, require_admin=False,
+    name="MCP status", require_source=False, require_root=True,
 )
 def cli_mcp_status_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if values of returned fields are correct. \
@@ -67,7 +67,7 @@ This method uses `tmsh showsys mcp-state field-fmt` """
 
 
 @attributes(
-    name="TMM status", require_source=False, require_admin=False,
+    name="TMM status", require_source=False, require_root=True,
 )
 def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
     """Logs status of TMM. Requires manual evaluation."""
@@ -77,7 +77,7 @@ def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
 
 
 @attributes(
-    name="Prompt state", require_source=False, require_admin=False,
+    name="Prompt state", require_source=False, require_root=True,
 )
 def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if prompt state is in active mode."""
@@ -89,7 +89,7 @@ def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
 
 
 @attributes(
-    name="Core dumps", require_source=False, require_admin=False,
+    name="Core dumps", require_source=False, require_root=True,
 )
 def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if diagnostic core dumps were created."""
@@ -112,7 +112,7 @@ def cli_core_dumps_check(destination: Device, output, **kwargs) -> Dict:
 
 
 @attributes(
-    name="DB compare", require_source=True, require_admin=True,
+    name="DB compare", require_source=True, require_root=False,
 )
 def cli_compare_db_check(source: Device, destination: Device, output) -> Dict:
     """Compares two system DBs getting them from iControl endpoint for sys db. \
@@ -127,7 +127,7 @@ Requires manual evaluation."""
 
 
 @attributes(
-    name="Memory footprint", require_source=True, require_admin=False,
+    name="Memory footprint", require_source=True, require_root=True,
 )
 def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
     """Compares information from `tmsh show sys provision` for both systems. \
@@ -144,7 +144,7 @@ Requires manual evaluation. """
 
 
 @attributes(
-    name="LTM VS check", require_source=False, require_admin=True,
+    name="LTM VS check", require_source=False, require_root=False,
 )
 def cli_ltm_vs_check(destination: Device, output, **kwargs) -> Dict:
     """Check lists of all defined LTM nodes and Virtual Servers configured in the new \
@@ -155,7 +155,7 @@ system."""
 
 
 @attributes(
-    name="Version check", require_source=True, require_admin=False,
+    name="Version check", require_source=True, require_root=True,
 )
 def cli_version_diff_check(source: Device, destination: Device, output) -> Dict:
     """Compares information from `tmsh show sys version` for both systems. \
@@ -168,7 +168,7 @@ Requires manual evaluation."""
 
 
 @attributes(
-    name="Log watcher", require_source=False, require_admin=False,
+    name="Log watcher", require_source=False, require_root=True,
 )
 def cli_log_watcher_data_collector(destination: Device, output, **kwargs) -> dict:
     """Check looks for `ERR` and `CRIT` phrases (case insensitive) \
