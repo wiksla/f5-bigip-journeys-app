@@ -78,35 +78,3 @@ def _parse_stderr(result: Result) -> str:
             "Minimum recommended requirements for resources are not met.\n" + message
         )
     return message[:-1]
-
-
-# TODO: below may be obsolete (need verification)
-def obtain_source_resources(device: Device) -> dict:
-    return device.ssh.run_transaction(
-        cmds=[
-            ("disk", "tmsh show /sys hardware field-fmt", _obtain_disk_size),
-            ("ram", "tmsh show /sys memory field-fmt", _obtain_memory),
-            ("cores", "tmsh show /sys hardware field-fmt", _obtain_cpu_cores_no),
-        ],
-    )
-
-
-def _obtain_disk_size(result):
-    result = result.stdout.splitlines()
-    for idx, line in enumerate(result):
-        if "versions.2.name Size" == line.lstrip():
-            return result[idx + 1].lstrip().split()[-1]
-
-
-def _obtain_cpu_cores_no(result):
-    result = result.stdout.splitlines()
-    for idx, line in enumerate(result):
-        if "versions.1.name cores" == line.lstrip():
-            return result[idx + 1].lstrip().split()[1]
-
-
-def _obtain_memory(result):
-    for line in result.stdout.splitlines():
-        line = line.lstrip()
-        if line.startswith("memory-total"):
-            return line.split()[-1]
