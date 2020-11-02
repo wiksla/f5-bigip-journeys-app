@@ -711,6 +711,7 @@ def deploy(
 
 @cli.command()
 @click.option("--source-host", required=True, help="Source host address.")
+@click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
     "--source-username",
     default="root",
@@ -733,7 +734,6 @@ def deploy(
     hide_input=True,
     help="Admin password for the source host. Will prompt if not provided.",
 )
-@click.option("--destination-host", required=True, help="Destination host address.")
 @click.option(
     "--excluded-checks",
     default="",
