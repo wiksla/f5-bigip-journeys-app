@@ -127,7 +127,7 @@ Requires manual evaluation."""
 
 
 @attributes(
-    name="Memory footprint", require_source=False, require_admin=False,
+    name="Memory footprint", require_source=True, require_admin=False,
 )
 def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
     """Compares information from `tmsh show sys provision` for both systems. \
@@ -155,7 +155,7 @@ system."""
 
 
 @attributes(
-    name="Version check", require_source=False, require_admin=True,
+    name="Version check", require_source=True, require_admin=False,
 )
 def cli_version_diff_check(source: Device, destination: Device, output) -> Dict:
     """Compares information from `tmsh show sys version` for both systems. \
@@ -168,7 +168,7 @@ Requires manual evaluation."""
 
 
 @attributes(
-    name="Log watcher", require_source=False, require_admin=True,
+    name="Log watcher", require_source=False, require_admin=False,
 )
 def cli_log_watcher_data_collector(destination: Device, output, **kwargs) -> dict:
     """Check looks for `ERR` and `CRIT` phrases (case insensitive) \
