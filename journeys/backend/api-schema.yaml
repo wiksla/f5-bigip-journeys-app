@@ -571,53 +571,6 @@ paths:
             'application/json':
               schema:
                 $ref: '#/components/schemas/SupportedValidators'
-              examples:
-                validators:
-                  value:
-                    validators:
-                      MCP status:
-                        require_source: false
-                        require_root: true
-                        description: "Checks if values of returned fields are correct. This method uses
-                          `tmsh showsys mcp-state field-fmt` "
-                      TMM status:
-                        require_source: false
-                        require_root: true
-                        description: Logs status of TMM. Requires manual evaluation.
-                      Prompt state:
-                        require_source: false
-                        require_root: true
-                        description: Checks if prompt state is in active mode.
-                      Core dumps:
-                        require_source: false
-                        require_root: true
-                        description: Checks if diagnostic core dumps were created.
-                      DB compare:
-                        require_source: true
-                        require_root: false
-                        description: Compares two system DBs getting them from iControl endpoint for sys
-                          db. Requires manual evaluation.
-                      Memory footprint:
-                        require_source: true
-                        require_root: true
-                        description: "Compares information from `tmsh show sys provision` for both
-                          systems. Requires manual evaluation. "
-                      Version check:
-                        require_source: true
-                        require_root: true
-                        description: Compares information from `tmsh show sys version` for both systems.
-                          Requires manual evaluation.
-                      LTM VS check:
-                        require_source: false
-                        require_root: false
-                        description: Check lists of all defined LTM nodes and Virtual Servers configured
-                          in the new system.
-                      Log watcher:
-                        require_source: false
-                        require_root: true
-                        description: Check looks for `ERR` and `CRIT` phrases (case insensitive) that
-                          appear in log during UCS deployment process.
-
         default:
           $ref: '#/components/responses/UnexpectedError'
   '/sessions/{session_id}/deployments':
@@ -950,23 +903,51 @@ components:
         - validators
       properties:
         validators:
-          type: array
-          items:
-            type: object
-            required:
-             - name
-             - description
-             - require_source
-             - require_root
-            properties:
-              name:
-                type: string
-              description:
-                type: string
-              require_source:
-                type: boolean
-              require_root:
-                type: boolean
+          type: object
+          additionalProperties: true
+          example:
+            MCP status:
+              require_source: false
+              require_root: true
+              description: "Checks if values of returned fields are correct. This method uses
+                `tmsh showsys mcp-state field-fmt` "
+            TMM status:
+              require_source: false
+              require_root: true
+              description: Logs status of TMM. Requires manual evaluation.
+            Prompt state:
+              require_source: false
+              require_root: true
+              description: Checks if prompt state is in active mode.
+            Core dumps:
+              require_source: false
+              require_root: true
+              description: Checks if diagnostic core dumps were created.
+            DB compare:
+              require_source: true
+              require_root: false
+              description: Compares two system DBs getting them from iControl endpoint for sys
+                db. Requires manual evaluation.
+            Memory footprint:
+              require_source: true
+              require_root: true
+              description: "Compares information from `tmsh show sys provision` for both
+                systems. Requires manual evaluation. "
+            Version check:
+              require_source: true
+              require_root: true
+              description: Compares information from `tmsh show sys version` for both systems.
+                Requires manual evaluation.
+            LTM VS check:
+              require_source: false
+              require_root: false
+              description: Check lists of all defined LTM nodes and Virtual Servers configured
+                in the new system.
+            Log watcher:
+              require_source: false
+              require_root: true
+              description: Check looks for `ERR` and `CRIT` phrases (case insensitive) that
+                appear in log during UCS deployment process.
     Source:
       type: object
       required:
