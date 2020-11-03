@@ -130,10 +130,7 @@ class Plugin:
         files_to_render = set()
 
         for obj_id, info in self.object_info.items():
-            try:
-                files_to_render.add(info["file"])
-            except KeyError:
-                print("aa")
+            files_to_render.add(info["file"])
 
         for obj_id in self.all_objects:
             obj = self.config.fields.get(obj_id)
