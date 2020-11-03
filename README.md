@@ -503,7 +503,25 @@ Or use interactive container mode:
    ```
    journey generate --output <output_ucs_name> --ucs-passphrase <passphrase> --output-as3 <output_as3_name>
    ```
+    
+### Resources
+   Before deploying the UCS, the user may check if the Destination System has enough resources to load the configuration.
+   Application leverages the `mprov.pl` internal script, which verifies if all BIG-IP modules residing in  
+   the bigip_base.conf file from the Source System UCS can be provisioned on the given Destination System. 
+   During the check, the script verifies required CPU, Disk and RAM usage of the used BIG-IP modules.
+   If you are running the Journeys App in an environment with connectivity to the Destination System, 
+   then please provide the '--host' option. If not, the application can generate for you a `mprov.cfg` file
+   with instructions on how to execute the resource verification manually.
    
+   * With connectivity:
+   ```
+   journey resources --host=10.144.19.99
+   ```
+   * Without connectivity:
+   ```
+   journey resources
+   ```
+  
 ### Deployment and Validation
 If you're running the Journeys App in an environment where there is a connectivity to Source and Destination BIG-IP systems, you can use the Deployment and Validation feature to have the configuration deployed automatically on the Destination system and run a series of automated tests. 
 
