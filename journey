@@ -204,7 +204,7 @@ def prerequisites():
 
 
 def get_usc_files(ctx, args, incomplete):
-    return [k for k in glob.glob("*.ucs") if incomplete in k]
+    return [file_ for file_ in glob.glob("*.ucs") if file_.startswith(incomplete)]
 
 
 @cli.command()
@@ -254,8 +254,15 @@ def migrate(ucs, message):
         process_and_print_output(controller=controller, commit_name=message)
 
 
+def get_conflicts(ctx, args, incomplete):
+    controller = MigrationController(working_directory=WORKDIR)
+    return [
+        conflict for conflict in controller.conflicts if conflict.startswith(incomplete)
+    ]
+
+
 @cli.command()
-@click.argument("conflict_id")
+@click.argument("conflict_id", type=click.STRING, autocompletion=get_conflicts)
 def resolve(conflict_id):
     """ Start single conflict resolution process. """
     with error_handler():
@@ -300,8 +307,17 @@ def resolve_all():
         process_and_print_output(controller=controller)
 
 
+def get_mitigations(ctx, args, incomplete):
+    controller = MigrationController(working_directory=WORKDIR)
+    return [
+        mitigation
+        for mitigation in controller.get_mitigation_branches()
+        if mitigation.name.startswith(incomplete)
+    ]
+
+
 @cli.command()
-@click.argument("mitigation")
+@click.argument("mitigation", type=click.STRING, autocompletion=get_mitigations)
 def show(mitigation):
     """ Show proposed mitigation for a conflict. """
     with error_handler():
@@ -340,7 +356,7 @@ def diff():
 
 
 @cli.command()
-@click.argument("mitigation")
+@click.argument("mitigation", type=click.STRING, autocompletion=get_mitigations)
 def use(mitigation):
     """ Apply proposed mitigation. """
     with error_handler():

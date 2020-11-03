@@ -174,12 +174,15 @@ class MigrationController:
     def initial_conflicts(self):
         return self.shelf.get("initial_conflicts", None)
 
+    @property
+    def conflicts(self):
+        return self.shelf.get("conflicts", [])
+
     def prompt(self):
         current_conflict = self.current_conflict
-        conflicts = self.shelf.get("conflicts", None)
+        conflicts = self.conflicts
 
         if current_conflict:
-            prompt = f"{current_conflict}"
             prompt = f"{current_conflict}"
         elif conflicts:
             prompt = f"{len(conflicts)} conflicts left"
