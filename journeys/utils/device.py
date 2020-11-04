@@ -2,6 +2,9 @@ import inspect
 import logging
 import os
 import socket
+from contextlib import contextmanager
+from typing import Callable
+from typing import Optional
 from typing import Union
 
 import paramiko
@@ -52,15 +55,23 @@ class SSHConnector:
             "connect_kwargs": {"password": self.ssh_password, "timeout": 30},
         }
 
+    @contextmanager
+    def connection(self, extra_kwargs: dict = None):
+        kwargs = self.fabric
+        if extra_kwargs:
+            kwargs.update(extra_kwargs)
+        with Connector(host=self.host, **kwargs) as c:
+            yield c
+
     def run(self, cmd: str, raise_error=True):
-        with Connector(host=self.host, **self.fabric) as c:
+        with self.connection() as c:
             result = c.run(cmd, hide=True, warn=not raise_error)
         return result
 
     def run_transaction(self, cmds):
         """ ['disk', 'tmsh show /sys hardware field-fmt', _disk_validate ] """
         results = {}
-        with Connector(host=self.host, **self.fabric) as c:
+        with self.connection() as c:
             for name, cmd, validator in cmds:
                 result = c.run(cmd, hide=True)
                 results[name] = validator(result)
@@ -141,22 +152,29 @@ class Device:
 
 
 def stat_file(device: Device, remote: str) -> SFTPAttributes:
-    with Connector(device.ssh.host, **device.ssh.fabric) as c:
+    with device.ssh.connection() as c:
         return c.sftp().stat(remote)
 
 
-def get_file(device: Device, remote: str, local: str) -> str:
-    with Connector(device.ssh.host, **device.ssh.fabric) as c:
-        return c.get(remote, local)
+def get_file(
+    device: Device, remote: str, local: str, callback: Optional[Callable] = None
+) -> None:
+    with device.ssh.connection() as c:
+        c.sftp().get(remote, local, callback=callback)
 
 
-def put_file(device: Device, local: Union[str, bytes], remote: str):
-    with Connector(device.ssh.host, **device.ssh.fabric) as c:
-        return c.put(local, remote)
+def put_file(
+    device: Device,
+    local: Union[str, bytes],
+    remote: str,
+    callback: Optional[Callable] = None,
+) -> None:
+    with device.ssh.connection() as c:
+        c.sftp().put(local, remote, callback=callback)
 
 
 def list_dir(device: Device, directory: str):
-    with Connector(device.ssh.host, **device.ssh.fabric) as c:
+    with device.ssh.connection() as c:
         return c.sftp().listdir(directory)
 
 

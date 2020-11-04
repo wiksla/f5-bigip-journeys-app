@@ -60,16 +60,15 @@ def download_ucs(
         device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
     )
 
-    local_ucs_path = device_module.get_file(
-        device=device,
-        remote=ucs_remote_dir,
-        local=os.path.join(session.working_directory, output),
+    local_ucs_path = os.path.join(session.working_directory, output)
+    device_module.get_file(
+        device=device, remote=ucs_remote_dir, local=local_ucs_path,
     )
 
     if delete_file:
         device_module.delete_file(device=device, remote=ucs_remote_dir)
 
-    return local_ucs_path.local, ucs_passphrase
+    return local_ucs_path, ucs_passphrase
 
 
 def initialize(

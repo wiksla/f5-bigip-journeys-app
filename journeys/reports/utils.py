@@ -1,8 +1,5 @@
-# dependencies
 import json
 import random
-
-# helper methods - mock data generators
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import cycle

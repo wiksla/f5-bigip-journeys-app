@@ -50,6 +50,7 @@ from journeys.utils.device import get_image
 from journeys.utils.device import load_ucs
 from journeys.utils.device import put_file
 from journeys.utils.device import save_ucs
+from journeys.utils.device import stat_file
 from journeys.utils.resource_check import create_mprov_cfg_locally
 from journeys.utils.resource_check import (
     ensure_if_minimum_resources_are_met_on_destination,
@@ -89,132 +90,104 @@ def setup_logging(level=logging.DEBUG):
     version=journey_version, message=f"Journeys App Version: {journey_version}"
 )
 def cli():
-    """
-    Tool designed to allow full configuration migration process of: \n
-        * Classic BIG-IP to VELOS(BIG-IP VM tenant).\n
-            - Source Classic BIG-IP configuration must be in version 11.5.0 or higher.\n
-            - Source Classic BIG-IP versions lower than 11.5.0 are not supported\n
-            - Source Classic BIG-IP version cannot be higher than VELOS BIG-IP VM tenant version\n
+    """\b
+    Tool designed to allow full configuration migration process of:
+        * Classic BIG-IP to VELOS(BIG-IP VM tenant).
+            - Source Classic BIG-IP configuration must be between versions 11.5.0 and 14.1.3.
+            - Source Classic BIG-IP version cannot be higher than VELOS BIG-IP VM tenant version
     Run 'journey features' and 'journey prerequisites' for useful information
     before staring the migration process.
-
-    Run 'journey first-step' for information on how to start the migration process.
+    \b
+    To download a UCS from the Source System for you, you can use the 'journey download-ucs' command.
+      Run 'journey download-ucs --help' for more details.
+    \b
+    In order to start processing of an existing UCS file, please use the 'journey start' command.
+      Run 'journey start --help' for more details.
     """
     setup_logging()
     log.info(f"Processing command: {sys.argv}")
 
 
 @cli.command()
-def first_step():
-    click.echo(
-        "In order to start processing of an existing UCS file, please use 'journey start' command."
-    )
-    click.echo("Run 'journey start --help' for more details.")
-    click.echo("")
-    click.echo(
-        "To download a UCS from the Source System, please use 'journey download-ucs' command."
-    )
-    click.echo("Run 'journey download-ucs --help' for more details.")
-
-
-@cli.command()
 def features():
-    """ Prints a list of supported features """
+    """Prints a list of known parity gaps."""
 
     plugins = load_plugins()
-    click.echo("Supported features are:")
+    click.echo("Feature parity gaps handled by the app:")
     for plugin in plugins:
         click.echo(f"\t{plugin.ID}")
 
 
 @cli.command()
 def prerequisites():
-    """ Prints prerequisites before start """
+    """Prints operations required to perform before starting the journey migration process."""
+    text = """Before starting the migration process, it is important to migrate the master-key.
+This operation can be done in the following ways:
+    1. Copying Source System master key to the Destination System with 'f5mku' (recommended):
+        Run 'f5mku -K' on the Source System and copy the output.
+        It should look like this 'oruIVCHfmVBnwGaSR/+MAA=='.
+                        Run 'f5mku -r <copied value> on the Destination System.
 
-    click.echo(
-        "Before starting the migration process, it is important to migrate the master-key."
-    )
-    click.echo("This operation can be done in the following ways:")
-    click.echo(
-        "\t1. Copying Source System master key to the Destination System with 'f5mku' (recommended):"
-    )
-    click.echo("\t\tRun 'f5mku -K' on the Source System and copy the output.")
-    click.echo("\t\tIt should look like this 'oruIVCHfmVBnwGaSR/+MAA=='.")
-    click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System.")
-    click.echo("")
-    click.echo("\t2. Reset the master key on the Source System before saving the UCS:")
-    click.echo(
-        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on the Source System."
-    )
-    click.echo(
-        "\t\tInput password (Note: please remember it, as it will be required for the Destination System)."
-    )
-    click.echo(
-        "\t\tSave the master key change by running 'tmsh save sys config' on the Source System."
-    )
-    click.echo(
-        "\t\tRun 'tmsh modify sys crypto master-key prompt-for-password' on the Destination System."
-    )
-    click.echo("\t\tInput remembered password from the Source System.")
-    click.echo(
-        "\t\tSave the master key change by running 'tmsh save sys config' on the Destination System."
-    )
-    click.echo("")
-    click.echo("\tMore details can be found here:")
-    click.echo(
-        "\t\t- K82540512: Overview of the UCS archive 'platform-migrate' option."
-    )
-    click.echo("\t\t  https://support.f5.com/csp/article/K82540512#p1")
-    click.echo(
-        "\t\t- K9420: Installing UCS files containing encrypted passwords or passphrases (11.5.x and later)"
-    )
-    click.echo("\t\t  https://support.f5.com/csp/article/K9420")
-    click.echo("")
+        2. Reset the master key on the Source System before saving the UCS:
+                Run 'tmsh modify sys crypto master-key prompt-for-password' on the Source System.
+                Input password (Note: please remember it, as it will be required for the Destination System).
+                Save the master key change by running 'tmsh save sys config' on the Source System.
+                Run 'tmsh modify sys crypto master-key prompt-for-password' on the Destination System.
+                Input remembered password from the Source System.
+                Save the master key change by running 'tmsh save sys config' on the Destination System.
 
-    click.echo("SSH public keys migration")
-    click.echo(
-        "\tSSH public keys for passwordless authentication may stop work after UCS migration."
-    )
-    click.echo("\tUCS file may not contain SSH public keys for users.")
-    click.echo("\tIf the version is affected by the problem then:")
-    click.echo(
-        "\t\t- all key files have to be migrated manually from the Source System to the Destination System"
-    )
-    click.echo(
-        "\t\t- /etc/ssh directory has to be added to the UCS backup configuration of the Source System"
-    )
-    click.echo(
-        "\tFor more details on how to manually migrate SSH keys"
-        " and verify if your version is affected by the problem, please read:"
-    )
-    click.echo(
-        "\t\t- K22327083: UCS backup files do not include the /etc/ssh/ directory"
-    )
-    click.echo("\t\t  https://support.f5.com/csp/article/K22327083")
-    click.echo(
-        "\t\t- K17318: Public key SSH authentication may fail after installing a UCS"
-    )
-    click.echo("\t\t  https://support.f5.com/csp/article/K17318")
-    click.echo(
-        "\t\t- K13454: Configuring SSH public key authentication on BIG-IP systems (11.x - 15.x)"
-    )
-    click.echo("\t\t  https://support.f5.com/csp/article/K13454")
-    click.echo("")
+        More details can be found here:
+                - K82540512: Overview of the UCS archive 'platform-migrate' option.
+                  https://support.f5.com/csp/article/K82540512#p1
+                - K9420: Installing UCS files containing encrypted passwords or passphrases (11.5.x and later)
+                  https://support.f5.com/csp/article/K9420
+
+SSH public keys migration
+        SSH public keys for passwordless authentication may stop work after UCS migration.
+        UCS file may not contain SSH public keys for users.
+        If the version is affected by the problem then:
+                - all key files have to be migrated manually from the Source System to the Destination System
+                - /etc/ssh directory has to be added to the UCS backup configuration of the Source System
+        For more details on how to manually migrate SSH keys and verify if your version is affected by the problem,
+        please read:
+                - K22327083: UCS backup files do not include the /etc/ssh/ directory
+                  https://support.f5.com/csp/article/K22327083
+                - K17318: Public key SSH authentication may fail after installing a UCS
+                  https://support.f5.com/csp/article/K17318
+                - K13454: Configuring SSH public key authentication on BIG-IP systems (11.x - 15.x)
+                  https://support.f5.com/csp/article/K13454
+
+Before deploying to the Destination System, the following requirements must be met:
+        Migration of the master key.
+                Run 'f5mku -K' on the Source System and copy the output
+                Run 'f5mku -r <copied value> on the Destination System
+
+        VELOS VM tenant should be deployed.
+        VLANs, trunks and interfaces should be configured on the Controller and assigned to the Tenant.
+        All modules from the Source System should be provisioned (except PEM and CGNAT which are not supported yet)
+"""
+    click.echo(text)
 
     print_destination_system_prerequisites()
 
 
-def get_usc_files(ctx, args, incomplete):
+def get_ucs_files(ctx, args, incomplete):
     return [file_ for file_ in glob.glob("*.ucs") if file_.startswith(incomplete)]
 
 
 @cli.command()
-@click.argument("ucs", type=click.STRING, autocompletion=get_usc_files)
+@click.argument("ucs", type=click.STRING, autocompletion=get_ucs_files)
 @click.option("--clear", is_flag=True, help="Clear all work-in-progress data.")
-@click.option("--ucs-passphrase", default="", help="Passphrase to decrypt UCS archive.")
+@click.option(
+    "--ucs-passphrase",
+    default="",
+    help="Passphrase to decrypt UCS archive.",
+    metavar="string",
+)
 @click.option(
     "--as3-path",
     help="Path to the AS3 declaration corresponding to this configuration.",
+    metavar="string",
 )
 def start(ucs, clear, ucs_passphrase, as3_path):
     """ Start migration process. """
@@ -241,15 +214,14 @@ def start(ucs, clear, ucs_passphrase, as3_path):
 
 
 @cli.command()
-@click.argument("ucs", default="")
-@click.option("--message", default=None, help="Subject for local changes made.")
+@click.option(
+    "--message",
+    default=None,
+    help="Message to describe any applied local changes.",
+    metavar="string",
+)
 def migrate(ucs, message):
     """ Continue or resume migration process. """
-    # TODO: remove after release
-    if ucs:
-        click.echo("Ucs argument is deprecated.")
-        click.echo("In order to start a new Migration process, run 'journey start'")
-
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         process_and_print_output(controller=controller, commit_name=message)
@@ -263,9 +235,9 @@ def get_conflicts(ctx, args, incomplete):
 
 
 @cli.command()
-@click.argument("conflict_id", type=click.STRING, autocompletion=get_conflicts)
-def resolve(conflict_id):
-    """ Start single conflict resolution process. """
+@click.argument("issue_id", type=click.STRING, autocompletion=get_conflicts)
+def resolve(issue_id):
+    """ Start a single issue resolution process. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         (
@@ -273,7 +245,7 @@ def resolve(conflict_id):
             working_directory,
             config_path,
             mitigation_branches,
-        ) = controller.resolve(conflict_id=conflict_id)
+        ) = controller.resolve(conflict_id=issue_id)
         print_conflict_resolution_help(
             conflict_info=conflict_info,
             working_directory=working_directory,
@@ -284,7 +256,7 @@ def resolve(conflict_id):
 
 @cli.command()
 def abort():
-    """ Abort resolving current conflict.
+    """ Abort resolving current issue.
         Call to this command effectively reverts the state of the migration process
         to a moment before calling 'journey resolve'.
     """
@@ -301,7 +273,7 @@ def abort():
 
 @cli.command()
 def resolve_all():
-    """ Resolve all conflicts with f5 recommended solutions. """
+    """ Resolve all issues with f5 recommended solutions. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         controller.resolve_recommended()
@@ -320,7 +292,7 @@ def get_mitigations(ctx, args, incomplete):
 @cli.command()
 @click.argument("mitigation", type=click.STRING, autocompletion=get_mitigations)
 def show(mitigation):
-    """ Show proposed mitigation for a conflict. """
+    """ Show proposed mitigation for an issue. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
@@ -340,7 +312,7 @@ def show(mitigation):
 
 @cli.command()
 def diff():
-    """ Show changes made or conflict highlights. """
+    """ Show changes made or issue highlights. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
@@ -348,7 +320,7 @@ def diff():
         click.echo("")
         if controller.current_conflict:
             click.echo(
-                "In order to check if current changes have resolved the conflict, run 'journey migrate'"
+                "In order to check if current changes have resolved the issue, run 'journey migrate'"
             )
         else:
             click.echo(
@@ -391,7 +363,7 @@ def cleanup():
 
 
 @cli.command()
-@click.option("--details", is_flag=True, help="Print details of a conflict resolution.")
+@click.option("--details", is_flag=True, help="Print details of all issue resolutions.")
 def history(details):
     """ Show conflict resolution history. """
     with error_handler():
@@ -411,18 +383,18 @@ def history(details):
 
         click.echo("")
         click.echo(
-            "In order to revert conflict_info resolution, run 'journey revert <step name>'."
+            "In order to revert issue resolution, run 'journey revert <step name>'."
         )
         click.echo("")
         click.echo(
-            "Note that reverting a conflict_info resolution will also revert all subsequent resolutions."
+            "Note that reverting an issue resolution will also revert all subsequent resolutions."
         )
 
 
 @cli.command()
 @click.argument("step")
 def revert(step):
-    """ Revert conflict resolution. """
+    """ Revert issue resolution. """
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         repo = controller.repo
@@ -442,15 +414,28 @@ def revert(step):
 
 
 @cli.command()
-@click.option("--output", default=None, help="Use given filename instead of default.")
-@click.option("--ucs-passphrase", default="", help="Passphrase to encrypt UCS archive.")
 @click.option(
-    "--output-as3", default=None, help="Use given filename instead of default for as3."
+    "--output",
+    default=None,
+    help="Use given filename instead of default.",
+    metavar="string",
+)
+@click.option(
+    "--ucs-passphrase",
+    default="",
+    help="Passphrase to encrypt UCS archive.",
+    metavar="string",
+)
+@click.option(
+    "--output-as3",
+    default=None,
+    help="Use given filename instead of default for as3.",
+    metavar="string",
 )
 @click.option(
     "--force",
     is_flag=True,
-    help="Generate output UCS even if not all conflict_info have been resolved.",
+    help="Generate output UCS even if not all issues have been resolved.",
 )
 @click.option(
     "--overwrite",
@@ -535,14 +520,18 @@ def prompt_password(ctx, param, value):
 
 
 @cli.command()
-@click.option("--host", help="Destination host address.")
+@click.option("--host", help="Destination host address.", metavar="string")
 @click.option(
-    "--username", default="root", help="SSH username for the given host. Default: root"
+    "--username",
+    default="root",
+    help="SSH username for the given host. Default: root",
+    metavar="string",
 )
 @click.option(
     "--password",
     callback=prompt_password,
     help="SSH password for the given host. Will prompt if not provided.",
+    metavar="string",
 )
 def resources(host, username, password):
     """ Check if the destination has enough resources to migrate the UCS. """
@@ -564,20 +553,29 @@ def resources(host, username, password):
 
 
 @cli.command()
-@click.option("--host", required=True, help="Host to retrieve a UCS from.")
 @click.option(
-    "--username", default="root", help="SSH username for the given host. Default: root"
+    "--host", required=True, help="Host to retrieve a UCS from.", metavar="string"
+)
+@click.option(
+    "--username",
+    default="root",
+    help="SSH username for the given host. Default: root",
+    metavar="string",
 )
 @click.option(
     "--password",
     prompt=True,
     hide_input=True,
     help="SSH password for the given host. Will prompt if not provided.",
+    metavar="string",
 )
 @click.option(
-    "--ucs-passphrase", default=None, help="Passphrase to encrypt UCS archive."
+    "--ucs-passphrase",
+    default=None,
+    help="Passphrase to encrypt UCS archive.",
+    metavar="string",
 )
-@click.option("--output", default="ex.ucs", help="Output filename.")
+@click.option("--output", default=None, help="Output filename.", metavar="string")
 def download_ucs(host, username, password, ucs_passphrase, output):
     """ Download a UCS from a live system. """
     if not ucs_passphrase:
@@ -587,6 +585,12 @@ def download_ucs(host, username, password, ucs_passphrase, output):
     with error_handler():
         device = Device(host=host, ssh_username=username, ssh_password=password)
         version = get_image(device=device)
+        if not output:
+            hostname = device.ssh.run(
+                "tmsh list sys global-settings hostname | grep hostname | awk '{print $2}'"
+            ).stdout.strip()
+            timestamp = strftime("%Y%m%d-%H%M%S", gmtime())
+            output = f"{hostname}-{timestamp}.ucs"
 
         click.echo(f"BIG-IP Version: {version}")
 
@@ -595,20 +599,24 @@ def download_ucs(host, username, password, ucs_passphrase, output):
             ucs_remote_dir = save_ucs(
                 device=device, ucs_name=output, ucs_passphrase=ucs_passphrase
             )
-
-            local_ucs_path = get_file(
-                device=device,
-                remote=ucs_remote_dir,
-                local=os.path.join(WORKDIR, output),
-            )
+            ucs_size = stat_file(device=device, remote=ucs_remote_dir).st_size
+            local_out = os.path.join(WORKDIR, output)
+            with click.progressbar(length=ucs_size, label="Downloading") as bar:
+                get_file(
+                    device=device,
+                    remote=ucs_remote_dir,
+                    local=local_out,
+                    callback=lambda done, total: bar.update(done),
+                )
 
             delete_file(device=device, remote=ucs_remote_dir)
-            click.echo(f"Downloaded UCS is available locally: {local_ucs_path.local}.")
+            click.echo("")
+            click.echo(f"Downloaded UCS is available locally: {local_out}.")
             click.echo(f"It has been encrypted using passphrase '{ucs_passphrase}'.")
             click.echo("")
             click.echo(
-                "In order to start processing of downloaded UCS, run "
-                f"'journey start {local_ucs_path.local} --ucs-passphrase {ucs_passphrase}'"
+                "In order to start processing the downloaded UCS, run "
+                f"'journey start {local_out} --ucs-passphrase {ucs_passphrase}'"
             )
         else:
             click.echo(
@@ -618,19 +626,29 @@ def download_ucs(host, username, password, ucs_passphrase, output):
 
 @cli.command()
 @click.option(
-    "--ucs-passphrase", default=None, help="Passphrase to decrypt the UCS archive."
+    "--ucs-passphrase",
+    default=None,
+    help="Passphrase to decrypt the UCS archive.",
+    metavar="string",
 )
-@click.option("--destination-host", required=True, help="Destination host address.")
+@click.option(
+    "--destination-host",
+    required=True,
+    help="Destination host address.",
+    metavar="string",
+)
 @click.option(
     "--destination-username",
     default="root",
     help="SSH username for the destination host. Default: root",
+    metavar="string",
 )
 @click.option(
     "--destination-password",
     prompt=True,
     hide_input=True,
     help="SSH password for the destination host. Will prompt if not provided.",
+    metavar="string",
 )
 def backup(
     ucs_passphrase, destination_username, destination_host, destination_password
@@ -648,31 +666,48 @@ def backup(
 
 @cli.command()
 @click.option(
-    "--ucs-passphrase", required=True, help="Passphrase to decrypt the UCS archive."
+    "--ucs-passphrase",
+    required=True,
+    help="Passphrase to decrypt the UCS archive.",
+    metavar="string",
 )
-@click.option("--input-ucs", required=True, help="Filename for generated UCS file.")
-@click.option("--destination-host", required=True, help="Destination host address.")
+@click.option(
+    "--input-ucs",
+    required=True,
+    help="Filename for generated UCS file.",
+    metavar="string",
+)
+@click.option(
+    "--destination-host",
+    required=True,
+    help="Destination host address.",
+    metavar="string",
+)
 @click.option(
     "--destination-username",
     default="root",
     help="SSH username for the destination host. Default: root",
+    metavar="string",
 )
 @click.option(
     "--destination-password",
     prompt=True,
     hide_input=True,
     help="SSH password for the destination host. Will prompt if not provided.",
+    metavar="string",
 )
 @click.option(
     "--destination-admin-username",
     default="admin",
     help="Admin username for the destination host. Default: admin",
+    metavar="string",
 )
 @click.option(
     "--destination-admin-password",
     prompt=True,
     hide_input=True,
     help="Admin password for the destination host. Will prompt if not provided.",
+    metavar="string",
 )
 @click.option("--no-backup", is_flag=True, default=False, help="Skip auto backup.")
 def deploy(
@@ -728,34 +763,46 @@ def deploy(
 
 
 @cli.command()
-@click.option("--source-host", required=True, help="Source host address.")
-@click.option("--destination-host", required=True, help="Destination host address.")
+@click.option(
+    "--source-host", required=True, help="Source host address.", metavar="string"
+)
+@click.option(
+    "--destination-host",
+    required=True,
+    help="Destination host address.",
+    metavar="string",
+)
 @click.option(
     "--source-username",
     default="root",
     help="SSH username for the source host. Default: root",
+    metavar="string",
 )
 @click.option(
     "--source-password",
     prompt=True,
     hide_input=True,
     help="SSH password for the source host. Will prompt if not provided.",
+    metavar="string",
 )
 @click.option(
     "--source-admin-username",
     default="admin",
     help="Admin username for the source host. Default: admin",
+    metavar="string",
 )
 @click.option(
     "--source-admin-password",
     prompt=True,
     hide_input=True,
     help="Admin password for the source host. Will prompt if not provided.",
+    metavar="string",
 )
 @click.option(
     "--excluded-checks",
     default="",
     help='Add checks to exclude in a list, e.g. \'["TMM status", "Core dumps"]\'',
+    metavar="string",
 )
 def diagnose(
     source_host,
@@ -822,13 +869,16 @@ def diagnose(
 
 
 @cli.command()
-def conflicts_report():
-    """ Generates conflicts report. """
+def issues_report():
+    """ Generates issues report. """
 
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
-
-        output_path = os.path.join(controller.working_directory, "conflicts_report.pdf")
+        ucs_name = controller.shelf["input_ucs_name"].replace(".ucs", "")
+        timestamp = strftime("%Y%m%d-%H%M%S", gmtime())
+        output_path = os.path.join(
+            controller.working_directory, f"issues_report_{ucs_name}_{timestamp}.pdf"
+        )
 
         generate_conflicts_report(
             output_path=output_path, conflicts=controller.initial_conflicts,
@@ -858,8 +908,11 @@ def resolutions_report():
             for commit in commits_history
         ]
 
+        ucs_name = controller.shelf["input_ucs_name"].replace(".ucs", "")
+        timestamp = strftime("%Y%m%d-%H%M%S", gmtime())
         output_path = os.path.join(
-            controller.working_directory, "resolutions_report.pdf"
+            controller.working_directory,
+            f"resolutions_report_{ucs_name}_{timestamp}.pdf",
         )
 
         generate_changes_report(
@@ -897,8 +950,11 @@ def deployment_report():
                 f"Did you moved this file? "
             )
 
+        ucs_name = controller.shelf["input_ucs_name"].replace(".ucs", "")
+        timestamp = strftime("%Y%m%d-%H%M%S", gmtime())
         output_path = os.path.join(
-            controller.working_directory, "deployment_report.pdf"
+            controller.working_directory,
+            f"deployment_report_{ucs_name}_{timestamp}.pdf",
         )
 
         generate_deployment_validations_report(
@@ -924,7 +980,7 @@ def explode():
 
 
 def print_conflicts_info(conflicts):
-    click.echo("The following conflicts must be resolved:")
+    click.echo("The following issues must be resolved:")
     for _id, conflict in conflicts.items():
         click.echo("")
         click.echo(f"{conflict.id}:")
@@ -935,15 +991,13 @@ def print_conflicts_info(conflicts):
                 break
             click.echo(f"\t{line}")
     click.echo("")
-    click.echo("Please run 'journey resolve <Conflict>' to apply sample fixes.")
+    click.echo("Please run 'journey resolve <Issue>' to apply sample fixes.")
     click.echo(f"Example 'journey resolve {conflict_name}'")
     click.echo("")
-    click.echo(
-        "To resolve all conflicts automatically, please run 'journey resolve-all'"
-    )
+    click.echo("To resolve all issues automatically, please run 'journey resolve-all'")
     click.echo("")
     click.echo(
-        "To generate a full conflicts report in pdf format, please run 'journey conflicts-report'"
+        "To generate a full issues report in pdf format, please run 'journey issues-report'"
     )
     click.echo("")
     click.echo(
@@ -953,7 +1007,7 @@ def print_conflicts_info(conflicts):
 
 
 def print_no_conflict_info(history):
-    click.echo("No conflicts have been found.")
+    click.echo("No issues have been found.")
     click.echo("")
     click.echo("To generate an output UCS, please run 'journey generate'")
 
@@ -975,7 +1029,7 @@ def print_conflict_resolution_help(
 ):
     click.echo(f"Workdir: {working_directory}")
     click.echo(f"Config path: {config_path}\n")
-    click.echo(f"Resolving conflict_info {conflict_info.id}\n")
+    click.echo(f"Resolving issue {conflict_info.id}\n")
     click.echo(
         f"Resolve issues on objects commented with '{conflict_info.id}' in the following files:"
     )
@@ -983,7 +1037,7 @@ def print_conflict_resolution_help(
         click.echo(f"\t{filename}")
 
     click.echo("")
-    click.echo("Available conflict mitigations are:")
+    click.echo("Available issue mitigations are:")
     for mitigation_branch in mitigation_branches:
         click.echo(f"\t{mitigation_branch}")
     click.echo("")
@@ -1000,7 +1054,7 @@ def print_conflict_resolution_help(
         "Please note, that files can be also edited manually, followed by running 'journey migrate' command."
     )
     click.echo("")
-    click.echo("To abort resolving current conflict, run 'journey abort'")
+    click.echo("To abort resolving current issue, run 'journey abort'")
 
 
 def print_destination_system_prerequisites():
@@ -1012,7 +1066,7 @@ def print_destination_system_prerequisites():
     click.echo("\t\tRun 'f5mku -r <copied value> on the Destination System")
     click.echo("")
 
-    click.echo("\tVELOS VM tenat should be deployed.")
+    click.echo("\tVELOS VM tenant should be deployed.")
     click.echo(
         "\tVLANs, trunks and interfaces should be configured on the Controller and assigned to the Tenant."
     )
@@ -1059,7 +1113,7 @@ def error_handler():
         click.echo("Run 'journey download-ucs --help' for more details.")
 
     except ConflictNotResolvedError as e:
-        click.echo(f"Current conflict_info {e.conflict_id} is not yet resolved.")
+        click.echo(f"Current issue {e.conflict_id} is not yet resolved.")
         click.echo("")
         print_conflict_resolution_help(
             conflict_info=e.conflict_info,
@@ -1070,15 +1124,15 @@ def error_handler():
 
     except DifferentConflictError as e:
         click.echo(
-            f"Conflict {e.conflict_id} resolution already in progress."
+            f"Issue {e.conflict_id} resolution already in progress."
             "Finish it by calling 'journey migrate' first before starting a new one."
         )
     except UnknownConflictError as e:
         click.echo(
-            f"Invalid conflict_info ID ({e.conflict_id}) - given conflict_info not found in the config."
+            f"Invalid issue ID ({e.conflict_id}) - given issue not found in the config."
         )
     except NotAllConflictResolvedError:
-        click.echo("Unresolved conflicts have been detected.")
+        click.echo("Unresolved issues have been detected.")
         click.echo("")
         click.echo("To start resolving them, please run 'journey migrate' command")
         click.echo(f"Or run 'journey {passed_params()} --force'.")
@@ -1114,9 +1168,9 @@ def error_handler():
         click.echo(f"{e.action_name} failed!")
 
     except NotResolvingConflictError:
-        click.echo("Not resolving any conflict_info at this point.")
+        click.echo("Not resolving any issues at this point.")
         click.echo(
-            "To start the conflict resolution process, run 'journey resolve <conflict_id>'."
+            "To start the issue resolution process, run 'journey resolve <issue_id>'."
         )
     except (InputFileNotExistError, ReportCreationError) as e:
         click.echo(e)
