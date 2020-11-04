@@ -436,11 +436,11 @@ Please note that some methods just gather data and require user's evaluation.
 ### Bug reporting
 
 Let us know if something went wrong. By reporting issues, you support development of this project and get a chance of having it fixed soon. 
-Please use bug template available [here]()
+Please use bug template available [here](https://github.com/f5devcentral/f5-bigip-journeys-app/issues/new?assignees=&labels=&template=bug_report.md&title=%5BBUG%5D)
 
 ### Feature requests
 
-Ideas for enhancements are welcome [here]()
+Ideas for enhancements are welcome [here](https://github.com/f5devcentral/f5-bigip-journeys-app/issues/new?assignees=&labels=&template=feature_request.md&title=%5BFEAT%5D)
 
 ### Code contribution 
 
