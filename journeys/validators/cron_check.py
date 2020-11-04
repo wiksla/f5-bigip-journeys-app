@@ -18,7 +18,7 @@ def compare_crontabs(first: Device, second: Device):
 
 
 def _get_crontabs_for_users(device: Device, users: List[str]) -> Dict:
-    """Get content of `crontab -l -u` for given users."""
+    """Get content of 'crontab -l -u' for given users."""
     users_jobs = {}
     for user in users:
         crontab_resp = device.ssh.run(f"crontab -l -u {user}", raise_error=False)

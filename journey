@@ -32,6 +32,7 @@ from journeys.errors import NotInitializedError
 from journeys.errors import NotMasterBranchError
 from journeys.errors import NotResolvingConflictError
 from journeys.errors import OutputAlreadyExistsError
+from journeys.errors import ReportCreationError
 from journeys.errors import SSHConnectionError
 from journeys.errors import UcsActionError
 from journeys.errors import UnknownConflictError
@@ -718,10 +719,10 @@ def deploy(
 
         click.echo("Uploading UCS to the Destination Platform...")
         put_file(destination, os.path.join(WORKDIR, input_ucs), REMOTE_UCS_DIRECTORY)
-        click.echo("Done.")
+        click.echo("Upload done.")
         click.echo("Deploying UCS on the Destination Platform...")
         load_ucs(destination, input_ucs, ucs_passphrase)
-        click.echo("Done.")
+        click.echo("Deployment done.")
         return
     click.echo("\nDeployment failed!")
 
@@ -871,7 +872,8 @@ def resolutions_report():
 
 @cli.command()
 def deployment_report():
-    """ Generates deployment validation report. """
+    """Generates deployment validation report. \n
+    Make sure to run 'journey diagnose' first."""
     with error_handler():
         controller = MigrationController(working_directory=WORKDIR)
         try:
@@ -880,8 +882,8 @@ def deployment_report():
             ) as last_diagnose_pointer:
                 last_diagnose_file_name = last_diagnose_pointer.read()
         except FileNotFoundError:
-            raise InputFileNotExistError(
-                f"'{LAST_DIAGNOSE_POINTER}'", "Diagnose results pointer file"
+            raise ReportCreationError(
+                "Run 'journey diagnose' command before generating report. \n"
             )
         try:
             with open(
@@ -889,8 +891,10 @@ def deployment_report():
             ) as last_diagnose_output:
                 validation = json.load(last_diagnose_output)
         except FileNotFoundError:
-            raise InputFileNotExistError(
-                f"'{last_diagnose_file_name}'", "Diagnose results file"
+            raise ReportCreationError(
+                f"Could not find file '{last_diagnose_file_name}' with recent "
+                f"diagnosis results. \n "
+                f"Did you moved this file? "
             )
 
         output_path = os.path.join(
@@ -1114,7 +1118,7 @@ def error_handler():
         click.echo(
             "To start the conflict resolution process, run 'journey resolve <conflict_id>'."
         )
-    except InputFileNotExistError as e:
+    except (InputFileNotExistError, ReportCreationError) as e:
         click.echo(e)
 
     except BigDbError as e:

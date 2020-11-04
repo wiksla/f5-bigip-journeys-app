@@ -25,7 +25,7 @@ JOURNEYS_PRETTY_FORM_TEXTS = {
 
 def convert_raw_to_dict(raw_obj) -> dict:
     """Apply change operations to raw object from iControl lib.
-    - remove keys starting with `_`.
+    - remove keys starting with '_'.
     - remove self links that always changes between versions.
     """
     ret_dict = {}

@@ -70,7 +70,7 @@ class LogWatcher:
             self.__tmppath.mkdir()
 
         self.__stopped = False
-        self._pointers = dict()
+        self.__pointers = dict()
         self.__diff = dict()
 
     @classmethod
@@ -93,7 +93,7 @@ class LogWatcher:
             try:
                 log.debug(f"Checking size of file {logfile}")
                 f = stat_file(self.__device, logfile)
-                self._pointers[logfile] = f.st_size
+                self.__pointers[logfile] = f.st_size
             except FileNotFoundError:
                 log.debug(f"{logfile} file does not exist. ")
             except PermissionError:
@@ -111,21 +111,21 @@ class LogWatcher:
                 get_file(self.__device, logfile, str(post_name))
 
                 with post_name.open() as f:
-                    f.seek(self._pointers[logfile], 0)
+                    f.seek(self.__pointers[logfile], 0)
                     self.__diff[logfile] = [
                         line
                         for line in f.readlines()
                         if _matches_pattern(line, regexes)
                     ]
             except FileNotFoundError:
-                if logfile in self._pointers.keys():
+                if logfile in self.__pointers.keys():
                     log.error(f"{logfile} does not exist.")
                     self.__diff[logfile] = (
                         f"{logfile} does not exist on the Platform, "
                         f"but existed before deployment. "
                     )
             except PermissionError:
-                log.debug(f"No required permission for file: {logfile}")
+                log.debug(f"No required permission for file: {logfile}.")
 
         self.__stopped = True
         log.info("Logging stopped")
@@ -133,25 +133,33 @@ class LogWatcher:
     def cleanup(self):
         if self.__tmppath:
             shutil.rmtree(self.__tmppath)
+            log.debug(f"Removed {self.__tmppath} and all its contents.")
             self.__tmppath = None
 
     def get_diff(self) -> Dict[str, List[str]]:
         """Return diff of logs."""
         if not self.__stopped:
-            raise ValidationRuntimeError("LogWatcher not stopped")
+            raise ValidationRuntimeError("LogWatcher not stopped.")
+        log.debug(f"Returning findings for following logs: {self.__diff.keys()}")
         return self.__diff
 
     def dump_pointers_to_file(self):
-        with open(self.__tmppath / POINTERS_FILE_NAME, "w") as fp:
-            json.dump(self._pointers, fp)
-        log.debug(f"Pointers saved to {str(self.__tmppath / POINTERS_FILE_NAME)}")
+        pointers_path = self.__tmppath / POINTERS_FILE_NAME
+        log.debug(f"Saving log pointers to: {pointers_path}.")
+        with open(pointers_path, "w") as fp:
+            json.dump(self.__pointers, fp)
+        log.debug(self.__pointers)
+        log.debug(f"Pointers saved to {pointers_path}.")
 
     def load_pointers_from_file(self):
         pointers_path = self.__tmppath / POINTERS_FILE_NAME
         try:
             with open(pointers_path, "r") as fp:
-                self._pointers = json.load(fp)
+                self.__pointers = json.load(fp)
         except FileNotFoundError:
+            log.debug(f"{pointers_path} not found")
             raise LogWatcherRuntimeError(
-                "File with initialized pointers to log files not found!"
+                "Dependency list not found. Please make sure to run 'deploy' command "
+                "before 'diagnose'. "
             )
+        log.debug(f"pointers loaded: {self.__pointers}.")

@@ -134,6 +134,10 @@ class LogWatcherRuntimeError(ValidationRuntimeError):
     pass
 
 
+class ReportCreationError(JourneysError):
+    pass
+
+
 class BigDbError(JourneysError):
     def __init__(self, message):
         error_info_data = re.findall(r"'([^']*)'", message)

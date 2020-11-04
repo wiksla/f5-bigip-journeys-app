@@ -53,7 +53,7 @@ def attributes(name: str, require_source: bool, require_root: bool):
 )
 def cli_mcp_status_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if values of returned fields are correct. \
-This method uses `tmsh showsys mcp-state field-fmt` """
+This method uses 'tmsh show sys mcp-state field-fmt' """
     mcp_status = get_mcp_status(bigip=destination)
     click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}", file=output)
     if (
@@ -85,7 +85,7 @@ def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
     if not prompt_state:
         click.echo(PROMPT_ERR_MSG, file=output)
         return {"result": FAILED, "value": {"info": PROMPT_ERR_MSG}}
-    return {"result": PASSED, "value": {"info": f"`{prompt_state}` state is desired"}}
+    return {"result": PASSED, "value": {"info": f"'{prompt_state}' state is desired"}}
 
 
 @attributes(
@@ -130,7 +130,7 @@ Requires manual evaluation."""
     name="Memory footprint", require_source=True, require_root=True,
 )
 def cli_memory_footprint_check(source: Device, destination: Device, output) -> Dict:
-    """Compares information from `tmsh show sys provision` for both systems. \
+    """Compares information from 'tmsh show sys provision' for both systems. \
 Requires manual evaluation. """
     root_name = "Module"
     collection_name = "provisioned modules"
@@ -158,7 +158,7 @@ system."""
     name="Version check", require_source=True, require_root=True,
 )
 def cli_version_diff_check(source: Device, destination: Device, output) -> Dict:
-    """Compares information from `tmsh show sys version` for both systems. \
+    """Compares information from 'tmsh show sys version' for both systems. \
 Requires manual evaluation."""
     version_diff = tmsh_compare(
         cmd="tmsh show sys version", first=source, second=destination
@@ -171,7 +171,7 @@ Requires manual evaluation."""
     name="Log watcher", require_source=False, require_root=True,
 )
 def cli_log_watcher_data_collector(destination: Device, output, **kwargs) -> dict:
-    """Check looks for `ERR` and `CRIT` phrases (case insensitive) \
+    """Check looks for 'ERR' and 'CRIT' phrases (case insensitive) \
 that appear in log during UCS deployment process."""
     try:
         lw = LogWatcher.init_from_saved_pointers(destination)
@@ -182,7 +182,7 @@ that appear in log during UCS deployment process."""
             "Patterns representing potential errors found in logs. "
             f"Review them to find out details: \n{json.dumps(diff, indent=4)}"
             if any(diff.values())
-            else "No `ERR` and `CRIT` phrases found in logs."
+            else "No 'ERR' and 'CRIT' phrases found in logs."
         )
         click.echo(f"Log Watcher check:\n{msg}", file=output)
         return {"result": USER_EVALUATION, "value": diff}
@@ -190,7 +190,7 @@ that appear in log during UCS deployment process."""
         click.echo(f"Failed to execute log watcher check: {err}\n")
         return {
             "result": FAILED,
-            "value": {"info": f"Failed to execute check function: {err}"},
+            "value": {"info": err},
         }
 
 
