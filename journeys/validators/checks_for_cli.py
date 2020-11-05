@@ -14,6 +14,7 @@ from journeys.utils.device import Device
 from journeys.validators.core_watcher import list_cores
 from journeys.validators.db_comparer import compare_db
 from journeys.validators.deployment import PROMPT_ERR_MSG
+from journeys.validators.deployment import PROMPT_FEEDBACK
 from journeys.validators.deployment import get_mcp_status
 from journeys.validators.deployment import get_tmm_global_status
 from journeys.validators.deployment import wait_for_prompt_state
@@ -88,11 +89,23 @@ def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
 )
 def cli_prompt_state_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if prompt state is in active mode."""
+    PROMPT_RESULT_LOOKUP = {
+        "Active": PASSED,
+        "ForcedOffline": PASSED,
+        "Standby": PASSED,
+        "Peer Time Out of Sync": PASSED,
+        "TimeLimitedModulesActive": PASSED,
+        "REBOOT REQUIRED": USER_EVALUATION,
+        "DOWN": FAILED,
+    }
     prompt_state = wait_for_prompt_state(device=destination)
-    if not prompt_state:
-        click.echo(PROMPT_ERR_MSG, file=output)
-        return {"result": FAILED, "value": {"info": PROMPT_ERR_MSG}}
-    return {"result": PASSED, "value": {"info": f"'{prompt_state}' state is desired"}}
+    info = PROMPT_FEEDBACK.get(prompt_state, PROMPT_ERR_MSG).format(
+        state=prompt_state, host=destination.host
+    )
+    result = PROMPT_RESULT_LOOKUP.get(prompt_state, FAILED)
+    click.echo(info, file=output)
+    click.echo(f"Result: {result}", file=output)
+    return {"result": result, "value": {"info": info, "state": prompt_state}}
 
 
 @attributes(
@@ -197,7 +210,7 @@ that appear in log during UCS deployment process."""
         click.echo(f"Failed to execute log watcher check: {err}\n")
         return {
             "result": FAILED,
-            "value": {"info": err},
+            "value": {"info": str(err)},
         }
 
 

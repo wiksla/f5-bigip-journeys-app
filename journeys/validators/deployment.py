@@ -12,7 +12,7 @@ from journeys.utils.device import save_ucs
 
 log = logging.getLogger(__name__)
 
-EXPECTED_PROMPT_STATES = [
+prompt_expected_states = [
     "Active",
     "ForcedOffline",
     "Standby",
@@ -20,9 +20,19 @@ EXPECTED_PROMPT_STATES = [
     "TimeLimitedModulesActive",
 ]
 PROMPT_ERR_MSG = (
-    f"Prompt is not one of expected: {EXPECTED_PROMPT_STATES}. "
-    f"Log onto destination device and check state."
+    "Prompt state: '{state}'\n" f"Expected states: {prompt_expected_states}.\n"
 )
+
+PROMPT_FEEDBACK = {
+    "Active": "Device {host} is up and running.",
+    "ForcedOffline": "Your device {host} is in HA configuration and was forced Offline (tmm interfaces are down).",
+    "Standby": "Your device {host} is in HA configuration and in Standby state.",
+    "Peer Time Out of Sync": "Your device {host} is in HA configuration but not synchronized "
+    "(there is more than 20-30 seconds time difference between nodes).",
+    "TimeLimitedModulesActive": "Device is up and running, but some modules are licensed for a limited time period.",
+    "REBOOT REQUIRED": "Please, reboot your device {host} and check prompt status.",
+    "DOWN": "Device {host} has problems with provisioning. Some daemons required by provisioned module may be down.",
+}
 
 
 def run_backup(bigip: Device, ucs_passphrase: str, is_user_triggered=False) -> str:
@@ -95,11 +105,11 @@ def wait_for_prompt_state(
     while time.time() < end_time:
         prompt_state = _get_prompt_status(device)
         log.debug("Prompt State: {}".format(prompt_state))
-        if prompt_state in EXPECTED_PROMPT_STATES:
+        if prompt_state in prompt_expected_states:
             valid_state_count += 1
             log.debug("wait_for_prompt_state.valid_state_count: %d", valid_state_count)
             if valid_state_count == valid_states_required:
-                log.info(f"Prompt state: {prompt_state}")
+                log.debug(f"Confirmed prompt state: {prompt_state}")
                 return prompt_state
             time.sleep(interval)
         elif prompt_state == "REBOOT REQUIRED":
@@ -109,7 +119,7 @@ def wait_for_prompt_state(
             valid_state_count = 0
             log.debug("wait_for_prompt_state.valid_state_count: %d", valid_state_count)
             time.sleep(interval * 2)
-    return ""
+    return prompt_state
 
 
 def _get_prompt_status(device: Device):
