@@ -6,6 +6,7 @@ import click
 
 from journeys.errors import JourneysError
 from journeys.errors import UcsActionError
+from journeys.errors import ValidationRuntimeError
 from journeys.utils.device import Device
 from journeys.utils.device import save_ucs
 
@@ -125,16 +126,22 @@ def _get_prompt_status(device: Device):
 
 def _get_field_formatted_property(bigip: Device, cmd: str, properties: set) -> dict:
     if "field-fmt" not in cmd:
-        raise JourneysError()
+        raise JourneysError(f"Bad command: {cmd}, check implementation")
     result = bigip.ssh.run(cmd)
+    debug_msg = (
+        f"command: {cmd}, returned: {result.stdout}, err: {result.stderr}, "
+        f"exit_code: {result.exited}) "
+    )
     if not result.exited:
+        log.debug(debug_msg)
         ret_dict = {}
         stdout_split = result.stdout.split()
         for key in properties:
             key_index = stdout_split.index(key)
             ret_dict[key] = stdout_split[key_index + 1]
         return ret_dict
-    raise JourneysError(
+    log.error(debug_msg)
+    raise ValidationRuntimeError(
         f"Can't get {cmd} - returned: {result.stdout}, "
         f"err: {result.stderr}, exit_code: {result.exited}"
     )

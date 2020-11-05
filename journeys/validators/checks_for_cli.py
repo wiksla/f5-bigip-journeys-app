@@ -1,11 +1,8 @@
 import json
 import logging
-import os
 from collections import OrderedDict
 from json import JSONDecodeError
 from pathlib import Path
-from time import gmtime
-from time import strftime
 from typing import Dict
 
 import click
@@ -25,7 +22,6 @@ from journeys.validators.helpers import tmsh_compare
 from journeys.validators.log_watcher import LogWatcher
 from journeys.validators.ltm_checks import get_ltm_vs_status
 from journeys.validators.module_footprint_comparer import compare_memory_footprint
-from journeys.workdir import WORKDIR
 
 PASSED = "PASSED"
 FAILED = "FAILED"
@@ -54,16 +50,24 @@ def attributes(name: str, require_source: bool, require_root: bool):
 def cli_mcp_status_check(destination: Device, output, **kwargs) -> Dict:
     """Checks if values of returned fields are correct. \
 This method uses 'tmsh show sys mcp-state field-fmt' """
-    mcp_status = get_mcp_status(bigip=destination)
-    click.echo(f"MCPD status:\n{json.dumps(mcp_status, indent=4)}", file=output)
+    try:
+        mcp_status = get_mcp_status(bigip=destination)
+    except ValidationRuntimeError as err:
+        return {"result": FAILED, "info": "Failed to get mcp status", "debug": err}
     if (
-        not mcp_status["last-load"] == "full-config-load-succeed"
+        mcp_status["last-load"] == "full-config-load-succeed"
         and mcp_status["phase"] == "running"
     ):
-        click.echo("MCP down", file=output)
-        return {"result": FAILED, "value": mcp_status}
-
-    return {"result": PASSED, "value": mcp_status}
+        click.echo(
+            f"MCPD status:\n{json.dumps(mcp_status, indent=4)}\n" f"result: {PASSED}",
+            file=output,
+        )
+        return {"result": PASSED, "value": mcp_status}
+    click.echo(
+        f"MCPD down: \n{json.dumps(mcp_status, indent=4)}\n" f"result: {FAILED}",
+        file=output,
+    )
+    return {"result": FAILED, "value": mcp_status}
 
 
 @attributes(
@@ -71,7 +75,10 @@ This method uses 'tmsh show sys mcp-state field-fmt' """
 )
 def cli_tmm_status_check(destination: Device, output, **kwargs) -> Dict:
     """Logs status of TMM. Requires manual evaluation."""
-    tmm_status = get_tmm_global_status(bigip=destination)
+    try:
+        tmm_status = get_tmm_global_status(bigip=destination)
+    except ValidationRuntimeError as err:
+        return {"result": FAILED, "info": "Failed to get tmm status", "debug": err}
     click.echo(f"TMM status:\n{json.dumps(tmm_status, indent=4)}", file=output)
     return {"result": USER_EVALUATION, "value": tmm_status}
 
@@ -197,7 +204,9 @@ that appear in log during UCS deployment process."""
 def run_diagnose(checks: OrderedDict, kwargs: Dict, output_json: str) -> dict:
     results = {}
     for check_name, check_method in checks.items():
-        click.echo(f"Running check: {check_name}")
+        msg = f"Running check: {check_name}"
+        click.echo(msg)
+        log.debug(msg)
         results[check_name] = check_method(**kwargs)
 
     if results:
@@ -233,42 +242,6 @@ def exclude_checks(checks: Dict, excluded_checks: str):
             ",\neg. '[\"TMM status\"]'"
         )
         raise JourneysError(t_err)
-
-
-def run_auto_checks(destination: Device, checks: OrderedDict):
-    prefix = "autocheck_diagnose_output"
-    timestamp = strftime("%Y%m%d%H%M%S", gmtime())
-    output_log = os.path.join(WORKDIR, f"{prefix}_{timestamp}.log")
-    output_json = os.path.join(WORKDIR, f"{prefix}_{timestamp}.json")
-    check_success = True
-    with open(output_log, "w") as logfile:
-        kwargs = {"destination": destination, "output": logfile}
-        diagnose_result = run_diagnose(
-            checks=checks, kwargs=kwargs, output_json=output_json,
-        )
-        try:
-            click.echo(
-                f"Log watcher output:\n"
-                f"{json.dumps(diagnose_result['Log watcher']['value'], indent=4)}",
-                file=logfile,
-            )
-        except KeyError:
-            log.error("No results from Log Watcher.")
-    fails = []
-    for check, result in diagnose_result.items():
-        if result["result"] == FAILED:
-            check_success = False
-            fails.append(check)
-    click.echo("Diagnostics finished.")
-    if check_success:
-        click.echo("No known issues have been found.")
-        click.echo("Please check output logs to do more detailed results evaluation.")
-    else:
-        click.echo(
-            f"Diagnostics failures found in {', '.join(fails)}. Please check output "
-            f"logs for details."
-        )
-    return check_success
 
 
 default_checks = OrderedDict()
