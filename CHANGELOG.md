@@ -2,6 +2,14 @@
 
 <!--- next entry here -->
 
+## 1.0.1
+2020-11-05
+
+### Fixes
+
+- avoid validation json dump TypeError (f63792804ef52504b6d9d0df97ab54a60c045c10)
+- avoid validation json dump TypeError (d0385cc52e4b01bf0bd83cdb0c6046fb6498d9a0)
+
 ## 1.0.0
 2020-11-05
 
