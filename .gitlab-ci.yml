@@ -13,7 +13,7 @@ variables:
   DOCKER_REGISTRY: 'artifactory.pdsea.f5net.com'
   JOURNEYS_DOCKER_BASE: f5-cxt-docker/journeys
   JOURNEYS_TAG: $CI_COMMIT_REF_NAME
-  GSG_INITIAL_DEVELOPMENT: "true"
+  GSG_INITIAL_DEVELOPMENT: "false"
   GSG_RELEASE_BRANCHES: "master"
   GSG_PATCH_COMMIT_TYPES: fix,refactor,perf,docs,style,test,bug,bugfix
   GSG_MINOR_COMMIT_TYPES: feat,feature,story
