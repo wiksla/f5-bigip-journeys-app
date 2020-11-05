@@ -39,7 +39,7 @@ variables:
 
 format-and-lint:
   stage: test
-  image: python:3.8
+  image: artifactory.f5net.com/dockerhub-remote/python:3.8
   tags:
     - docker-executor
   except:
@@ -52,7 +52,7 @@ format-and-lint:
 
 test:
   stage: test
-  image: python:3.8
+  image: artifactory.f5net.com/dockerhub-remote/python:3.8
   tags:
     - docker-executor
   except:
@@ -87,7 +87,7 @@ ensure-version-bump:
   extends:
     - .base_retry
     - .only_source_changes
-  image: artifactory.f5net.com/velocity-platform-docker-dev/platform-semrel:1.1.0
+  image: $SEMREL_CONTAINER
   tags:
     - docker-executor
   only:
@@ -100,7 +100,7 @@ ensure-version-bump:
 
 integration:
   stage: integration
-  image: python:3.8
+  image: artifactory.f5net.com/dockerhub-remote/python:3.8
   tags:
     - docker-executor
   before_script:
@@ -122,7 +122,7 @@ integration:
 
 build:
   stage: build
-  image: docker
+  image: artifactory.f5net.com/dockerhub-remote/docker
   extends:
     - .base_retry
     - .only_source_changes
@@ -166,7 +166,7 @@ build:
       - journeys/__init__.py
 
 pages:
-  image: node
+  image: artifactory.f5net.com/dockerhub-remote/node
   stage: build
   extends: .base_retry
   tags:
