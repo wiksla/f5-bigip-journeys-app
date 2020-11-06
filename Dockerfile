@@ -1,4 +1,5 @@
-FROM artifactory.f5net.com/dockerhub-remote/python:3.8-alpine
+ARG base_image='python:3.8-alpine'
+FROM ${base_image}
 ENV PYTHONUNBUFFERED 1
 ENV MIGRATE_DIR /migrate
 RUN apk --update --no-cache add git bash gnupg openssl

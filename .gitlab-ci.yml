@@ -136,7 +136,7 @@ build:
       fi
     - sed -i "s/__build_ref__ = \".*\"/__build_ref__ = \"${CI_COMMIT_SHA}\"/" journeys/__init__.py
     - docker login -u="${DOCKER_USER}" -p="${DOCKER_TOKEN}" ${DOCKER_REGISTRY}
-    - docker build -t ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} .
+    - docker build --build-arg base_image=artifactory.f5net.com/dockerhub-remote/python:3.8-alpine -t ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} .
     - docker tag ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG} ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
     - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${JOURNEYS_TAG}
     - docker push ${DOCKER_REGISTRY}/${JOURNEYS_DOCKER_BASE}:${CI_COMMIT_SHORT_SHA}
