@@ -2,6 +2,13 @@
 
 <!--- next entry here -->
 
+## 1.0.2
+2020-11-06
+
+### Fixes
+
+- use public image in dockerfile, internal in ci (9a9d2ecc2b9efafbf00aedc5a91780f24e483822)
+
 ## 1.0.1
 2020-11-05
 
